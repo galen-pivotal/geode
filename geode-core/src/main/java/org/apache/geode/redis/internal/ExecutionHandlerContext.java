@@ -57,8 +57,8 @@ public class ExecutionHandlerContext extends ChannelInboundHandlerAdapter {
   private static final int WAIT_REGION_DSTRYD_MILLIS = 100;
   private static final int MAXIMUM_NUM_RETRIES = (1000 * 60) / WAIT_REGION_DSTRYD_MILLIS; // 60
                                                                                           // seconds
-  private RedisLockService hashLockService;
-  private RedisLockService setLockService;
+  private static RedisLockService hashLockService = new RedisLockService();
+  private static RedisLockService setLockService = new RedisLockService();
 
   private final Cache cache;
   private final GeodeRedisServer server;
@@ -117,8 +117,8 @@ public class ExecutionHandlerContext extends ChannelInboundHandlerAdapter {
     this.authPwd = pwd;
     this.isAuthenticated = pwd != null ? false : true;
 
-    this.setLockService = new RedisLockService();
-    this.hashLockService = new RedisLockService();
+    //this.setLockService = new RedisLockService();
+    //this.hashLockService = new RedisLockService();
   }
 
   public RedisLockService getHashLockService() {
