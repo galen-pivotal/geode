@@ -59,7 +59,11 @@ public class RedisLockService {
     if (name == null)
       return false;
 
-    Lock lock = map.putIfAbsent(name, new ReentrantLock());
+    Lock lock = new ReentrantLock();
+    Lock oldLock = map.putIfAbsent(name, lock);
+    if (oldLock != null) {
+      lock = oldLock;
+    }
     return lock.tryLock(timeoutMS, TimeUnit.MILLISECONDS);
   }
 
