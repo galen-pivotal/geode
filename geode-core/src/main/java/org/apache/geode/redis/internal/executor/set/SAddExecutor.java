@@ -17,6 +17,7 @@ package org.apache.geode.redis.internal.executor.set;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.geode.cache.Region;
 import org.apache.geode.redis.internal.AutoCloseableLock;
@@ -63,6 +64,15 @@ public class SAddExecutor extends SetExecutor {
 
       // Save key
       context.getRegionProvider().metaPut(command.getKey(), RedisDataType.REDIS_SET);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      command.setResponse(
+          Coder.getErrorResponse(context.getByteBufAllocator(), "Thread interrupted."));
+      return;
+    } catch (TimeoutException e) {
+      command.setResponse(Coder.getErrorResponse(context.getByteBufAllocator(),
+          "Timeout acquiring lock. Please try again."));
+      return;
     }
 
   }

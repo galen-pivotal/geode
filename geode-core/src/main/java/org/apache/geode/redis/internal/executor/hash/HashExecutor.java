@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.geode.cache.Region;
+import org.apache.geode.cache.TimeoutException;
 import org.apache.geode.redis.internal.AutoCloseableLock;
 import org.apache.geode.redis.internal.ByteArrayWrapper;
 import org.apache.geode.redis.internal.ExecutionHandlerContext;
@@ -57,12 +58,12 @@ public abstract class HashExecutor extends AbstractExecutor {
     return map;
   }
 
-  protected AutoCloseableLock withRegionLock(ExecutionHandlerContext context,
-      ByteArrayWrapper key) {
+  protected AutoCloseableLock withRegionLock(ExecutionHandlerContext context, ByteArrayWrapper key)
+      throws InterruptedException, java.util.concurrent.TimeoutException {
     RedisLockService lockService = context.getHashLockService();
     boolean lock = lockService.lock(key);
     if (!lock) {
-      throw new RuntimeException("Couldn't get lock for " + key.toString());
+      throw new TimeoutException("Couldn't get lock for " + key.toString());
     }
     return new AutoCloseableLock(() -> lockService.unlock(key));
   }

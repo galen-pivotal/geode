@@ -16,6 +16,7 @@ package org.apache.geode.redis.internal.executor.hash;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.geode.redis.internal.AutoCloseableLock;
 import org.apache.geode.redis.internal.ByteArrayWrapper;
@@ -69,6 +70,15 @@ public class HGetExecutor extends HashExecutor {
             Coder.getBulkStringResponse(context.getByteBufAllocator(), valueWrapper.toBytes()));
       } else
         command.setResponse(Coder.getNilResponse(context.getByteBufAllocator()));
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      command.setResponse(
+          Coder.getErrorResponse(context.getByteBufAllocator(), "Thread interrupted."));
+      return;
+    } catch (TimeoutException e) {
+      command.setResponse(Coder.getErrorResponse(context.getByteBufAllocator(),
+          "Timeout acquiring lock. Please try again."));
+      return;
     }
   }
 

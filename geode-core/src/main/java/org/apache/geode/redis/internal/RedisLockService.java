@@ -14,7 +14,8 @@
  */
 package org.apache.geode.redis.internal;
 
-import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -29,13 +30,13 @@ public class RedisLockService {
 
   private final static int DEFAULT_TIMEOUT = 1000;
   private final int timeoutMS;
-  private WeakHashMap<Object, Lock> map = new WeakHashMap<Object, Lock>();
+  private ConcurrentMap<Object, Lock> map = new ConcurrentHashMap<>();
 
 
   /**
    * Construct with the default 1000ms timeout setting
    */
-  public RedisLockService() {
+  RedisLockService() {
     this(DEFAULT_TIMEOUT);
   }
 
@@ -44,7 +45,7 @@ public class RedisLockService {
    * 
    * @param timeoutMS the default timeout to wait for lock
    */
-  public RedisLockService(int timeoutMS) {
+  RedisLockService(int timeoutMS) {
     this.timeoutMS = timeoutMS;
   }
 
@@ -54,22 +55,12 @@ public class RedisLockService {
    * @param name the lock name/key
    * @return true if lock establish prior to timeout
    */
-  public synchronized boolean lock(Object name) {
+  public boolean lock(Object name) throws InterruptedException {
     if (name == null)
       return false;
 
-    Lock lock = map.get(name);
-
-    if (lock == null) {
-      lock = new ReentrantLock();
-      map.put(name, lock);
-    }
-
-    try {
-      return lock.tryLock(timeoutMS, TimeUnit.MILLISECONDS);
-    } catch (InterruptedException e) {
-      return false;
-    }
+    Lock lock = map.putIfAbsent(name, new ReentrantLock());
+    return lock.tryLock(timeoutMS, TimeUnit.MILLISECONDS);
   }
 
   /**
@@ -77,7 +68,7 @@ public class RedisLockService {
    * 
    * @param name the lock name
    */
-  public synchronized void unlock(Object name) {
+  public void unlock(Object name) {
     if (name == null)
       return;
 
@@ -87,11 +78,7 @@ public class RedisLockService {
       return;
     }
 
-    try {
-      lock.unlock();
-    } finally {
-      map.remove(name);
-    }
+    lock.unlock();
   }
 
   /**

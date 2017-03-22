@@ -149,7 +149,7 @@ public class RedisLockServiceTest {
   }
 
   @Test
-  public void testGetLock() {
+  public void testGetLock() throws InterruptedException {
 
     Object obj = Integer.valueOf(2);
     RedisLockService lockService = new RedisLockService();
