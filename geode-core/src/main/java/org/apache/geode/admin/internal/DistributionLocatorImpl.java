@@ -182,9 +182,10 @@ public class DistributionLocatorImpl implements DistributionLocator, InternalMan
       }
     }
 
-    String host = getConfig().getHost();
-    int port = getConfig().getPort();
-    String bindAddress = getConfig().getBindAddress();
+    DistributionLocatorConfig config = getConfig();
+    String host = config.getHost();
+    int port = config.getPort();
+    String bindAddress = config.getBindAddress();
 
     Map<InternalDistributedMember, Collection<String>> hostedLocators =
         dm.getAllHostedLocators();
@@ -204,18 +205,17 @@ public class DistributionLocatorImpl implements DistributionLocator, InternalMan
       locator.getHost().getHostAddress().equals(hostname)) {
       return true;
     }
-
-    if (!hostname.contains(".")) {
-      try {
-        InetAddress inetAddr = InetAddress.getByName(hostname);
-        return locator.getHost().getHostName().equals(inetAddr.getHostName())
-            || locator.getHost().getHostAddress().equals(inetAddr.getHostAddress());
-      } catch (UnknownHostException ignored) {
-        // just return false.
-      }
+    if (hostname.contains(".")) {
+      return false;
     }
-    // todo from old comment? try config host as if it is an IP address instead of host name
-    return false;
+
+    try {
+      InetAddress inetAddr = InetAddress.getByName(hostname);
+      return locator.getHost().getHostName().equals(inetAddr.getHostName())
+          || locator.getHost().getHostAddress().equals(inetAddr.getHostAddress());
+    } catch (UnknownHostException thenFalse) {
+      return false;
+    }
   }
 
   public void start() {
