@@ -186,37 +186,36 @@ public class DistributionLocatorImpl implements DistributionLocator, InternalMan
     int port = getConfig().getPort();
     String bindAddress = getConfig().getBindAddress();
 
-    boolean found = false;
-    Map<InternalDistributedMember, Collection<String>> hostedLocators = dm.getAllHostedLocators();
-    for (Iterator<InternalDistributedMember> memberIter =
-        hostedLocators.keySet().iterator(); memberIter.hasNext();) {
-      for (Iterator<String> locatorIter =
-          hostedLocators.get(memberIter.next()).iterator(); locatorIter.hasNext();) {
-        DistributionLocatorId locator = new DistributionLocatorId(locatorIter.next());
-        found = found || locator.getHost().getHostAddress().equals(host);
-        found = found || locator.getHost().getHostName().equals(host);
-        if (!found && !host.contains(".")) {
-          try {
-            InetAddress inetAddr = InetAddress.getByName(host);
-            found = locator.getHost().getHostName().equals(inetAddr.getHostName());
-            if (!found) {
-              found = locator.getHost().getHostAddress().equals(inetAddr.getHostAddress());
-            }
-          } catch (UnknownHostException e) {
-            // try config host as if it is an IP address instead of host name
-          }
-        }
-        if (locator.getBindAddress() != null && !locator.getBindAddress().isEmpty()
-            && bindAddress != null && !bindAddress.isEmpty()) {
-          found = found && locator.getBindAddress().equals(bindAddress);
-        }
-        found = found && locator.getPort() == port;
-        if (found) {
-          return true;
-        }
+    Map<InternalDistributedMember, Collection<String>> hostedLocators =
+        dm.getAllHostedLocators();
+
+    // ignore the member references, we just want a hostname that matches ours.
+    return hostedLocators.values().stream().anyMatch((locatorList) ->
+    // make a DistributionLocatorId from the list of locator addresses
+    locatorList.stream().map(DistributionLocatorId::new)
+        .anyMatch((locator) -> hostnameMatchesLocatorHostname(host, locator)
+            && locator.getPort() == port && locator.getBindAddress() == null
+            || locator.getBindAddress().equals(bindAddress)));
+  }
+
+  private static boolean hostnameMatchesLocatorHostname(String hostname,
+      DistributionLocatorId locator) {
+    if (locator.getHost().getHostName().equals(hostname) ||
+      locator.getHost().getHostAddress().equals(hostname)) {
+      return true;
+    }
+
+    if (!hostname.contains(".")) {
+      try {
+        InetAddress inetAddr = InetAddress.getByName(hostname);
+        return locator.getHost().getHostName().equals(inetAddr.getHostName())
+            || locator.getHost().getHostAddress().equals(inetAddr.getHostAddress());
+      } catch (UnknownHostException ignored) {
+        // just return false.
       }
     }
-    return found;
+    // todo from old comment? try config host as if it is an IP address instead of host name
+    return false;
   }
 
   public void start() {
