@@ -733,32 +733,10 @@ public class ServerConnection implements Runnable {
   // UserAuthAttributes uaa = new UserAuthAttributes(authzRequest, postAuthzRequest);
   // }
 
-  /**
-   * Set to false once handshake has been done
-   */
-  private boolean doHandshake = true;
-
   private boolean clientDisconnectedCleanly = false;
   private Throwable clientDisconnectedException;
   private int failureCount = 0;
   private boolean processMessages = true;
-
-  private void doHandshake() {
-    // hitesh:to create new connection handshake
-    if (verifyClientConnection()) {
-      // Initialize the commands after the handshake so that the version
-      // can be used.
-      initializeCommands();
-      // its initialized in verifyClientConnection call
-      if (getCommunicationMode() != Acceptor.GATEWAY_TO_GATEWAY)
-        initializeClientUserAuths();
-    }
-    if (TEST_VERSION_AFTER_HANDSHAKE_FLAG) {
-      Assert.assertTrue((this.handshake.getVersion().ordinal() == testVersionAfterHandshake),
-          "Found different version after handshake");
-      TEST_VERSION_AFTER_HANDSHAKE_FLAG = false;
-    }
-  }
 
   private void doNormalMsg() {
     Message msg = null;
@@ -944,31 +922,6 @@ public class ServerConnection implements Runnable {
     }
     if (cleanupStats) {
       this.acceptor.getConnectionListener().connectionClosed(clientDeparted, communicationMode);
-    }
-  }
-
-  private void doOneMessage() {
-    boolean useNewClientProtocol =
-        this.communicationMode == AcceptorImpl.CLIENT_TO_SERVER_NEW_PROTOCOL;
-    if (useNewClientProtocol) {
-      try {
-        Socket socket = this.getSocket();
-        InputStream inputStream = socket.getInputStream();
-        OutputStream outputStream = socket.getOutputStream();
-        // TODO serialization types?
-        newClientProtocol.receiveMessage(inputStream, outputStream, this.getCache());
-      } catch (IOException e) {
-        // TODO?
-      }
-      return;
-    }
-
-    if (this.doHandshake) {
-      doHandshake();
-      this.doHandshake = false;
-    } else {
-      this.resetTransientData();
-      doNormalMsg();
     }
   }
 
@@ -1677,21 +1630,6 @@ public class ServerConnection implements Runnable {
   private boolean responded;
   private Object modKey = null;
   private String modRegion = null;
-
-  void resetTransientData() {
-    this.potentialModification = false;
-    this.requiresResponse = false;
-    this.responded = false;
-    this.requiresChunkedResponse = false;
-    this.modKey = null;
-    this.modRegion = null;
-
-    queryResponseMsg.setNumberOfParts(2);
-    chunkedResponseMsg.setNumberOfParts(1);
-    executeFunctionResponseMsg.setNumberOfParts(1);
-    registerInterestResponseMsg.setNumberOfParts(1);
-    keySetResponseMsg.setNumberOfParts(1);
-  }
 
   String getModRegion() {
     return this.modRegion;
