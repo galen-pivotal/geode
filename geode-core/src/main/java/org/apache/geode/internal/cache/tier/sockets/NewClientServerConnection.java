@@ -58,7 +58,7 @@ public class NewClientServerConnection extends ServerConnection {
   }
 
   @Override
-  protected boolean doHandShake(byte epType, int qSize) {
+  protected boolean doAcceptHandShake(byte epType, int qSize) {
     // no handshake for new client protocol.
     return true;
   }

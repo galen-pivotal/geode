@@ -36,7 +36,7 @@ public class ServerConnectionFactory {
       return new NewClientServerConnection(s, c, helper, stats, hsTimeout, socketBufferSize,
           communicationModeStr, communicationMode, acceptor, newClientProtocol);
     } else {
-      return new ServerConnection(s, c, helper, stats, hsTimeout, socketBufferSize,
+      return new LegacyServerConnection(s, c, helper, stats, hsTimeout, socketBufferSize,
           communicationModeStr, communicationMode, acceptor);
     }
 
