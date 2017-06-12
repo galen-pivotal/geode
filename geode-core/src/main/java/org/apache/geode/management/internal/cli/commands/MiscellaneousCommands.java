@@ -14,45 +14,8 @@
  */
 package org.apache.geode.management.internal.cli.commands;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.zip.DataFormatException;
-import java.util.zip.GZIPInputStream;
-
-import javax.management.ObjectName;
-
 import org.apache.commons.lang.StringUtils;
-import org.apache.logging.log4j.Logger;
-import org.springframework.shell.core.CommandMarker;
-import org.springframework.shell.core.annotation.CliAvailabilityIndicator;
-import org.springframework.shell.core.annotation.CliCommand;
-import org.springframework.shell.core.annotation.CliOption;
-
 import org.apache.geode.LogWriter;
-import org.apache.geode.cache.CacheFactory;
 import org.apache.geode.cache.execute.Execution;
 import org.apache.geode.cache.execute.Function;
 import org.apache.geode.cache.execute.FunctionException;
@@ -106,29 +69,53 @@ import org.apache.geode.management.internal.cli.result.ResultBuilder;
 import org.apache.geode.management.internal.cli.result.ResultData;
 import org.apache.geode.management.internal.cli.result.ResultDataException;
 import org.apache.geode.management.internal.cli.result.TabularResultData;
-import org.apache.geode.management.internal.cli.shell.Gfsh;
 import org.apache.geode.management.internal.security.ResourceOperation;
 import org.apache.geode.security.ResourcePermission.Operation;
 import org.apache.geode.security.ResourcePermission.Resource;
+import org.apache.logging.log4j.Logger;
+import org.springframework.shell.core.annotation.CliAvailabilityIndicator;
+import org.springframework.shell.core.annotation.CliCommand;
+import org.springframework.shell.core.annotation.CliOption;
+
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.zip.DataFormatException;
+import java.util.zip.GZIPInputStream;
+import javax.management.ObjectName;
 
 /**
  * @since GemFire 7.0
  */
-public class MiscellaneousCommands implements CommandMarker {
+public class MiscellaneousCommands implements GfshCommand {
 
   public static final String NETSTAT_FILE_REQUIRED_EXTENSION = ".txt";
   public final static String DEFAULT_TIME_OUT = "10";
   private final static Logger logger = LogService.getLogger();
 
   private final GetStackTracesFunction getStackTracesFunction = new GetStackTracesFunction();
-
-  private Gfsh getGfsh() {
-    return Gfsh.getCurrentInstance();
-  }
-
-  private InternalCache getCache() {
-    return (InternalCache) CacheFactory.getAnyInstance();
-  }
 
   public void shutdownNode(final long timeout, final Set<DistributedMember> includeMembers)
       throws TimeoutException, InterruptedException, ExecutionException {
@@ -672,11 +659,11 @@ public class MiscellaneousCommands implements CommandMarker {
   @ResourceOperation(resource = Resource.CLUSTER, operation = Operation.READ)
   public Result exportStackTrace(@CliOption(key = CliStrings.EXPORT_STACKTRACE__MEMBER,
       optionContext = ConverterHint.ALL_MEMBER_IDNAME,
-      help = CliStrings.EXPORT_STACKTRACE__HELP) String memberNameOrId,
+      help = CliStrings.EXPORT_STACKTRACE__HELP) String[] memberNameOrId,
 
       @CliOption(key = CliStrings.EXPORT_STACKTRACE__GROUP,
           optionContext = ConverterHint.ALL_MEMBER_IDNAME,
-          help = CliStrings.EXPORT_STACKTRACE__GROUP) String group,
+          help = CliStrings.EXPORT_STACKTRACE__GROUP) String[] group,
 
       @CliOption(key = CliStrings.EXPORT_STACKTRACE__FILE,
           help = CliStrings.EXPORT_STACKTRACE__FILE__HELP) String fileName,
@@ -687,15 +674,17 @@ public class MiscellaneousCommands implements CommandMarker {
 
     Result result = null;
     StringBuffer filePrefix = new StringBuffer("stacktrace");
+
+    if (fileName == null) {
+      fileName = filePrefix.append("_").append(System.currentTimeMillis()).toString();
+    }
+    final File outFile = new File(fileName);
     try {
-      if (fileName == null) {
-        fileName = filePrefix.append("_").append(System.currentTimeMillis()).toString();
-      }
-      final File outFile = new File(fileName);
       if (outFile.exists() && failIfFilePresent) {
         return ResultBuilder.createShellClientErrorResult(CliStrings.format(
             CliStrings.EXPORT_STACKTRACE__ERROR__FILE__PRESENT, outFile.getCanonicalPath()));
       }
+
 
       InternalCache cache = getCache();
       InternalDistributedSystem ads = cache.getInternalDistributedSystem();
@@ -703,13 +692,9 @@ public class MiscellaneousCommands implements CommandMarker {
       InfoResultData resultData = ResultBuilder.createInfoResultData();
 
       Map<String, byte[]> dumps = new HashMap<String, byte[]>();
-      Set<DistributedMember> targetMembers = null;
-
-      if ((group == null || group.isEmpty())
-          && (memberNameOrId == null || memberNameOrId.isEmpty())) {
-        targetMembers = CliUtil.getAllMembers(cache);
-      } else {
-        targetMembers = CliUtil.findMembersOrThrow(group, memberNameOrId);
+      Set<DistributedMember> targetMembers = CliUtil.findMembers(group, memberNameOrId);
+      if (targetMembers.isEmpty()) {
+        return ResultBuilder.createUserErrorResult(CliStrings.NO_MEMBERS_FOUND_MESSAGE);
       }
 
       ResultCollector<?, ?> rc =
@@ -728,9 +713,7 @@ public class MiscellaneousCommands implements CommandMarker {
       resultData.addLine(CliStrings.EXPORT_STACKTRACE__HOST + ads.getDistributedMember().getHost());
 
       result = ResultBuilder.buildResult(resultData);
-    } catch (CommandResultException crex) {
-      return crex.getResult();
-    } catch (Exception ex) {
+    } catch (IOException ex) {
       result = ResultBuilder
           .createGemFireErrorResult(CliStrings.EXPORT_STACKTRACE__ERROR + ex.getMessage());
     }

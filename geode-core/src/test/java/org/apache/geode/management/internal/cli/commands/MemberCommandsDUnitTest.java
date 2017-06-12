@@ -25,6 +25,7 @@ import static org.apache.geode.distributed.ConfigurationProperties.STATISTIC_SAM
 import static org.apache.geode.test.dunit.Assert.assertEquals;
 import static org.apache.geode.test.dunit.LogWriterUtils.getLogWriter;
 import static org.apache.geode.test.dunit.NetworkUtils.getServerHostName;
+import static org.junit.Assert.assertTrue;
 
 import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.CacheFactory;
@@ -51,7 +52,9 @@ import org.apache.geode.test.dunit.SerializableRunnable;
 import org.apache.geode.test.dunit.VM;
 import org.apache.geode.test.dunit.cache.internal.JUnit4CacheTestCase;
 import org.apache.geode.test.junit.categories.DistributedTest;
+import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.contrib.java.lang.system.ProvideSystemProperty;
 import org.junit.experimental.categories.Category;
 
 import java.io.File;
@@ -76,6 +79,10 @@ public class MemberCommandsDUnitTest extends JUnit4CacheTestCase {
   private static final String SUBREGION1C = "subregion1C";
   private static final String PR1 = "PartitionedRegion1";
   private static final String PR2 = "ParitionedRegion2";
+
+  @ClassRule
+  public static ProvideSystemProperty provideSystemProperty =
+      new ProvideSystemProperty(CliCommandTestBase.USE_HTTP_SYSTEM_PROPERTY, "true");
 
   @Override
   public final void postSetUp() throws Exception {
@@ -222,8 +229,12 @@ public class MemberCommandsDUnitTest extends JUnit4CacheTestCase {
     CommandProcessor commandProcessor = new CommandProcessor();
     Result result =
         commandProcessor.createCommandStatement(CliStrings.LIST_MEMBER, EMPTY_ENV).process();
-    getLogWriter().info("#SB" + getResultAsString(result));
+    String resultOutput = getResultAsString(result);
+    getLogWriter().info(resultOutput);
     assertEquals(true, result.getStatus().equals(Status.OK));
+    assertTrue(resultOutput.contains("me:"));
+    assertTrue(resultOutput.contains("Server1:"));
+    assertTrue(resultOutput.contains("Server2:"));
   }
 
   /**

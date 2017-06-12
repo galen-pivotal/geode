@@ -14,30 +14,6 @@
  */
 package org.apache.geode.management.internal.cli.commands;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
-
-import org.springframework.shell.core.annotation.CliAvailabilityIndicator;
-import org.springframework.shell.core.annotation.CliCommand;
-import org.springframework.shell.core.annotation.CliOption;
-
 import org.apache.geode.GemFireIOException;
 import org.apache.geode.SystemFailure;
 import org.apache.geode.admin.BackupStatus;
@@ -77,7 +53,6 @@ import org.apache.geode.management.internal.cli.functions.DestroyDiskStoreFuncti
 import org.apache.geode.management.internal.cli.functions.ListDiskStoresFunction;
 import org.apache.geode.management.internal.cli.functions.ShowMissingDiskStoresFunction;
 import org.apache.geode.management.internal.cli.i18n.CliStrings;
-import org.apache.geode.management.internal.cli.result.CommandResultException;
 import org.apache.geode.management.internal.cli.result.CompositeResultData;
 import org.apache.geode.management.internal.cli.result.CompositeResultData.SectionResultData;
 import org.apache.geode.management.internal.cli.result.ErrorResultData;
@@ -93,24 +68,41 @@ import org.apache.geode.management.internal.cli.util.MemberNotFoundException;
 import org.apache.geode.management.internal.configuration.domain.XmlEntity;
 import org.apache.geode.management.internal.messages.CompactRequest;
 import org.apache.geode.management.internal.security.ResourceOperation;
+import org.apache.geode.security.ResourcePermission.Target;
 import org.apache.geode.security.ResourcePermission.Operation;
 import org.apache.geode.security.ResourcePermission.Resource;
+import org.springframework.shell.core.annotation.CliAvailabilityIndicator;
+import org.springframework.shell.core.annotation.CliCommand;
+import org.springframework.shell.core.annotation.CliOption;
+
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * The DiskStoreCommands class encapsulates all GemFire Disk Store commands in Gfsh.
  *
- * @see org.apache.geode.management.internal.cli.commands.AbstractCommandsSupport
+ * @see GfshCommand
  * @since GemFire 7.0
  */
 @SuppressWarnings("unused")
-public class DiskStoreCommands extends AbstractCommandsSupport {
-
-  @Override
-  protected Set<DistributedMember> getMembers(final InternalCache cache) {
-    // TODO determine what this does (as it is untested and unmockable!)
-    return CliUtil.getAllMembers(cache);
-  }
-
+public class DiskStoreCommands implements GfshCommand {
   protected Set<DistributedMember> getNormalMembers(final InternalCache cache) {
     // TODO determine what this does (as it is untested and unmockable!)
     return CliUtil.getAllNormalMembers(cache);
@@ -353,11 +345,10 @@ public class DiskStoreCommands extends AbstractCommandsSupport {
       TabularResultData tabularData = ResultBuilder.createTabularResultData();
       boolean accumulatedData = false;
 
-      Set<DistributedMember> targetMembers;
-      try {
-        targetMembers = CliUtil.findMembersOrThrow(groups, null);
-      } catch (CommandResultException crex) {
-        return crex.getResult();
+      Set<DistributedMember> targetMembers = CliUtil.findMembers(groups, null);
+
+      if (targetMembers.isEmpty()) {
+        return ResultBuilder.createUserErrorResult(CliStrings.NO_MEMBERS_FOUND_MESSAGE);
       }
 
       ResultCollector<?, ?> rc = CliUtil.executeFunction(new CreateDiskStoreFunction(),
@@ -408,7 +399,8 @@ public class DiskStoreCommands extends AbstractCommandsSupport {
 
   @CliCommand(value = CliStrings.COMPACT_DISK_STORE, help = CliStrings.COMPACT_DISK_STORE__HELP)
   @CliMetaData(shellOnly = false, relatedTopic = {CliStrings.TOPIC_GEODE_DISKSTORE})
-  @ResourceOperation(resource = Resource.DATA, operation = Operation.MANAGE)
+  @ResourceOperation(resource = Resource.CLUSTER, operation = Operation.MANAGE,
+      target = Target.DISK)
   public Result compactDiskStore(
       @CliOption(key = CliStrings.COMPACT_DISK_STORE__NAME, mandatory = true,
           optionContext = ConverterHint.DISKSTORE,
@@ -1410,11 +1402,10 @@ public class DiskStoreCommands extends AbstractCommandsSupport {
       TabularResultData tabularData = ResultBuilder.createTabularResultData();
       boolean accumulatedData = false;
 
-      Set<DistributedMember> targetMembers;
-      try {
-        targetMembers = CliUtil.findMembersOrThrow(groups, null);
-      } catch (CommandResultException crex) {
-        return crex.getResult();
+      Set<DistributedMember> targetMembers = CliUtil.findMembers(groups, null);
+
+      if (targetMembers.isEmpty()) {
+        return ResultBuilder.createUserErrorResult(CliStrings.NO_MEMBERS_FOUND_MESSAGE);
       }
 
       ResultCollector<?, ?> rc = CliUtil.executeFunction(new DestroyDiskStoreFunction(),

@@ -168,6 +168,7 @@ public class CliStrings {
       "Invalid file type, the file extension must be \"{0}\"";
   public static final String GEODE_DATA_FILE_EXTENSION = ".gfd";
   public static final String LOCATOR_HEADER = "Locator";
+  public static final String LOCATOR_TERM_NAME = "Locator";
   public static final String ERROR__MSG__HEADER = "Error";
   public static final String ZIP_FILE_EXTENSION = ".zip";
   // This should be thrown for FunctionInvocationTargetException
@@ -1441,7 +1442,7 @@ public class CliStrings {
   public static final String EXPORT_LOGS__STATSONLY__HELP = "Whether to only export statistics";
   public static final String EXPORT_LOGS__FILESIZELIMIT = "file-size-limit";
   public static final String EXPORT_LOGS__FILESIZELIMIT__HELP =
-      "Limits size of the file that can be exported. Specify zero for no limit. Value is in megabytes by default or [m|g|t] may be specified.";
+      "Limits total unzipped size of the exported files. Specify zero for no limit. Value is in megabytes by default or [k|m|g|t] may be specified.";
   public static final String EXPORT_LOGS__FILESIZELIMIT__SPECIFIED_DEFAULT = "0";
   public static final String EXPORT_LOGS__FILESIZELIMIT__UNSPECIFIED_DEFAULT = "100m";
 
@@ -2365,6 +2366,9 @@ public class CliStrings {
   public static final String START_LOCATOR__GROUP = "group";
   public static final String START_LOCATOR__GROUP__HELP = "Group(s) the Locator will be a part of.";
   public static final String START_LOCATOR__HOSTNAME_FOR_CLIENTS = "hostname-for-clients";
+
+  public static final String START_LOCATOR__JMX_MANAGER_HOSTNAME_FOR_CLIENTS__HELP =
+      "Hostname provided to clients by the locator for the location of a JMX Manager.";
   public static final String START_LOCATOR__HOSTNAME_FOR_CLIENTS__HELP =
       "Hostname or IP address that will be sent to clients so they can connect to this Locator. The default is the bind-address of the Locator.";
   public static final String START_LOCATOR__INCLUDE_SYSTEM_CLASSPATH = "include-system-classpath";
@@ -2513,6 +2517,9 @@ public class CliStrings {
   public static final String START_SERVER__INITIAL_HEAP = "initial-heap";
   public static final String START_SERVER__INITIAL_HEAP__HELP =
       "Initial size of the heap in the same format as the JVM -Xms parameter.";
+  public static final String START_SERVER__JMX_MANAGER_HOSTNAME_FOR_CLIENTS__HELP =
+      "Hostname provided to clients by the server for the location of a JMX Manager.";
+
   public static final String START_SERVER__J = "J";
   public static final String START_SERVER__J__HELP =
       "Argument passed to the JVM on which the server will run. For example, --J=-Dfoo.bar=true will set the system property \"foo.bar\" to \"true\".";

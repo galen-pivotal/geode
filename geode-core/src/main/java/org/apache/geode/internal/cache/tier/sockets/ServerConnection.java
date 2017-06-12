@@ -39,7 +39,6 @@ import org.apache.shiro.util.ThreadState;
 import org.apache.geode.CancelException;
 import org.apache.geode.DataSerializer;
 import org.apache.geode.SystemFailure;
-import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.client.internal.AbstractOp;
 import org.apache.geode.cache.client.internal.Connection;
 import org.apache.geode.distributed.DistributedSystem;
@@ -61,7 +60,6 @@ import org.apache.geode.internal.logging.LogService;
 import org.apache.geode.internal.logging.log4j.LocalizedMessage;
 import org.apache.geode.internal.security.AuthorizeRequest;
 import org.apache.geode.internal.security.AuthorizeRequestPP;
-import org.apache.geode.internal.security.IntegratedSecurityService;
 import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.internal.util.Breadcrumbs;
 import org.apache.geode.security.AuthenticationFailedException;
@@ -85,7 +83,7 @@ public abstract class ServerConnection implements Runnable {
    */
   private static final int TIMEOUT_BUFFER_FOR_CONNECTION_CLEANUP_MS = 5000;
 
-  protected SecurityService securityService = IntegratedSecurityService.getSecurityService();
+  protected final SecurityService securityService;
 
   final protected CacheServerStats stats;
 
@@ -244,45 +242,44 @@ public abstract class ServerConnection implements Runnable {
    * Creates a new <code>ServerConnection</code> that processes messages received from an edge
    * client over a given <code>Socket</code>.
    */
-  public ServerConnection(Socket s, Cache c, CachedRegionHelper helper, CacheServerStats stats,
-      int hsTimeout, int socketBufferSize, String communicationModeStr, byte communicationMode,
-      Acceptor acceptor) {
-    StringBuffer buffer = new StringBuffer(100);
+  public ServerConnection(Socket socket, InternalCache internalCache, CachedRegionHelper helper,
+      CacheServerStats stats, int hsTimeout, int socketBufferSize, String communicationModeStr,
+      byte communicationMode, Acceptor acceptor, SecurityService securityService) {
+
+    StringBuilder buffer = new StringBuilder(100);
     if (((AcceptorImpl) acceptor).isGatewayReceiver()) {
       buffer.append("GatewayReceiver connection from [");
     } else {
       buffer.append("Server connection from [");
     }
     buffer.append(communicationModeStr).append(" host address=")
-        .append(s.getInetAddress().getHostAddress()).append("; ").append(communicationModeStr)
-        .append(" port=").append(s.getPort()).append("]");
+        .append(socket.getInetAddress().getHostAddress()).append("; ").append(communicationModeStr)
+        .append(" port=").append(socket.getPort()).append("]");
     this.name = buffer.toString();
 
     this.stats = stats;
     this.acceptor = (AcceptorImpl) acceptor;
     this.crHelper = helper;
-    this.logWriter = (InternalLogWriter) c.getLoggerI18n();
-    this.securityLogWriter = (InternalLogWriter) c.getSecurityLoggerI18n();
+    this.logWriter = (InternalLogWriter) internalCache.getLoggerI18n();
+    this.securityLogWriter = (InternalLogWriter) internalCache.getSecurityLoggerI18n();
     this.communicationModeStr = communicationModeStr;
     this.communicationMode = communicationMode;
     this.principal = null;
     this.authzRequest = null;
     this.postAuthzRequest = null;
 
+    this.securityService = securityService;
+
     final boolean isDebugEnabled = logger.isDebugEnabled();
     try {
-      // requestMsg.setUseDataStream(useDataStream);
-      // replyMsg.setUseDataStream(useDataStream);
-      // responseMsg.setUseDataStream(useDataStream);
-      // errorMsg.setUseDataStream(useDataStream);
 
-      initStreams(s, socketBufferSize, stats);
+      initStreams(socket, socketBufferSize, stats);
 
       if (isDebugEnabled) {
         logger.debug(
             "{}: Accepted client connection from {}[client host name={}; client host address={}; client port={}]",
-            getName(), s.getInetAddress().getCanonicalHostName(),
-            s.getInetAddress().getHostAddress(), s.getPort());
+            getName(), communicationModeStr, socket.getInetAddress().getCanonicalHostName(),
+            socket.getInetAddress().getHostAddress(), socket.getPort());
       }
       this.handShakeTimeout = hsTimeout;
     } catch (Exception e) {
@@ -396,6 +393,10 @@ public abstract class ServerConnection implements Runnable {
 
   public InternalLogWriter getSecurityLogWriter() {
     return this.securityLogWriter;
+  }
+
+  protected SecurityService getSecurityService() {
+    return this.securityService;
   }
 
   protected boolean incedCleanupTableRef = false;
@@ -770,7 +771,8 @@ public abstract class ServerConnection implements Runnable {
 
       Object principal = HandShake.verifyCredentials(methodName, credentials,
           system.getSecurityProperties(), (InternalLogWriter) system.getLogWriter(),
-          (InternalLogWriter) system.getSecurityLogWriter(), this.proxyId.getDistributedMember());
+          (InternalLogWriter) system.getSecurityLogWriter(), this.proxyId.getDistributedMember(),
+          this.securityService);
       if (principal instanceof Subject) {
         Subject subject = (Subject) principal;
         uniqueId = this.clientUserAuths.putSubject(subject);

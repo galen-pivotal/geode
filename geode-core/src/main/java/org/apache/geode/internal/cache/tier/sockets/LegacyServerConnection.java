@@ -7,6 +7,7 @@ import org.apache.geode.cache.client.internal.Connection;
 import org.apache.geode.distributed.internal.membership.InternalDistributedMember;
 import org.apache.geode.internal.Assert;
 import org.apache.geode.internal.Version;
+import org.apache.geode.internal.cache.InternalCache;
 import org.apache.geode.internal.cache.tier.Acceptor;
 import org.apache.geode.internal.cache.tier.CachedRegionHelper;
 import org.apache.geode.internal.cache.tier.Command;
@@ -15,6 +16,7 @@ import org.apache.geode.internal.cache.tier.MessageType;
 import org.apache.geode.internal.cache.tier.sockets.command.Default;
 import org.apache.geode.internal.i18n.LocalizedStrings;
 import org.apache.geode.internal.logging.log4j.LocalizedMessage;
+import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.security.GemFireSecurityException;
 import org.apache.shiro.subject.Subject;
 import org.apache.shiro.util.ThreadState;
@@ -23,9 +25,6 @@ import java.net.Socket;
 import java.util.Map;
 import java.util.Random;
 
-/**
- * Created by gosullivan on 6/12/17.
- */
 public class LegacyServerConnection extends ServerConnection {
   /**
    * Set to false once handshake has been done
@@ -50,11 +49,11 @@ public class LegacyServerConnection extends ServerConnection {
    * @param communicationMode
    * @param acceptor
    */
-  public LegacyServerConnection(Socket s, Cache c, CachedRegionHelper helper,
-      CacheServerStats stats, int hsTimeout, int socketBufferSize, String communicationModeStr,
-      byte communicationMode, Acceptor acceptor) {
+  public LegacyServerConnection(Socket s, InternalCache c, CachedRegionHelper helper,
+                                CacheServerStats stats, int hsTimeout, int socketBufferSize, String communicationModeStr,
+                                byte communicationMode, Acceptor acceptor, SecurityService securityService) {
     super(s, c, helper, stats, hsTimeout, socketBufferSize, communicationModeStr, communicationMode,
-        acceptor);
+        acceptor, securityService);
     this.randomConnectionIdGen = new Random(this.hashCode());
   }
 
@@ -178,7 +177,7 @@ public class LegacyServerConnection extends ServerConnection {
     synchronized (this.handShakeMonitor) {
       if (this.handshake == null) {
         // synchronized (getCleanupTable()) {
-        boolean readHandShake = createClientHandshake();
+        boolean readHandShake = ServerHandShakeProcessor.readHandShake(this, getSecurityService());
         if (readHandShake) {
           if (this.handshake.isOK()) {
             try {
@@ -186,7 +185,7 @@ public class LegacyServerConnection extends ServerConnection {
             } catch (CancelException e) {
               if (!crHelper.isShutdown()) {
                 logger.warn(LocalizedMessage.create(
-                    LocalizedStrings.ServerConnection_0_UNEXPECTED_CANCELLATION, getName()), e);
+                  LocalizedStrings.ServerConnection_0_UNEXPECTED_CANCELLATION, getName()), e);
               }
               cleanup();
               return false;
@@ -194,10 +193,10 @@ public class LegacyServerConnection extends ServerConnection {
           } else {
             this.crHelper.checkCancelInProgress(null); // bug 37113?
             logger.warn(LocalizedMessage.create(
-                LocalizedStrings.ServerConnection_0_RECEIVED_UNKNOWN_HANDSHAKE_REPLY_CODE_1,
-                new Object[] {this.name, new Byte(this.handshake.getCode())}));
+              LocalizedStrings.ServerConnection_0_RECEIVED_UNKNOWN_HANDSHAKE_REPLY_CODE_1,
+              new Object[] {this.name, new Byte(this.handshake.getCode())}));
             refuseHandshake(LocalizedStrings.ServerConnection_RECEIVED_UNKNOWN_HANDSHAKE_REPLY_CODE
-                .toLocalizedString(), ServerHandShakeProcessor.REPLY_INVALID);
+              .toLocalizedString(), ServerHandShakeProcessor.REPLY_INVALID);
             return false;
           }
         } else {
@@ -211,7 +210,6 @@ public class LegacyServerConnection extends ServerConnection {
     return true;
   }
 
-
   protected void doOneMessage() {
     if (this.waitingForHandshake) {
       doHandshake();
@@ -222,23 +220,20 @@ public class LegacyServerConnection extends ServerConnection {
     }
   }
 
-
   private void doNormalMsg() {
     Message msg = null;
     msg = BaseCommand.readRequest(this);
     ThreadState threadState = null;
     try {
       if (msg != null) {
-        // this.logger.fine("donormalMsg() msgType " + msg.getMessageType());
-        // Since this thread is not interrupted when the cache server is
-        // shutdown,
-        // test again after a message has been read. This is a bit of a hack. I
-        // think this thread should be interrupted, but currently AcceptorImpl
-        // doesn't keep track of the threads that it launches.
+        // Since this thread is not interrupted when the cache server is shutdown, test again after
+        // a message has been read. This is a bit of a hack. I think this thread should be
+        // interrupted, but currently AcceptorImpl doesn't keep track of the threads that it
+        // launches.
         if (!this.processMessages || (crHelper.isShutdown())) {
           if (logger.isDebugEnabled()) {
             logger.debug("{} ignoring message of type {} from client {} due to shutdown.",
-                getName(), MessageType.getString(msg.getMessageType()), this.proxyId);
+              getName(), MessageType.getString(msg.getMessageType()), this.proxyId);
           }
           return;
         }
@@ -258,7 +253,7 @@ public class LegacyServerConnection extends ServerConnection {
 
         if (logger.isTraceEnabled()) {
           logger.trace("{} received {} with txid {}", getName(),
-              MessageType.getString(msg.getMessageType()), msg.getTransactionId());
+            MessageType.getString(msg.getMessageType()), msg.getTransactionId());
           if (msg.getTransactionId() < -1) { // TODO: why is this happening?
             msg.setTransactionId(-1);
           }
@@ -277,7 +272,7 @@ public class LegacyServerConnection extends ServerConnection {
         // if a subject exists for this uniqueId, binds the subject to this thread so that we can do
         // authorization later
         if (AcceptorImpl.isIntegratedSecurity() && !isInternalMessage()
-            && this.communicationMode != Acceptor.GATEWAY_TO_GATEWAY) {
+          && this.communicationMode != Acceptor.GATEWAY_TO_GATEWAY) {
           long uniqueId = getUniqueId();
           Subject subject = this.clientUserAuths.getSubject(uniqueId);
           if (subject != null) {
@@ -285,7 +280,7 @@ public class LegacyServerConnection extends ServerConnection {
           }
         }
 
-        command.execute(msg, this);
+        command.execute(msg, this, this.securityService);
       }
     } finally {
       // Keep track of the fact that a message is no longer being
@@ -308,54 +303,53 @@ public class LegacyServerConnection extends ServerConnection {
    * @see AbstractOp#sendMessage(Connection)
    */
   @Override
-  protected Part updateAndGetSecurityPart() {
+  public Part updateAndGetSecurityPart() {
     // need to take care all message types here
-    // this.logger.fine("getSecurityPart() msgType = "
-    // + this.requestMsg.msgType);
     if (AcceptorImpl.isAuthenticationRequired()
-        && this.handshake.getVersion().compareTo(Version.GFE_65) >= 0
-        && (this.communicationMode != Acceptor.GATEWAY_TO_GATEWAY)
-        && (!this.requestMsg.getAndResetIsMetaRegion()) && (!isInternalMessage())) {
+      && this.handshake.getVersion().compareTo(Version.GFE_65) >= 0
+      && (this.communicationMode != Acceptor.GATEWAY_TO_GATEWAY)
+      && (!this.requestMsg.getAndResetIsMetaRegion()) && (!isInternalMessage())) {
       setSecurityPart();
       return this.securePart;
     } else {
       if (AcceptorImpl.isAuthenticationRequired() && logger.isDebugEnabled()) {
         logger.debug(
-            "ServerConnection.updateAndGetSecurityPart() not adding security part for msg type {}",
-            MessageType.getString(this.requestMsg.msgType));
+          "ServerConnection.updateAndGetSecurityPart() not adding security part for msg type {}",
+          MessageType.getString(this.requestMsg.messageType));
       }
     }
     return null;
   }
 
+
   private boolean isInternalMessage() {
-    return (this.requestMsg.msgType == MessageType.CLIENT_READY
-        || this.requestMsg.msgType == MessageType.CLOSE_CONNECTION
-        || this.requestMsg.msgType == MessageType.GETCQSTATS_MSG_TYPE
-        || this.requestMsg.msgType == MessageType.GET_CLIENT_PARTITION_ATTRIBUTES
-        || this.requestMsg.msgType == MessageType.GET_CLIENT_PR_METADATA
-        || this.requestMsg.msgType == MessageType.INVALID
-        || this.requestMsg.msgType == MessageType.MAKE_PRIMARY
-        || this.requestMsg.msgType == MessageType.MONITORCQ_MSG_TYPE
-        || this.requestMsg.msgType == MessageType.PERIODIC_ACK
-        || this.requestMsg.msgType == MessageType.PING
-        || this.requestMsg.msgType == MessageType.REGISTER_DATASERIALIZERS
-        || this.requestMsg.msgType == MessageType.REGISTER_INSTANTIATORS
-        || this.requestMsg.msgType == MessageType.REQUEST_EVENT_VALUE
-        || this.requestMsg.msgType == MessageType.ADD_PDX_TYPE
-        || this.requestMsg.msgType == MessageType.GET_PDX_ID_FOR_TYPE
-        || this.requestMsg.msgType == MessageType.GET_PDX_TYPE_BY_ID
-        || this.requestMsg.msgType == MessageType.SIZE
-        || this.requestMsg.msgType == MessageType.TX_FAILOVER
-        || this.requestMsg.msgType == MessageType.TX_SYNCHRONIZATION
-        || this.requestMsg.msgType == MessageType.GET_FUNCTION_ATTRIBUTES
-        || this.requestMsg.msgType == MessageType.ADD_PDX_ENUM
-        || this.requestMsg.msgType == MessageType.GET_PDX_ID_FOR_ENUM
-        || this.requestMsg.msgType == MessageType.GET_PDX_ENUM_BY_ID
-        || this.requestMsg.msgType == MessageType.GET_PDX_TYPES
-        || this.requestMsg.msgType == MessageType.GET_PDX_ENUMS
-        || this.requestMsg.msgType == MessageType.COMMIT
-        || this.requestMsg.msgType == MessageType.ROLLBACK);
+    return (this.requestMsg.messageType == MessageType.CLIENT_READY
+      || this.requestMsg.messageType == MessageType.CLOSE_CONNECTION
+      || this.requestMsg.messageType == MessageType.GETCQSTATS_MSG_TYPE
+      || this.requestMsg.messageType == MessageType.GET_CLIENT_PARTITION_ATTRIBUTES
+      || this.requestMsg.messageType == MessageType.GET_CLIENT_PR_METADATA
+      || this.requestMsg.messageType == MessageType.INVALID
+      || this.requestMsg.messageType == MessageType.MAKE_PRIMARY
+      || this.requestMsg.messageType == MessageType.MONITORCQ_MSG_TYPE
+      || this.requestMsg.messageType == MessageType.PERIODIC_ACK
+      || this.requestMsg.messageType == MessageType.PING
+      || this.requestMsg.messageType == MessageType.REGISTER_DATASERIALIZERS
+      || this.requestMsg.messageType == MessageType.REGISTER_INSTANTIATORS
+      || this.requestMsg.messageType == MessageType.REQUEST_EVENT_VALUE
+      || this.requestMsg.messageType == MessageType.ADD_PDX_TYPE
+      || this.requestMsg.messageType == MessageType.GET_PDX_ID_FOR_TYPE
+      || this.requestMsg.messageType == MessageType.GET_PDX_TYPE_BY_ID
+      || this.requestMsg.messageType == MessageType.SIZE
+      || this.requestMsg.messageType == MessageType.TX_FAILOVER
+      || this.requestMsg.messageType == MessageType.TX_SYNCHRONIZATION
+      || this.requestMsg.messageType == MessageType.GET_FUNCTION_ATTRIBUTES
+      || this.requestMsg.messageType == MessageType.ADD_PDX_ENUM
+      || this.requestMsg.messageType == MessageType.GET_PDX_ID_FOR_ENUM
+      || this.requestMsg.messageType == MessageType.GET_PDX_ENUM_BY_ID
+      || this.requestMsg.messageType == MessageType.GET_PDX_TYPES
+      || this.requestMsg.messageType == MessageType.GET_PDX_ENUMS
+      || this.requestMsg.messageType == MessageType.COMMIT
+      || this.requestMsg.messageType == MessageType.ROLLBACK);
   }
 
   private void setSecurityPart() {
@@ -396,7 +390,7 @@ public class LegacyServerConnection extends ServerConnection {
     }
     if (TEST_VERSION_AFTER_HANDSHAKE_FLAG) {
       Assert.assertTrue((this.handshake.getVersion().ordinal() == testVersionAfterHandshake),
-          "Found different version after handshake");
+        "Found different version after handshake");
       TEST_VERSION_AFTER_HANDSHAKE_FLAG = false;
     }
   }
