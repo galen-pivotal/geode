@@ -14,28 +14,6 @@
  */
 package org.apache.geode.internal.cache.tier.sockets;
 
-import static org.apache.geode.distributed.ConfigurationProperties.*;
-
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.nio.ByteBuffer;
-import java.nio.channels.SelectableChannel;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.security.Principal;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
-
-import org.apache.logging.log4j.Logger;
-import org.apache.shiro.subject.Subject;
-import org.apache.shiro.util.ThreadState;
-
 import org.apache.geode.CancelException;
 import org.apache.geode.DataSerializer;
 import org.apache.geode.SystemFailure;
@@ -52,8 +30,6 @@ import org.apache.geode.internal.cache.tier.CachedRegionHelper;
 import org.apache.geode.internal.cache.tier.ClientHandShake;
 import org.apache.geode.internal.cache.tier.Command;
 import org.apache.geode.internal.cache.tier.InternalClientMembership;
-import org.apache.geode.internal.cache.tier.MessageType;
-import org.apache.geode.internal.cache.tier.sockets.command.Default;
 import org.apache.geode.internal.i18n.LocalizedStrings;
 import org.apache.geode.internal.logging.InternalLogWriter;
 import org.apache.geode.internal.logging.LogService;
@@ -64,7 +40,25 @@ import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.internal.util.Breadcrumbs;
 import org.apache.geode.security.AuthenticationFailedException;
 import org.apache.geode.security.AuthenticationRequiredException;
-import org.apache.geode.security.GemFireSecurityException;
+import org.apache.logging.log4j.Logger;
+import org.apache.shiro.subject.Subject;
+
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.channels.SelectableChannel;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.security.Principal;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import static org.apache.geode.distributed.ConfigurationProperties.SECURITY_CLIENT_AUTHENTICATOR;
 
 /**
  * Provides an implementation for the server socket end of the hierarchical cache connection. Each
@@ -135,7 +129,7 @@ public abstract class ServerConnection implements Runnable {
     }
   }
 
-  private Socket theSocket;
+  protected Socket theSocket;
   private ByteBuffer commBuffer;
   protected final CachedRegionHelper crHelper;
   protected String name = null;
@@ -227,7 +221,7 @@ public abstract class ServerConnection implements Runnable {
 
   protected Part securePart = null;
 
-  private Principal principal;
+  protected Principal principal;
 
   private MessageIdExtractor messageIdExtractor = new MessageIdExtractor();
 
@@ -307,11 +301,6 @@ public abstract class ServerConnection implements Runnable {
 
   static public Byte isExecuteFunctionOnLocalNodeOnly() {
     return executeFunctionOnLocalNodeOnly.get();
-  }
-
-  protected boolean createClientHandshake() {
-    logger.info("createClientHandshake this.getCommunicationMode() " + this.getCommunicationMode());
-    return ServerHandShakeProcessor.readHandShake(this);
   }
 
   protected Socket getSocket() {
@@ -438,22 +427,7 @@ public abstract class ServerConnection implements Runnable {
     return doAcceptHandShake(epType, qSize) && handshakeAccepted();
   }
 
-  protected boolean doAcceptHandShake(byte epType, int qSize) {
-    try {
-      this.handshake.accept(theSocket.getOutputStream(), theSocket.getInputStream(), epType, qSize,
-          this.communicationMode, this.principal);
-    } catch (IOException ioe) {
-      if (!crHelper.isShutdown() && !isTerminated()) {
-        logger.warn(LocalizedMessage.create(
-            LocalizedStrings.ServerConnection_0_HANDSHAKE_ACCEPT_FAILED_ON_SOCKET_1_2,
-            new Object[] {this.name, this.theSocket, ioe}));
-      }
-      cleanup();
-      return false;
-    }
-    return true;
-  }
-
+  protected abstract boolean doAcceptHandShake(byte epType, int qSize);
 
   protected boolean handshakeAccepted() {
     if (logger.isDebugEnabled()) {

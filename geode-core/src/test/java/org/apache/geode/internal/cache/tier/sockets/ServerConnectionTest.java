@@ -69,8 +69,8 @@ public class ServerConnectionTest {
     InternalCache cache = mock(InternalCache.class);
     SecurityService securityService = mock(SecurityService.class);
 
-    serverConnection = new ServerConnection(socket, cache, null, null, 0, 0, null,
-        Acceptor.PRIMARY_SERVER_TO_CLIENT, acceptor, securityService);
+    serverConnection = ServerConnectionFactory.makeServerConnection(socket, cache, null, null, 0, 0,
+        null, Acceptor.PRIMARY_SERVER_TO_CLIENT, acceptor, securityService);
     MockitoAnnotations.initMocks(this);
   }
 

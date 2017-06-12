@@ -348,6 +348,7 @@ public class HandShake implements ClientHandShake {
     this.system = sys;
     this.credentials = null;
     this.clientVersion = v;
+    this.securityService = SecurityServiceFactory.create();
   }
 
   public void updateProxyID(InternalDistributedMember idm) {

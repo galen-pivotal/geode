@@ -1,3 +1,18 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership. The ASF licenses this file to You under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the License. You may obtain a
+ * copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
 package org.apache.geode.internal.cache.tier.sockets;
 
 import org.apache.geode.CancelException;
@@ -21,6 +36,7 @@ import org.apache.geode.security.GemFireSecurityException;
 import org.apache.shiro.subject.Subject;
 import org.apache.shiro.util.ThreadState;
 
+import java.io.IOException;
 import java.net.Socket;
 import java.util.Map;
 import java.util.Random;
@@ -50,8 +66,8 @@ public class LegacyServerConnection extends ServerConnection {
    * @param acceptor
    */
   public LegacyServerConnection(Socket s, InternalCache c, CachedRegionHelper helper,
-                                CacheServerStats stats, int hsTimeout, int socketBufferSize, String communicationModeStr,
-                                byte communicationMode, Acceptor acceptor, SecurityService securityService) {
+      CacheServerStats stats, int hsTimeout, int socketBufferSize, String communicationModeStr,
+      byte communicationMode, Acceptor acceptor, SecurityService securityService) {
     super(s, c, helper, stats, hsTimeout, socketBufferSize, communicationModeStr, communicationMode,
         acceptor, securityService);
     this.randomConnectionIdGen = new Random(this.hashCode());
@@ -185,7 +201,7 @@ public class LegacyServerConnection extends ServerConnection {
             } catch (CancelException e) {
               if (!crHelper.isShutdown()) {
                 logger.warn(LocalizedMessage.create(
-                  LocalizedStrings.ServerConnection_0_UNEXPECTED_CANCELLATION, getName()), e);
+                    LocalizedStrings.ServerConnection_0_UNEXPECTED_CANCELLATION, getName()), e);
               }
               cleanup();
               return false;
@@ -193,10 +209,10 @@ public class LegacyServerConnection extends ServerConnection {
           } else {
             this.crHelper.checkCancelInProgress(null); // bug 37113?
             logger.warn(LocalizedMessage.create(
-              LocalizedStrings.ServerConnection_0_RECEIVED_UNKNOWN_HANDSHAKE_REPLY_CODE_1,
-              new Object[] {this.name, new Byte(this.handshake.getCode())}));
+                LocalizedStrings.ServerConnection_0_RECEIVED_UNKNOWN_HANDSHAKE_REPLY_CODE_1,
+                new Object[] {this.name, new Byte(this.handshake.getCode())}));
             refuseHandshake(LocalizedStrings.ServerConnection_RECEIVED_UNKNOWN_HANDSHAKE_REPLY_CODE
-              .toLocalizedString(), ServerHandShakeProcessor.REPLY_INVALID);
+                .toLocalizedString(), ServerHandShakeProcessor.REPLY_INVALID);
             return false;
           }
         } else {
@@ -233,7 +249,7 @@ public class LegacyServerConnection extends ServerConnection {
         if (!this.processMessages || (crHelper.isShutdown())) {
           if (logger.isDebugEnabled()) {
             logger.debug("{} ignoring message of type {} from client {} due to shutdown.",
-              getName(), MessageType.getString(msg.getMessageType()), this.proxyId);
+                getName(), MessageType.getString(msg.getMessageType()), this.proxyId);
           }
           return;
         }
@@ -253,7 +269,7 @@ public class LegacyServerConnection extends ServerConnection {
 
         if (logger.isTraceEnabled()) {
           logger.trace("{} received {} with txid {}", getName(),
-            MessageType.getString(msg.getMessageType()), msg.getTransactionId());
+              MessageType.getString(msg.getMessageType()), msg.getTransactionId());
           if (msg.getTransactionId() < -1) { // TODO: why is this happening?
             msg.setTransactionId(-1);
           }
@@ -272,7 +288,7 @@ public class LegacyServerConnection extends ServerConnection {
         // if a subject exists for this uniqueId, binds the subject to this thread so that we can do
         // authorization later
         if (AcceptorImpl.isIntegratedSecurity() && !isInternalMessage()
-          && this.communicationMode != Acceptor.GATEWAY_TO_GATEWAY) {
+            && this.communicationMode != Acceptor.GATEWAY_TO_GATEWAY) {
           long uniqueId = getUniqueId();
           Subject subject = this.clientUserAuths.getSubject(uniqueId);
           if (subject != null) {
@@ -306,16 +322,16 @@ public class LegacyServerConnection extends ServerConnection {
   public Part updateAndGetSecurityPart() {
     // need to take care all message types here
     if (AcceptorImpl.isAuthenticationRequired()
-      && this.handshake.getVersion().compareTo(Version.GFE_65) >= 0
-      && (this.communicationMode != Acceptor.GATEWAY_TO_GATEWAY)
-      && (!this.requestMsg.getAndResetIsMetaRegion()) && (!isInternalMessage())) {
+        && this.handshake.getVersion().compareTo(Version.GFE_65) >= 0
+        && (this.communicationMode != Acceptor.GATEWAY_TO_GATEWAY)
+        && (!this.requestMsg.getAndResetIsMetaRegion()) && (!isInternalMessage())) {
       setSecurityPart();
       return this.securePart;
     } else {
       if (AcceptorImpl.isAuthenticationRequired() && logger.isDebugEnabled()) {
         logger.debug(
-          "ServerConnection.updateAndGetSecurityPart() not adding security part for msg type {}",
-          MessageType.getString(this.requestMsg.messageType));
+            "ServerConnection.updateAndGetSecurityPart() not adding security part for msg type {}",
+            MessageType.getString(this.requestMsg.messageType));
       }
     }
     return null;
@@ -324,32 +340,32 @@ public class LegacyServerConnection extends ServerConnection {
 
   private boolean isInternalMessage() {
     return (this.requestMsg.messageType == MessageType.CLIENT_READY
-      || this.requestMsg.messageType == MessageType.CLOSE_CONNECTION
-      || this.requestMsg.messageType == MessageType.GETCQSTATS_MSG_TYPE
-      || this.requestMsg.messageType == MessageType.GET_CLIENT_PARTITION_ATTRIBUTES
-      || this.requestMsg.messageType == MessageType.GET_CLIENT_PR_METADATA
-      || this.requestMsg.messageType == MessageType.INVALID
-      || this.requestMsg.messageType == MessageType.MAKE_PRIMARY
-      || this.requestMsg.messageType == MessageType.MONITORCQ_MSG_TYPE
-      || this.requestMsg.messageType == MessageType.PERIODIC_ACK
-      || this.requestMsg.messageType == MessageType.PING
-      || this.requestMsg.messageType == MessageType.REGISTER_DATASERIALIZERS
-      || this.requestMsg.messageType == MessageType.REGISTER_INSTANTIATORS
-      || this.requestMsg.messageType == MessageType.REQUEST_EVENT_VALUE
-      || this.requestMsg.messageType == MessageType.ADD_PDX_TYPE
-      || this.requestMsg.messageType == MessageType.GET_PDX_ID_FOR_TYPE
-      || this.requestMsg.messageType == MessageType.GET_PDX_TYPE_BY_ID
-      || this.requestMsg.messageType == MessageType.SIZE
-      || this.requestMsg.messageType == MessageType.TX_FAILOVER
-      || this.requestMsg.messageType == MessageType.TX_SYNCHRONIZATION
-      || this.requestMsg.messageType == MessageType.GET_FUNCTION_ATTRIBUTES
-      || this.requestMsg.messageType == MessageType.ADD_PDX_ENUM
-      || this.requestMsg.messageType == MessageType.GET_PDX_ID_FOR_ENUM
-      || this.requestMsg.messageType == MessageType.GET_PDX_ENUM_BY_ID
-      || this.requestMsg.messageType == MessageType.GET_PDX_TYPES
-      || this.requestMsg.messageType == MessageType.GET_PDX_ENUMS
-      || this.requestMsg.messageType == MessageType.COMMIT
-      || this.requestMsg.messageType == MessageType.ROLLBACK);
+        || this.requestMsg.messageType == MessageType.CLOSE_CONNECTION
+        || this.requestMsg.messageType == MessageType.GETCQSTATS_MSG_TYPE
+        || this.requestMsg.messageType == MessageType.GET_CLIENT_PARTITION_ATTRIBUTES
+        || this.requestMsg.messageType == MessageType.GET_CLIENT_PR_METADATA
+        || this.requestMsg.messageType == MessageType.INVALID
+        || this.requestMsg.messageType == MessageType.MAKE_PRIMARY
+        || this.requestMsg.messageType == MessageType.MONITORCQ_MSG_TYPE
+        || this.requestMsg.messageType == MessageType.PERIODIC_ACK
+        || this.requestMsg.messageType == MessageType.PING
+        || this.requestMsg.messageType == MessageType.REGISTER_DATASERIALIZERS
+        || this.requestMsg.messageType == MessageType.REGISTER_INSTANTIATORS
+        || this.requestMsg.messageType == MessageType.REQUEST_EVENT_VALUE
+        || this.requestMsg.messageType == MessageType.ADD_PDX_TYPE
+        || this.requestMsg.messageType == MessageType.GET_PDX_ID_FOR_TYPE
+        || this.requestMsg.messageType == MessageType.GET_PDX_TYPE_BY_ID
+        || this.requestMsg.messageType == MessageType.SIZE
+        || this.requestMsg.messageType == MessageType.TX_FAILOVER
+        || this.requestMsg.messageType == MessageType.TX_SYNCHRONIZATION
+        || this.requestMsg.messageType == MessageType.GET_FUNCTION_ATTRIBUTES
+        || this.requestMsg.messageType == MessageType.ADD_PDX_ENUM
+        || this.requestMsg.messageType == MessageType.GET_PDX_ID_FOR_ENUM
+        || this.requestMsg.messageType == MessageType.GET_PDX_ENUM_BY_ID
+        || this.requestMsg.messageType == MessageType.GET_PDX_TYPES
+        || this.requestMsg.messageType == MessageType.GET_PDX_ENUMS
+        || this.requestMsg.messageType == MessageType.COMMIT
+        || this.requestMsg.messageType == MessageType.ROLLBACK);
   }
 
   private void setSecurityPart() {
@@ -365,6 +381,22 @@ public class LegacyServerConnection extends ServerConnection {
     }
   }
 
+  @Override
+  protected boolean doAcceptHandShake(byte epType, int qSize) {
+    try {
+      this.handshake.accept(theSocket.getOutputStream(), theSocket.getInputStream(), epType, qSize,
+          this.communicationMode, this.principal);
+    } catch (IOException ioe) {
+      if (!crHelper.isShutdown() && !isTerminated()) {
+        logger.warn(LocalizedMessage.create(
+            LocalizedStrings.ServerConnection_0_HANDSHAKE_ACCEPT_FAILED_ON_SOCKET_1_2,
+            new Object[] {this.name, this.theSocket, ioe}));
+      }
+      cleanup();
+      return false;
+    }
+    return true;
+  }
 
   private void initializeCommands() {
     // The commands are cached here, but are just referencing the ones
@@ -390,7 +422,7 @@ public class LegacyServerConnection extends ServerConnection {
     }
     if (TEST_VERSION_AFTER_HANDSHAKE_FLAG) {
       Assert.assertTrue((this.handshake.getVersion().ordinal() == testVersionAfterHandshake),
-        "Found different version after handshake");
+          "Found different version after handshake");
       TEST_VERSION_AFTER_HANDSHAKE_FLAG = false;
     }
   }
