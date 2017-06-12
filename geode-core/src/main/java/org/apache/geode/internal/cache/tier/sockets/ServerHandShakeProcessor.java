@@ -78,7 +78,7 @@ public class ServerHandShakeProcessor {
     currentServerVersion = Version.fromOrdinalOrCurrent(ver);
   }
 
-  public static boolean readHandShake(ServerConnection connection,
+  public static boolean readHandShake(LegacyServerConnection connection,
       SecurityService securityService) {
     boolean validHandShake = false;
     Version clientVersion = null;
@@ -198,7 +198,7 @@ public class ServerHandShakeProcessor {
     hdos.close();
   }
 
-  private static boolean readGFEHandshake(ServerConnection connection, Version clientVersion,
+  private static boolean readGFEHandshake(LegacyServerConnection connection, Version clientVersion,
       SecurityService securityService) {
     int handShakeTimeout = connection.getHandShakeTimeout();
     InternalLogWriter securityLogWriter = connection.getSecurityLogWriter();
@@ -283,7 +283,7 @@ public class ServerHandShakeProcessor {
     return true;
   }
 
-  public static long setAuthAttributes(ServerConnection connection) throws Exception {
+  public static long setAuthAttributes(LegacyServerConnection connection) throws Exception {
     try {
       logger.debug("setAttributes()");
       Object principal = ((HandShake) connection.getHandshake()).verifyCredentials();
@@ -303,7 +303,7 @@ public class ServerHandShakeProcessor {
     }
   }
 
-  public static long getUniqueId(ServerConnection connection, Principal principal)
+  public static long getUniqueId(LegacyServerConnection connection, Principal principal)
       throws Exception {
     try {
       InternalLogWriter securityLogWriter = connection.getSecurityLogWriter();
@@ -352,7 +352,7 @@ public class ServerHandShakeProcessor {
     }
   }
 
-  private static Version readClientVersion(ServerConnection connection)
+  private static Version readClientVersion(LegacyServerConnection connection)
       throws IOException, VersionException {
 
     Socket socket = connection.getSocket();

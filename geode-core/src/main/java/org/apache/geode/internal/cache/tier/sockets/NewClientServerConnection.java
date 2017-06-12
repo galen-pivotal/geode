@@ -15,7 +15,6 @@
 
 package org.apache.geode.internal.cache.tier.sockets;
 
-import org.apache.geode.cache.Cache;
 import org.apache.geode.distributed.DistributedMember;
 import org.apache.geode.distributed.internal.membership.InternalDistributedMember;
 import org.apache.geode.internal.Version;
@@ -29,8 +28,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.Iterator;
-import java.util.ServiceLoader;
 
 public class NewClientServerConnection extends ServerConnection {
   // The new protocol lives in a separate module and gets loaded when this class is instantiated.
@@ -52,11 +49,11 @@ public class NewClientServerConnection extends ServerConnection {
    * @param acceptor
    */
   public NewClientServerConnection(Socket s, InternalCache c, CachedRegionHelper helper,
-      CacheServerStats stats, int hsTimeout, int socketBufferSize, String communicationModeStr,
-      byte communicationMode, Acceptor acceptor, SecurityService securityService,
-      ClientProtocolMessageHandler newClientProtocol) {
+                                   CacheServerStats stats, int hsTimeout, int socketBufferSize, String communicationModeStr,
+                                   byte communicationMode, Acceptor acceptor, SecurityService securityService,
+                                   ClientProtocolMessageHandler newClientProtocol) {
     super(s, c, helper, stats, hsTimeout, socketBufferSize, communicationModeStr, communicationMode,
-        acceptor, securityService);
+      acceptor, securityService);
     assert (communicationMode == AcceptorImpl.CLIENT_TO_SERVER_NEW_PROTOCOL);
     this.newClientProtocol = newClientProtocol;
   }
@@ -78,6 +75,7 @@ public class NewClientServerConnection extends ServerConnection {
   @Override
   protected boolean doAcceptHandShake(byte epType, int qSize) {
     // no handshake for new client protocol.
+    createBogusClientHandshake();
     return true;
   }
 
@@ -86,13 +84,12 @@ public class NewClientServerConnection extends ServerConnection {
     return true;
   }
 
-  protected boolean createClientHandshake() {
+  private void createBogusClientHandshake() {
     InetSocketAddress remoteAddress = (InetSocketAddress) getSocket().getRemoteSocketAddress();
     DistributedMember member =
-        new InternalDistributedMember(remoteAddress.getAddress(), remoteAddress.getPort());
+      new InternalDistributedMember(remoteAddress.getAddress(), remoteAddress.getPort());
     this.proxyId = new ClientProxyMembershipID(member);
     this.handshake = new HandShake(this.proxyId, this.getDistributedSystem(), Version.CURRENT);
-    return true;
   }
 
 

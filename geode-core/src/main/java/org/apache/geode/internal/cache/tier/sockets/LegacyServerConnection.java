@@ -16,12 +16,15 @@
 package org.apache.geode.internal.cache.tier.sockets;
 
 import org.apache.geode.CancelException;
+import org.apache.geode.DataSerializer;
 import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.client.internal.AbstractOp;
 import org.apache.geode.cache.client.internal.Connection;
+import org.apache.geode.distributed.DistributedSystem;
 import org.apache.geode.distributed.internal.membership.InternalDistributedMember;
 import org.apache.geode.internal.Assert;
 import org.apache.geode.internal.Version;
+import org.apache.geode.internal.cache.EventID;
 import org.apache.geode.internal.cache.InternalCache;
 import org.apache.geode.internal.cache.tier.Acceptor;
 import org.apache.geode.internal.cache.tier.CachedRegionHelper;
@@ -30,16 +33,25 @@ import org.apache.geode.internal.cache.tier.InternalClientMembership;
 import org.apache.geode.internal.cache.tier.MessageType;
 import org.apache.geode.internal.cache.tier.sockets.command.Default;
 import org.apache.geode.internal.i18n.LocalizedStrings;
+import org.apache.geode.internal.logging.InternalLogWriter;
 import org.apache.geode.internal.logging.log4j.LocalizedMessage;
 import org.apache.geode.internal.security.SecurityService;
+import org.apache.geode.security.AuthenticationFailedException;
+import org.apache.geode.security.AuthenticationRequiredException;
 import org.apache.geode.security.GemFireSecurityException;
 import org.apache.shiro.subject.Subject;
 import org.apache.shiro.util.ThreadState;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.security.Principal;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
+
+import static org.apache.geode.distributed.ConfigurationProperties.SECURITY_CLIENT_AUTHENTICATOR;
 
 public class LegacyServerConnection extends ServerConnection {
   /**
@@ -410,6 +422,17 @@ public class LegacyServerConnection extends ServerConnection {
     return cc;
   }
 
+  protected void setProxyId(ClientProxyMembershipID proxyId) {
+    this.proxyId = proxyId;
+    this.memberIdByteArray = EventID.getMembershipId(proxyId);
+    // LogWriterI18n log = InternalDistributedSystem.getLoggerI18n();
+    // byte[] oldIdArray = proxyId.getMembershipByteArray();
+    // log.warning(LocalizedStrings.DEBUG, "Size comparison for " + proxyId.getDistributedMember()
+    // + " old=" + oldIdArray.length + " new=" + memberIdByteArray.length
+    // + " diff=" + (oldIdArray.length - memberIdByteArray.length));
+    this.name = "Server connection from [" + proxyId + "; port=" + this.theSocket.getPort() + "]";
+  }
+
   private void doHandshake() {
     // hitesh:to create new connection handshake
     if (verifyClientConnection()) {
@@ -424,6 +447,123 @@ public class LegacyServerConnection extends ServerConnection {
       Assert.assertTrue((this.handshake.getVersion().ordinal() == testVersionAfterHandshake),
           "Found different version after handshake");
       TEST_VERSION_AFTER_HANDSHAKE_FLAG = false;
+    }
+  }
+
+
+  public byte[] setCredentials(Message msg) throws Exception {
+
+    try {
+      // need to get connection id from secure part of message, before that need to insure
+      // encryption of id
+      // need to check here, whether it matches with serverConnection id or not
+      // need to decrpt bytes if its in DH mode
+      // need to get properties of credentials(need to remove extra stuff if something is there from
+      // client)
+      // need to generate unique-id for client
+      // need to send back in response with encrption
+      if (!AcceptorImpl.isAuthenticationRequired() && msg.isSecureMode()) {
+        // TODO (ashetkar)
+        /*
+         * This means that client and server VMs have different security settings. The server does
+         * not have any security settings specified while client has.
+         *
+         * Here, should we just ignore this and send the dummy security part (connectionId, userId)
+         * in the response (in this case, client needs to know that it is not expected to read any
+         * security part in any of the server response messages) or just throw an exception
+         * indicating bad configuration?
+         */
+        // This is a CREDENTIALS_NORMAL case.;
+        return new byte[0];
+      }
+      if (!msg.isSecureMode()) {
+        throw new AuthenticationFailedException("Authentication failed");
+      }
+
+      byte[] secureBytes = msg.getSecureBytes();
+
+      secureBytes = ((HandShake) this.handshake).decryptBytes(secureBytes);
+
+      // need to decrypt it first then get connectionid
+      AuthIds aIds = new AuthIds(secureBytes);
+
+      long connId = aIds.getConnectionId();
+
+      if (connId != this.connectionId) {
+        throw new AuthenticationFailedException("Authentication failed");
+      }
+
+
+      byte[] credBytes = msg.getPart(0).getSerializedForm();
+
+      credBytes = ((HandShake) this.handshake).decryptBytes(credBytes);
+
+      ByteArrayInputStream bis = new ByteArrayInputStream(credBytes);
+      DataInputStream dinp = new DataInputStream(bis);
+      Properties credentials = DataSerializer.readProperties(dinp);
+
+      // When here, security is enfored on server, if login returns a subject, then it's the newly
+      // integrated security, otherwise, do it the old way.
+      long uniqueId;
+
+      DistributedSystem system = this.getDistributedSystem();
+      String methodName = system.getProperties().getProperty(SECURITY_CLIENT_AUTHENTICATOR);
+
+      Object principal = HandShake.verifyCredentials(methodName, credentials,
+        system.getSecurityProperties(), (InternalLogWriter) system.getLogWriter(),
+        (InternalLogWriter) system.getSecurityLogWriter(), this.proxyId.getDistributedMember(),
+        this.securityService);
+      if (principal instanceof Subject) {
+        Subject subject = (Subject) principal;
+        uniqueId = this.clientUserAuths.putSubject(subject);
+        logger.info(this.clientUserAuths);
+      } else {
+        // this sets principal in map as well....
+        uniqueId = ServerHandShakeProcessor.getUniqueId(this, (Principal) principal);
+      }
+
+      // create secure part which will be send in respones
+      return encryptId(uniqueId, this);
+    } catch (AuthenticationFailedException afe) {
+      throw afe;
+    } catch (AuthenticationRequiredException are) {
+      throw are;
+    } catch (Exception e) {
+      throw new AuthenticationFailedException("REPLY_REFUSED", e);
+    }
+  }
+
+  public boolean removeUserAuth(Message msg, boolean keepalive) {
+    try {
+      byte[] secureBytes = msg.getSecureBytes();
+
+      secureBytes = ((HandShake) this.handshake).decryptBytes(secureBytes);
+
+      // need to decrypt it first then get connectionid
+      AuthIds aIds = new AuthIds(secureBytes);
+
+      long connId = aIds.getConnectionId();
+
+      if (connId != this.connectionId) {
+        throw new AuthenticationFailedException("Authentication failed");
+      }
+
+      try {
+        // first try integrated security
+        boolean removed = this.clientUserAuths.removeSubject(aIds.getUniqueId());
+
+        // if not successfull, try the old way
+        if (!removed)
+          removed = this.clientUserAuths.removeUserId(aIds.getUniqueId(), keepalive);
+        return removed;
+
+      } catch (NullPointerException npe) {
+        // Bug #52023.
+        logger.debug("Exception {}", npe);
+        return false;
+      }
+    } catch (Exception ex) {
+      throw new AuthenticationFailedException("Authentication failed", ex);
     }
   }
 }

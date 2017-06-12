@@ -207,7 +207,7 @@ public abstract class ServerConnection implements Runnable {
   private final String communicationModeStr;
 
   private long processingMessageStartTime = -1;
-  private Object processingMessageLock = new Object();
+  private final Object processingMessageLock = new Object();
 
   private static ConcurrentHashMap<ClientProxyMembershipID, ClientUserAuths> proxyIdVsClientUserAuths =
       new ConcurrentHashMap<ClientProxyMembershipID, ClientUserAuths>();
@@ -345,17 +345,6 @@ public abstract class ServerConnection implements Runnable {
 
   public Version getClientVersion() {
     return this.handshake.getVersion();
-  }
-
-  protected void setProxyId(ClientProxyMembershipID proxyId) {
-    this.proxyId = proxyId;
-    this.memberIdByteArray = EventID.getMembershipId(proxyId);
-    // LogWriterI18n log = InternalDistributedSystem.getLoggerI18n();
-    // byte[] oldIdArray = proxyId.getMembershipByteArray();
-    // log.warning(LocalizedStrings.DEBUG, "Size comparison for " + proxyId.getDistributedMember()
-    // + " old=" + oldIdArray.length + " new=" + memberIdByteArray.length
-    // + " diff=" + (oldIdArray.length - memberIdByteArray.length));
-    this.name = "Server connection from [" + proxyId + "; port=" + this.theSocket.getPort() + "]";
   }
 
   protected void setPrincipal(Principal principal) {
@@ -557,8 +546,8 @@ public abstract class ServerConnection implements Runnable {
       this.terminated = true;
     }
     boolean clientDeparted = false;
-    boolean unregisterClient = false;
     setNotProcessingMessage();
+
     synchronized (getCleanupTable()) {
       if (this.incedCleanupTableRef) {
         this.incedCleanupTableRef = false;
@@ -580,6 +569,57 @@ public abstract class ServerConnection implements Runnable {
       }
     }
 
+    boolean unregisterClient = CleanupProxyId();
+    cleanup(timedOut);
+
+    notifyAcceptorOfTermination(clientDeparted);
+
+    { // moved out of above if to fix bug 36751
+      if (unregisterClient)// last serverconnection call all close on auth objects
+        cleanClientAuths();
+      UnregisterFromClientHealthMonitor(unregisterClient);
+    }
+    if (cleanupStats) {
+      this.acceptor.getConnectionListener().connectionClosed(clientDeparted, communicationMode);
+    }
+  }
+
+  private void notifyAcceptorOfTermination(boolean clientDeparted) {
+    if (getAcceptor().isRunning()) {
+      // If the client has departed notify bridge membership and unregister it from
+      // the heartbeat monitor; other wise just remove the connection.
+      if (clientDeparted && isFiringMembershipEvents()) {
+        if (this.clientDisconnectedCleanly && !forceClientCrashEvent) {
+          InternalClientMembership.notifyClientLeft(proxyId.getDistributedMember());
+        } else {
+          InternalClientMembership.notifyClientCrashed(this.proxyId.getDistributedMember());
+        }
+        // The client has departed. Remove this last connection and unregister it.
+      }
+    }
+  }
+
+  private void UnregisterFromClientHealthMonitor(boolean unregisterClient) {
+    boolean needsUnregister = false;
+    synchronized (this.clientHealthMonitorLock) {
+      if (this.clientHealthMonitorRegistered) {
+        needsUnregister = true;
+        this.clientHealthMonitorRegistered = false;
+      }
+    }
+
+    this.clientUserAuths = null;
+    if (needsUnregister) {
+      this.acceptor.getClientHealthMonitor().removeConnection(this.proxyId, this);
+      if (unregisterClient) {
+        this.acceptor.getClientHealthMonitor().unregisterClient(this.proxyId, getAcceptor(),
+            this.clientDisconnectedCleanly, this.clientDisconnectedException);
+      }
+    }
+  }
+
+  private boolean CleanupProxyId() {
+    boolean unregisterClient = false;
     synchronized (getCleanupProxyIdTable()) {
       if (this.incedCleanupProxyIdTableRef) {
         this.incedCleanupProxyIdTableRef = false;
@@ -597,43 +637,7 @@ public abstract class ServerConnection implements Runnable {
         }
       }
     }
-    cleanup(timedOut);
-    if (getAcceptor().isRunning()) {
-      // If the client has departed notify bridge membership and unregister it from
-      // the heartbeat monitor; other wise just remove the connection.
-      if (clientDeparted && isFiringMembershipEvents()) {
-        if (this.clientDisconnectedCleanly && !forceClientCrashEvent) {
-          InternalClientMembership.notifyClientLeft(proxyId.getDistributedMember());
-        } else {
-          InternalClientMembership.notifyClientCrashed(this.proxyId.getDistributedMember());
-        }
-        // The client has departed. Remove this last connection and unregister it.
-      }
-    }
-
-    { // moved out of above if to fix bug 36751
-
-      boolean needsUnregister = false;
-      synchronized (this.clientHealthMonitorLock) {
-        if (this.clientHealthMonitorRegistered) {
-          needsUnregister = true;
-          this.clientHealthMonitorRegistered = false;
-        }
-      }
-      if (unregisterClient)// last serverconnection call all close on auth objects
-        cleanClientAuths();
-      this.clientUserAuths = null;
-      if (needsUnregister) {
-        this.acceptor.getClientHealthMonitor().removeConnection(this.proxyId, this);
-        if (unregisterClient) {
-          this.acceptor.getClientHealthMonitor().unregisterClient(this.proxyId, getAcceptor(),
-              this.clientDisconnectedCleanly, this.clientDisconnectedException);
-        }
-      }
-    }
-    if (cleanupStats) {
-      this.acceptor.getConnectionListener().connectionClosed(clientDeparted, communicationMode);
-    }
+    return unregisterClient;
   }
 
   protected abstract void doOneMessage();
@@ -652,119 +656,11 @@ public abstract class ServerConnection implements Runnable {
   }
 
   public boolean removeUserAuth(Message msg, boolean keepalive) {
-    try {
-      byte[] secureBytes = msg.getSecureBytes();
-
-      secureBytes = ((HandShake) this.handshake).decryptBytes(secureBytes);
-
-      // need to decrypt it first then get connectionid
-      AuthIds aIds = new AuthIds(secureBytes);
-
-      long connId = aIds.getConnectionId();
-
-      if (connId != this.connectionId) {
-        throw new AuthenticationFailedException("Authentication failed");
-      }
-
-      try {
-        // first try integrated security
-        boolean removed = this.clientUserAuths.removeSubject(aIds.getUniqueId());
-
-        // if not successfull, try the old way
-        if (!removed)
-          removed = this.clientUserAuths.removeUserId(aIds.getUniqueId(), keepalive);
-        return removed;
-
-      } catch (NullPointerException npe) {
-        // Bug #52023.
-        logger.debug("Exception {}", npe);
-        return false;
-      }
-    } catch (Exception ex) {
-      throw new AuthenticationFailedException("Authentication failed", ex);
-    }
+    throw new RuntimeException("This method should be overriden if implemented.");
   }
 
   public byte[] setCredentials(Message msg) throws Exception {
-
-    try {
-      // need to get connection id from secure part of message, before that need to insure
-      // encryption of id
-      // need to check here, whether it matches with serverConnection id or not
-      // need to decrpt bytes if its in DH mode
-      // need to get properties of credentials(need to remove extra stuff if something is there from
-      // client)
-      // need to generate unique-id for client
-      // need to send back in response with encrption
-      if (!AcceptorImpl.isAuthenticationRequired() && msg.isSecureMode()) {
-        // TODO (ashetkar)
-        /*
-         * This means that client and server VMs have different security settings. The server does
-         * not have any security settings specified while client has.
-         * 
-         * Here, should we just ignore this and send the dummy security part (connectionId, userId)
-         * in the response (in this case, client needs to know that it is not expected to read any
-         * security part in any of the server response messages) or just throw an exception
-         * indicating bad configuration?
-         */
-        // This is a CREDENTIALS_NORMAL case.;
-        return new byte[0];
-      }
-      if (!msg.isSecureMode()) {
-        throw new AuthenticationFailedException("Authentication failed");
-      }
-
-      byte[] secureBytes = msg.getSecureBytes();
-
-      secureBytes = ((HandShake) this.handshake).decryptBytes(secureBytes);
-
-      // need to decrypt it first then get connectionid
-      AuthIds aIds = new AuthIds(secureBytes);
-
-      long connId = aIds.getConnectionId();
-
-      if (connId != this.connectionId) {
-        throw new AuthenticationFailedException("Authentication failed");
-      }
-
-
-      byte[] credBytes = msg.getPart(0).getSerializedForm();
-
-      credBytes = ((HandShake) this.handshake).decryptBytes(credBytes);
-
-      ByteArrayInputStream bis = new ByteArrayInputStream(credBytes);
-      DataInputStream dinp = new DataInputStream(bis);
-      Properties credentials = DataSerializer.readProperties(dinp);
-
-      // When here, security is enfored on server, if login returns a subject, then it's the newly
-      // integrated security, otherwise, do it the old way.
-      long uniqueId;
-
-      DistributedSystem system = this.getDistributedSystem();
-      String methodName = system.getProperties().getProperty(SECURITY_CLIENT_AUTHENTICATOR);
-
-      Object principal = HandShake.verifyCredentials(methodName, credentials,
-          system.getSecurityProperties(), (InternalLogWriter) system.getLogWriter(),
-          (InternalLogWriter) system.getSecurityLogWriter(), this.proxyId.getDistributedMember(),
-          this.securityService);
-      if (principal instanceof Subject) {
-        Subject subject = (Subject) principal;
-        uniqueId = this.clientUserAuths.putSubject(subject);
-        logger.info(this.clientUserAuths);
-      } else {
-        // this sets principal in map as well....
-        uniqueId = ServerHandShakeProcessor.getUniqueId(this, (Principal) principal);
-      }
-
-      // create secure part which will be send in respones
-      return encryptId(uniqueId, this);
-    } catch (AuthenticationFailedException afe) {
-      throw afe;
-    } catch (AuthenticationRequiredException are) {
-      throw are;
-    } catch (Exception e) {
-      throw new AuthenticationFailedException("REPLY_REFUSED", e);
-    }
+    throw new RuntimeException("This method should be overriden if implemented.");
   }
 
   /**
@@ -881,6 +777,7 @@ public abstract class ServerConnection implements Runnable {
 
   private static boolean forceClientCrashEvent = false;
 
+  // TESTING ONLY.
   public static void setForceClientCrashEvent(boolean value) {
     forceClientCrashEvent = value;
   }
@@ -1092,12 +989,15 @@ public abstract class ServerConnection implements Runnable {
     return this.theSocket == null || !this.theSocket.isConnected() || this.theSocket.isClosed();
   }
 
-  public void cleanup(boolean timedOut) {
+  private void cleanup(boolean timedOut) {
     if (cleanup() && timedOut) {
       this.stats.incConnectionsTimedOut();
     }
   }
 
+  /**
+   * @return true if the connection was not already closed.
+   */
   public boolean cleanup() {
     if (isClosed()) {
       return false;
