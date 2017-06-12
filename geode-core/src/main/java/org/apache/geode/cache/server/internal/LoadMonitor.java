@@ -89,6 +89,7 @@ public class LoadMonitor implements ConnectionListener {
   }
 
   public void connectionClosed(boolean lastConnection, byte communicationMode) {
+    // TODO filed GEODE-3059
     if (communicationMode == Acceptor.CLIENT_TO_SERVER) {
       metrics.decConnectionCount();
     }

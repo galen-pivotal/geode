@@ -85,7 +85,7 @@ import org.apache.geode.security.GemFireSecurityException;
  */
 public class ServerConnection implements Runnable {
 
-  private static final Logger logger = LogService.getLogger();
+  protected static final Logger logger = LogService.getLogger();
 
   /**
    * This is a buffer that we add to client readTimeout value before we cleanup the connection. This
@@ -154,9 +154,6 @@ public class ServerConnection implements Runnable {
   private final CachedRegionHelper crHelper;
   private String name = null;
 
-  // The new protocol lives in a separate module and gets loaded when this class is instantiated.
-  private static ClientProtocolMessageHandler newClientProtocol;
-
   // IMPORTANT: if new messages are added change setHandshake to initialize them
   // to the correct Version for serializing to the client
   private Message requestMsg = new Message(2, Version.CURRENT);
@@ -180,7 +177,7 @@ public class ServerConnection implements Runnable {
   /**
    * Handshake reference uniquely identifying a client
    */
-  private ClientHandShake handshake;
+  protected ClientHandShake handshake;
   private int handShakeTimeout;
   private final Object handShakeMonitor = new Object();
 
@@ -288,20 +285,6 @@ public class ServerConnection implements Runnable {
     this.postAuthzRequest = null;
     this.randomConnectionIdGen = new Random(this.hashCode());
 
-    if (newClientProtocol == null) {
-      Iterator<ClientProtocolMessageHandler> protocolIterator =
-          ServiceLoader.load(ClientProtocolMessageHandler.class).iterator();
-      if (protocolIterator.hasNext()) {
-        newClientProtocol = protocolIterator.next();
-      } else {
-        logger.warn("Implementation not found in the JVM for ClientProtocolMessageHandler");
-      }
-      // TODO handle multiple ClientProtocolMessageHandler impls.
-      if (protocolIterator.hasNext()) {
-        logger.warn(
-            "Multiple implementations found in the JVM for ClientProtocolMessageHandler; using the first one available.");
-      }
-    }
 
     final boolean isDebugEnabled = logger.isDebugEnabled();
     try {
@@ -346,18 +329,9 @@ public class ServerConnection implements Runnable {
     return executeFunctionOnLocalNodeOnly.get();
   }
 
-  private boolean createClientHandshake() {
+  protected boolean createClientHandshake() {
     logger.info("createClientHandshake this.getCommunicationMode() " + this.getCommunicationMode());
-    if (this.getCommunicationMode() != AcceptorImpl.CLIENT_TO_SERVER_NEW_PROTOCOL) {
-      return ServerHandShakeProcessor.readHandShake(this);
-    } else {
-      InetSocketAddress remoteAddress = (InetSocketAddress) theSocket.getRemoteSocketAddress();
-      DistributedMember member =
-          new InternalDistributedMember(remoteAddress.getAddress(), remoteAddress.getPort());
-      this.proxyId = new ClientProxyMembershipID(member);
-      this.handshake = new HandShake(this.proxyId, this.getDistributedSystem(), Version.CURRENT);
-      return true;
-    }
+    return ServerHandShakeProcessor.readHandShake(this);
   }
 
   private boolean verifyClientConnection() {
@@ -632,12 +606,14 @@ public class ServerConnection implements Runnable {
     }
   }
 
-  private boolean acceptHandShake(byte epType, int qSize) {
+  protected boolean acceptHandShake(byte epType, int qSize) {
+    return doHandShake(epType, qSize) && handshakeAccepted();
+  }
+
+  protected boolean doHandShake(byte epType, int qSize) {
     try {
-      if (this.communicationMode != AcceptorImpl.CLIENT_TO_SERVER_NEW_PROTOCOL) {
-        this.handshake.accept(theSocket.getOutputStream(), theSocket.getInputStream(), epType,
-            qSize, this.communicationMode, this.principal);
-      }
+      this.handshake.accept(theSocket.getOutputStream(), theSocket.getInputStream(), epType, qSize,
+          this.communicationMode, this.principal);
     } catch (IOException ioe) {
       if (!crHelper.isShutdown() && !isTerminated()) {
         logger.warn(LocalizedMessage.create(
@@ -647,6 +623,11 @@ public class ServerConnection implements Runnable {
       cleanup();
       return false;
     }
+    return true;
+  }
+
+
+  protected boolean handshakeAccepted() {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Accepted handshake", this.name);
     }
@@ -710,6 +691,16 @@ public class ServerConnection implements Runnable {
         logger.debug("removeCq() security header is not found");
       }
     }
+  }
+
+  /**
+   * @return whether this is a connection to a client, regardless of protocol.
+   */
+  public boolean isClientServerConnection() {
+    return communicationMode == Acceptor.CLIENT_TO_SERVER
+        || communicationMode == Acceptor.PRIMARY_SERVER_TO_CLIENT
+        || communicationMode == Acceptor.SECONDARY_SERVER_TO_CLIENT
+        || communicationMode == Acceptor.CLIENT_TO_SERVER_FOR_QUEUE;
   }
 
   static class Counter {
@@ -947,22 +938,7 @@ public class ServerConnection implements Runnable {
     }
   }
 
-  private void doOneMessage() {
-    boolean useNewClientProtocol =
-        this.communicationMode == AcceptorImpl.CLIENT_TO_SERVER_NEW_PROTOCOL;
-    if (useNewClientProtocol) {
-      try {
-        Socket socket = this.getSocket();
-        InputStream inputStream = socket.getInputStream();
-        OutputStream outputStream = socket.getOutputStream();
-        // TODO serialization types?
-        newClientProtocol.receiveMessage(inputStream, outputStream, this.getCache());
-      } catch (IOException e) {
-        // TODO?
-      }
-      return;
-    }
-
+  protected void doOneMessage() {
     if (this.doHandshake) {
       doHandshake();
       this.doHandshake = false;

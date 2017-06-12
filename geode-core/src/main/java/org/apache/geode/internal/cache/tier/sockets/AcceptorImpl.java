@@ -1471,9 +1471,9 @@ public class AcceptorImpl extends Acceptor implements Runnable {
           return;
         }
       }
-      ServerConnection serverConn = new ServerConnection(s, this.cache, this.crHelper, this.stats,
-          AcceptorImpl.handShakeTimeout, this.socketBufferSize, communicationModeStr,
-          communicationMode, this);
+      ServerConnection serverConn = ServerConnectionFactory.makeServerConnection(s, this.cache,
+          this.crHelper, this.stats, AcceptorImpl.handShakeTimeout, this.socketBufferSize,
+          communicationModeStr, communicationMode, this);
       synchronized (this.allSCsLock) {
         this.allSCs.add(serverConn);
         ServerConnection snap[] = this.allSCList; // avoid volatile read
