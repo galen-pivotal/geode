@@ -510,9 +510,9 @@ public class LegacyServerConnection extends ServerConnection {
       String methodName = system.getProperties().getProperty(SECURITY_CLIENT_AUTHENTICATOR);
 
       Object principal = HandShake.verifyCredentials(methodName, credentials,
-        system.getSecurityProperties(), (InternalLogWriter) system.getLogWriter(),
-        (InternalLogWriter) system.getSecurityLogWriter(), this.proxyId.getDistributedMember(),
-        this.securityService);
+          system.getSecurityProperties(), (InternalLogWriter) system.getLogWriter(),
+          (InternalLogWriter) system.getSecurityLogWriter(), this.proxyId.getDistributedMember(),
+          this.securityService);
       if (principal instanceof Subject) {
         Subject subject = (Subject) principal;
         uniqueId = this.clientUserAuths.putSubject(subject);

@@ -49,11 +49,11 @@ public class NewClientServerConnection extends ServerConnection {
    * @param acceptor
    */
   public NewClientServerConnection(Socket s, InternalCache c, CachedRegionHelper helper,
-                                   CacheServerStats stats, int hsTimeout, int socketBufferSize, String communicationModeStr,
-                                   byte communicationMode, Acceptor acceptor, SecurityService securityService,
-                                   ClientProtocolMessageHandler newClientProtocol) {
+      CacheServerStats stats, int hsTimeout, int socketBufferSize, String communicationModeStr,
+      byte communicationMode, Acceptor acceptor, SecurityService securityService,
+      ClientProtocolMessageHandler newClientProtocol) {
     super(s, c, helper, stats, hsTimeout, socketBufferSize, communicationModeStr, communicationMode,
-      acceptor, securityService);
+        acceptor, securityService);
     assert (communicationMode == AcceptorImpl.CLIENT_TO_SERVER_NEW_PROTOCOL);
     this.newClientProtocol = newClientProtocol;
   }
@@ -87,7 +87,7 @@ public class NewClientServerConnection extends ServerConnection {
   private void createBogusClientHandshake() {
     InetSocketAddress remoteAddress = (InetSocketAddress) getSocket().getRemoteSocketAddress();
     DistributedMember member =
-      new InternalDistributedMember(remoteAddress.getAddress(), remoteAddress.getPort());
+        new InternalDistributedMember(remoteAddress.getAddress(), remoteAddress.getPort());
     this.proxyId = new ClientProxyMembershipID(member);
     this.handshake = new HandShake(this.proxyId, this.getDistributedSystem(), Version.CURRENT);
   }
