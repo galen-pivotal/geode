@@ -41,6 +41,7 @@ import org.apache.geode.internal.cache.InternalCache;
 import org.apache.geode.internal.cache.tier.ClientHandShake;
 import org.apache.geode.internal.cache.tier.sockets.AcceptorImpl;
 import org.apache.geode.internal.cache.tier.sockets.ServerConnection;
+import org.apache.geode.internal.net.runnable.AcceptorConnection;
 import org.apache.geode.test.dunit.DistributedTestUtils;
 import org.apache.geode.test.dunit.Host;
 import org.apache.geode.test.dunit.Invoke;
@@ -201,10 +202,9 @@ public class ClientFunctionTimeoutRegressionTest extends JUnit4DistributedTestCa
       int expected = (Integer) context.getArguments();
       AcceptorImpl acceptor =
           ((CacheServerImpl) serverCache.getCacheServers().get(0)).getAcceptor();
-      ServerConnection[] scs = acceptor.getAllServerConnectionList();
-      for (ServerConnection sc : scs) {
-        ClientHandShake hs = sc.getHandshake();
-        if (hs != null && expected == hs.getClientReadTimeout()) {
+      AcceptorConnection[] scs = acceptor.getAllServerConnectionList();
+      for (AcceptorConnection sc : scs) {
+        if (expected == sc.getClientReadTimeout()) {
           timeoutMatches = true;
         }
       }

@@ -54,6 +54,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import javax.net.ssl.SSLException;
 
@@ -233,14 +234,14 @@ public class AcceptorImpl extends Acceptor implements Runnable {
    * 
    * guarded.By {@link #allSCsLock}
    */
-  private final HashSet allSCs = new HashSet();
+  private final HashSet<AcceptorConnection> allSCs = new HashSet<>();
 
   /**
    * List of ServerConnections, for {@link #emergencyClose()}
    * 
    * guarded.By {@link #allSCsLock}
    */
-  private volatile ServerConnection allSCList[] = new ServerConnection[0];
+  private volatile AcceptorConnection allSCList[] = new AcceptorConnection[0];
 
   /**
    * The ip address or host name this acceptor is to bind to; <code>null</code> or "" indicates it
@@ -794,7 +795,7 @@ public class AcceptorImpl extends Acceptor implements Runnable {
     // TODO I'm worried about a fat lock to acquire this synchronization
     // synchronized (this.allSCsLock)
     {
-      ServerConnection snap[] = this.allSCList;
+      AcceptorConnection[] snap = this.allSCList;
       for (int i = 0; i < snap.length; i++) {
         snap[i].emergencyClose(); // part of cleanup()
       }
@@ -1776,7 +1777,15 @@ public class AcceptorImpl extends Acceptor implements Runnable {
   }
 
   public Set<ServerConnection> getAllServerConnections() {
-    return Collections.unmodifiableSet(allSCs);
+    HashSet<ServerConnection> serverConnections = new HashSet<>();
+
+    for (AcceptorConnection sc : allSCs) {
+      if (sc instanceof ServerConnection) {
+        serverConnections.add((ServerConnection) sc);
+      }
+    }
+
+    return serverConnections;
   }
 
   /**
@@ -1785,7 +1794,7 @@ public class AcceptorImpl extends Acceptor implements Runnable {
    * client info.
    * 
    */
-  public ServerConnection[] getAllServerConnectionList() {
+  public AcceptorConnection[] getAllServerConnectionList() {
     return this.allSCList;
   }
 }

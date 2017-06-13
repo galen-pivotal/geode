@@ -28,6 +28,7 @@ import org.apache.geode.internal.cache.tier.sockets.CacheClientNotifier;
 import org.apache.geode.internal.cache.tier.sockets.CacheClientProxy;
 import org.apache.geode.internal.cache.tier.sockets.ClientProxyMembershipID;
 import org.apache.geode.internal.cache.tier.sockets.ServerConnection;
+import org.apache.geode.internal.net.runnable.AcceptorConnection;
 
 /**
  * TODO: rename ContunuousQueryFunction
@@ -83,9 +84,9 @@ public class ContunuousQueryFunction implements Function, InternalEntity {
 
               // try getting from server connections
               if (foundClientinCCP == false) {
-                ServerConnection[] serverConnections = acceptorImpl.getAllServerConnectionList();
+                AcceptorConnection[] serverConnections = acceptorImpl.getAllServerConnectionList();
 
-                for (ServerConnection conn : serverConnections) {
+                for (AcceptorConnection conn : serverConnections) {
                   ClientProxyMembershipID cliIdFrmProxy = conn.getProxyID();
 
                   if (clientID.equals(cliIdFrmProxy.getDSMembership())) {

@@ -17,6 +17,7 @@ package org.apache.geode.internal.net.runnable;
 
 import org.apache.geode.CancelException;
 import org.apache.geode.internal.cache.tier.sockets.AcceptorImpl;
+import org.apache.geode.internal.cache.tier.sockets.ClientProxyMembershipID;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
@@ -36,9 +37,6 @@ public abstract class AcceptorConnection implements Runnable {
     this.logger = logger;
   }
 
-  public boolean isRunning() {
-    return true;
-  }
 
   protected abstract void doOneMessage();
 
@@ -52,11 +50,21 @@ public abstract class AcceptorConnection implements Runnable {
 
   public abstract void registerWithSelector() throws IOException;
 
+  public abstract void emergencyClose();
+
   /**
    * Safe to ignore if you don't use run(). Don't worry about why it's a boolean. If you care you
    * can return false if you were already closed.
    */
   public abstract boolean cleanup();
+
+  public abstract ClientProxyMembershipID getProxyID();
+
+  public abstract String getSocketHost();
+
+  public abstract int getSocketPort();
+
+  public abstract int getClientReadTimeout();
 
   // todo: setNotProcessingMessage
 

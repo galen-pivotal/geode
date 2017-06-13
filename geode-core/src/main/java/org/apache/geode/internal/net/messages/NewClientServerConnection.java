@@ -18,9 +18,11 @@ package org.apache.geode.internal.net.messages;
 import org.apache.geode.CancelException;
 import org.apache.geode.GemFireException;
 import org.apache.geode.cache.Cache;
+import org.apache.geode.cache.client.PoolFactory;
 import org.apache.geode.internal.cache.tier.CachedRegionHelper;
 import org.apache.geode.internal.cache.tier.sockets.AcceptorImpl;
 import org.apache.geode.internal.cache.tier.sockets.ClientProtocolMessageHandler;
+import org.apache.geode.internal.cache.tier.sockets.ClientProxyMembershipID;
 import org.apache.geode.internal.net.runnable.AcceptorSocket;
 import org.apache.logging.log4j.Logger;
 
@@ -28,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.Random;
 
 public class NewClientServerConnection extends AcceptorSocket {
   // The new protocol lives in a separate module and gets loaded when this class is instantiated.
@@ -35,12 +38,36 @@ public class NewClientServerConnection extends AcceptorSocket {
   private final Cache cache;
   private final CachedRegionHelper cachedRegionHelper;
 
+  private final ClientProxyMembershipID memberID;
+
+  private class BogusMemberID {
+    private final Random random = new Random((long) System.currentTimeMillis());
+
+    public boolean equals(Object obj) {
+      return false;
+    }
+  }
+
+
+  private volatile boolean shouldClose = false;
+
   public NewClientServerConnection(Socket socket, Cache cache, AcceptorImpl acceptor, Logger logger,
                                    CachedRegionHelper crhelper, ClientProtocolMessageHandler newClientProtocol) {
     super(acceptor, logger, socket);
     this.cache = cache;
     this.newClientProtocol = newClientProtocol;
     this.cachedRegionHelper = crhelper;
+    memberID = new ClientProxyMembershipID(socket);
+  }
+
+  public boolean isRunning() {
+    try {
+      cachedRegionHelper.checkCancelInProgress(null);
+    } catch (CancelException meansStop) {
+      this.shouldClose = true;
+    }
+    return !shouldClose;
+
   }
 
   // /**
@@ -84,6 +111,13 @@ public class NewClientServerConnection extends AcceptorSocket {
   @Override
   public void handleTermination() {
     // stats here later or something?
+    this.shouldClose = true;
+  }
+
+  @Override
+  public void emergencyClose() {
+    this.shouldClose = true;
+    this.cleanup(); // todo is cleaning up twice bad?
   }
 
   @Override
@@ -94,6 +128,28 @@ public class NewClientServerConnection extends AcceptorSocket {
 
     }
     return true;
+  }
+
+  @Override
+  public ClientProxyMembershipID getProxyID() {
+
+    return new ClientProxyMembershipID();
+  }
+
+  @Override
+  public String getSocketHost() {
+    return socket.getRemoteSocketAddress().toString();
+  }
+
+  @Override
+  public int getSocketPort() {
+    return socket.getPort();
+  }
+
+  @Override
+  public int getClientReadTimeout() {
+    // TODO
+    return PoolFactory.DEFAULT_READ_TIMEOUT;
   }
 
   @Override
@@ -146,7 +202,6 @@ public class NewClientServerConnection extends AcceptorSocket {
   private void runAsThread() {
     try {
       while (isRunning()) {
-        cachedRegionHelper.checkCancelInProgress(null);
         doOneMessage();
         // allow finally block to handle termination
         // } finally {
@@ -163,8 +218,6 @@ public class NewClientServerConnection extends AcceptorSocket {
         // ignore
         // }
       }
-
-    } catch (CancelException ex) {
     } finally {
       cleanup();
     }

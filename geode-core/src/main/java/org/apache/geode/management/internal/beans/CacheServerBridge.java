@@ -22,6 +22,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.geode.internal.net.runnable.AcceptorConnection;
 import org.apache.logging.log4j.Logger;
 
 import org.apache.geode.cache.CacheFactory;
@@ -322,7 +323,7 @@ public class CacheServerBridge extends ServerBridge {
   private Map<String, ClientConnInfo> getUniqueClientIds() {
     Map<String, ClientConnInfo> uniqueIds = null;
 
-    ServerConnection[] serverConnections = acceptor.getAllServerConnectionList();
+    AcceptorConnection[] serverConnections = acceptor.getAllServerConnectionList();
     Collection<CacheClientProxy> clientProxies =
         acceptor.getCacheClientNotifier().getClientProxies();
 
@@ -340,7 +341,7 @@ public class CacheServerBridge extends ServerBridge {
       if (uniqueIds == null) {
         uniqueIds = new HashMap<String, ClientConnInfo>();
       }
-      for (ServerConnection conn : serverConnections) {
+      for (AcceptorConnection conn : serverConnections) {
         ClientProxyMembershipID clientId = conn.getProxyID();
         if (clientId != null) { // Check added to fix bug 51987
           if (uniqueIds.get(clientId.getDSMembership()) == null) {
@@ -410,14 +411,14 @@ public class CacheServerBridge extends ServerBridge {
       return null;
     }
 
-    ServerConnection[] serverConnections = acceptorImpl.getAllServerConnectionList();
+    AcceptorConnection[] serverConnections = acceptorImpl.getAllServerConnectionList();
 
     boolean flag = false;
     if (connInfo.toString().contains("primary=true")) {
       flag = true;
     }
 
-    for (ServerConnection conn : serverConnections) {
+    for (AcceptorConnection conn : serverConnections) {
       ClientProxyMembershipID cliIdFrmProxy = conn.getProxyID();
       ClientConnInfo cci =
           new ClientConnInfo(conn.getProxyID(), conn.getSocketHost(), conn.getSocketPort(), flag);

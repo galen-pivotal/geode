@@ -348,16 +348,12 @@ public class ServerConnection extends AcceptorConnection {
 
   private boolean createClientHandshake() {
     logger.info("createClientHandshake this.getCommunicationMode() " + this.getCommunicationMode());
-    if (this.getCommunicationMode() != AcceptorImpl.CLIENT_TO_SERVER_NEW_PROTOCOL) {
-      return ServerHandShakeProcessor.readHandShake(this);
-    } else {
       InetSocketAddress remoteAddress = (InetSocketAddress) theSocket.getRemoteSocketAddress();
       DistributedMember member =
           new InternalDistributedMember(remoteAddress.getAddress(), remoteAddress.getPort());
       this.proxyId = new ClientProxyMembershipID(member);
       this.handshake = new HandShake(this.proxyId, this.getDistributedSystem(), Version.CURRENT);
       return true;
-    }
   }
 
   private boolean verifyClientConnection() {
@@ -634,10 +630,8 @@ public class ServerConnection extends AcceptorConnection {
 
   private boolean acceptHandShake(byte epType, int qSize) {
     try {
-      if (this.communicationMode != AcceptorImpl.CLIENT_TO_SERVER_NEW_PROTOCOL) {
         this.handshake.accept(theSocket.getOutputStream(), theSocket.getInputStream(), epType,
             qSize, this.communicationMode, this.principal);
-      }
     } catch (IOException ioe) {
       if (!crHelper.isShutdown() && !isTerminated()) {
         logger.warn(LocalizedMessage.create(
@@ -949,21 +943,6 @@ public class ServerConnection extends AcceptorConnection {
   }
 
   protected void doOneMessage() {
-    boolean useNewClientProtocol =
-        this.communicationMode == AcceptorImpl.CLIENT_TO_SERVER_NEW_PROTOCOL;
-    if (useNewClientProtocol) {
-      try {
-        Socket socket = this.getSocket();
-        InputStream inputStream = socket.getInputStream();
-        OutputStream outputStream = socket.getOutputStream();
-        // TODO serialization types?
-        newClientProtocol.receiveMessage(inputStream, outputStream, this.getCache());
-      } catch (IOException e) {
-        // TODO?
-      }
-      return;
-    }
-
     if (this.doHandshake) {
       doHandshake();
       this.doHandshake = false;
@@ -1302,6 +1281,7 @@ public class ServerConnection extends AcceptorConnection {
   }
 
   public String getSocketHost() {
+    // TODO check that this is right?
     return theSocket.getInetAddress().getHostAddress();
   }
 
@@ -1329,7 +1309,7 @@ public class ServerConnection extends AcceptorConnection {
     this.requestSpecificTimeout = -1;
   }
 
-  int getClientReadTimeout() {
+  public int getClientReadTimeout() {
     if (this.requestSpecificTimeout == -1)
       return this.handshake.getClientReadTimeout();
     else
