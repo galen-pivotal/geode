@@ -57,6 +57,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.SSLException;
 
+import org.apache.geode.cache.client.ServerConnectivityException;
+import org.apache.geode.internal.net.messages.ServerConnectionFactory;
 import org.apache.geode.internal.net.runnable.AcceptorConnection;
 import org.apache.logging.log4j.Logger;
 
@@ -1472,9 +1474,9 @@ public class AcceptorImpl extends Acceptor implements Runnable {
           return;
         }
       }
-      ServerConnection serverConn = new ServerConnection(s, this.cache, this.crHelper, this.stats,
-          AcceptorImpl.handShakeTimeout, this.socketBufferSize, communicationModeStr,
-          communicationMode, this);
+      AcceptorConnection serverConn = ServerConnectionFactory.makeServerConnection(s, this.cache,
+          this.crHelper, this.stats, AcceptorImpl.handShakeTimeout, this.socketBufferSize,
+          communicationModeStr, communicationMode, this, this.logger);
       synchronized (this.allSCsLock) {
         this.allSCs.add(serverConn);
         ServerConnection snap[] = this.allSCList; // avoid volatile read

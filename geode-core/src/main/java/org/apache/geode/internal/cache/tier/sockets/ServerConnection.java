@@ -12,6 +12,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
+
 package org.apache.geode.internal.cache.tier.sockets;
 
 import static org.apache.geode.distributed.ConfigurationProperties.*;
@@ -38,7 +39,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.geode.internal.net.runnable.AcceptorConnection;
-import org.apache.geode.serialization.SerializationType;
 import org.apache.logging.log4j.Logger;
 import org.apache.shiro.subject.Subject;
 import org.apache.shiro.util.ThreadState;
@@ -1260,11 +1260,6 @@ public class ServerConnection extends AcceptorConnection {
     // logger.info("DEBUG: registerWithSelector " + this);
     getSelectableChannel().configureBlocking(false);
     getAcceptor().registerSC(this);
-  }
-
-  @Override
-  protected void releaseResources() {
-    // don't need because we override run().
   }
 
   public SelectableChannel getSelectableChannel() {
