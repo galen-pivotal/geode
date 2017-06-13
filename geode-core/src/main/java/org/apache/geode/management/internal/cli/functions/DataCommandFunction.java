@@ -47,7 +47,6 @@ import org.apache.geode.internal.cache.PartitionedRegion;
 import org.apache.geode.internal.logging.LogService;
 import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.management.cli.Result;
-import org.apache.geode.management.internal.cli.CliUtil;
 import org.apache.geode.management.internal.cli.commands.DataCommands;
 import org.apache.geode.management.internal.cli.domain.DataCommandRequest;
 import org.apache.geode.management.internal.cli.domain.DataCommandResult;
@@ -1041,7 +1040,7 @@ public class DataCommandFunction extends FunctionAdapter implements InternalEnti
   public static int getPageSize() {
     int pageSize = -1;
     Map<String, String> session;
-    if (CliUtil.isGfshVM()) {
+    if (Gfsh.getCurrentInstance() != null) {
       session = Gfsh.getCurrentInstance().getEnv();
     } else {
       session = CommandExecutionContext.getShellEnv();
