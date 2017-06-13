@@ -57,7 +57,8 @@ public class ServerConnectionFactory {
       CachedRegionHelper helper, CacheServerStats stats, int hsTimeout, int socketBufferSize,
       String communicationModeStr, byte communicationMode, AcceptorImpl acceptor, Logger logger) {
     if (communicationMode == AcceptorImpl.CLIENT_TO_SERVER_NEW_PROTOCOL) {
-      return new NewClientServerConnection(socket, cache, acceptor, logger, helper, newClientProtocol);
+      return new NewClientServerConnection(socket, cache, acceptor, logger, helper,
+          newClientProtocol);
       // return new NewClientServerConnection(socket, cache, helper, stats, hsTimeout,
       // socketBufferSize,
       // communicationModeStr, communicationMode, acceptor, newClientProtocol);

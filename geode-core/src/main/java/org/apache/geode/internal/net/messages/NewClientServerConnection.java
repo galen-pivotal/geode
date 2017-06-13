@@ -19,16 +19,21 @@ import org.apache.geode.CancelException;
 import org.apache.geode.GemFireException;
 import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.client.PoolFactory;
+import org.apache.geode.distributed.DistributedMember;
+import org.apache.geode.distributed.internal.membership.InternalDistributedMember;
+import org.apache.geode.internal.Version;
 import org.apache.geode.internal.cache.tier.CachedRegionHelper;
 import org.apache.geode.internal.cache.tier.sockets.AcceptorImpl;
 import org.apache.geode.internal.cache.tier.sockets.ClientProtocolMessageHandler;
 import org.apache.geode.internal.cache.tier.sockets.ClientProxyMembershipID;
+import org.apache.geode.internal.cache.tier.sockets.HandShake;
 import org.apache.geode.internal.net.runnable.AcceptorSocket;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Random;
 
@@ -38,26 +43,17 @@ public class NewClientServerConnection extends AcceptorSocket {
   private final Cache cache;
   private final CachedRegionHelper cachedRegionHelper;
 
-  private final ClientProxyMembershipID memberID;
-
-  private class BogusMemberID {
-    private final Random random = new Random((long) System.currentTimeMillis());
-
-    public boolean equals(Object obj) {
-      return false;
-    }
-  }
-
-
   private volatile boolean shouldClose = false;
+  private ClientProxyMembershipID proxyId;
 
   public NewClientServerConnection(Socket socket, Cache cache, AcceptorImpl acceptor, Logger logger,
-                                   CachedRegionHelper crhelper, ClientProtocolMessageHandler newClientProtocol) {
+      CachedRegionHelper crhelper, ClientProtocolMessageHandler newClientProtocol) {
     super(acceptor, logger, socket);
     this.cache = cache;
     this.newClientProtocol = newClientProtocol;
     this.cachedRegionHelper = crhelper;
-    memberID = new ClientProxyMembershipID(socket);
+
+    createProxyID();
   }
 
   public boolean isRunning() {
@@ -132,8 +128,15 @@ public class NewClientServerConnection extends AcceptorSocket {
 
   @Override
   public ClientProxyMembershipID getProxyID() {
+    return this.proxyId;
+  }
 
-    return new ClientProxyMembershipID();
+  private void createProxyID() {
+    // TODO this needs to be better.
+    InetSocketAddress remoteAddress = (InetSocketAddress) socket.getRemoteSocketAddress();
+    DistributedMember member =
+        new InternalDistributedMember(remoteAddress.getAddress(), remoteAddress.getPort(), false);
+    this.proxyId = new ClientProxyMembershipID(member);
   }
 
   @Override

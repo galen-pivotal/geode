@@ -348,12 +348,12 @@ public class ServerConnection extends AcceptorConnection {
 
   private boolean createClientHandshake() {
     logger.info("createClientHandshake this.getCommunicationMode() " + this.getCommunicationMode());
-      InetSocketAddress remoteAddress = (InetSocketAddress) theSocket.getRemoteSocketAddress();
-      DistributedMember member =
-          new InternalDistributedMember(remoteAddress.getAddress(), remoteAddress.getPort());
-      this.proxyId = new ClientProxyMembershipID(member);
-      this.handshake = new HandShake(this.proxyId, this.getDistributedSystem(), Version.CURRENT);
-      return true;
+    InetSocketAddress remoteAddress = (InetSocketAddress) theSocket.getRemoteSocketAddress();
+    DistributedMember member =
+        new InternalDistributedMember(remoteAddress.getAddress(), remoteAddress.getPort());
+    this.proxyId = new ClientProxyMembershipID(member);
+    this.handshake = new HandShake(this.proxyId, this.getDistributedSystem(), Version.CURRENT);
+    return true;
   }
 
   private boolean verifyClientConnection() {
@@ -630,8 +630,8 @@ public class ServerConnection extends AcceptorConnection {
 
   private boolean acceptHandShake(byte epType, int qSize) {
     try {
-        this.handshake.accept(theSocket.getOutputStream(), theSocket.getInputStream(), epType,
-            qSize, this.communicationMode, this.principal);
+      this.handshake.accept(theSocket.getOutputStream(), theSocket.getInputStream(), epType, qSize,
+          this.communicationMode, this.principal);
     } catch (IOException ioe) {
       if (!crHelper.isShutdown() && !isTerminated()) {
         logger.warn(LocalizedMessage.create(

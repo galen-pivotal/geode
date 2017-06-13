@@ -1478,13 +1478,13 @@ public class AcceptorImpl extends Acceptor implements Runnable {
       AcceptorConnection serverConn = ServerConnectionFactory.makeServerConnection(s, this.cache,
           this.crHelper, this.stats, AcceptorImpl.handShakeTimeout, this.socketBufferSize,
           communicationModeStr, communicationMode, this, this.logger);
-//      if (communicationMode != Acceptor.CLIENT_TO_SERVER_NEW_PROTOCOL) {
-        synchronized (this.allSCsLock) {
-          this.allSCs.add(serverConn);
-          ServerConnection snap[] = this.allSCList; // avoid volatile read
-          this.allSCList = (ServerConnection[]) ArrayUtils.insert(snap, snap.length, serverConn);
-        }
-//      }
+      // if (communicationMode != Acceptor.CLIENT_TO_SERVER_NEW_PROTOCOL) {
+      synchronized (this.allSCsLock) {
+        this.allSCs.add(serverConn);
+        AcceptorConnection[] snap = this.allSCList; // avoid volatile read
+        this.allSCList = (ServerConnection[]) ArrayUtils.insert(snap, snap.length, serverConn);
+      }
+      // }
       if (communicationMode != CLIENT_TO_SERVER_FOR_QUEUE) {
         incClientServerCnxCount();
       }
@@ -1637,7 +1637,7 @@ public class AcceptorImpl extends Acceptor implements Runnable {
   private void shutdownSCs() {
     // added to fix part 2 of bug 37351.
     synchronized (this.allSCsLock) {
-      ServerConnection snap[] = this.allSCList;
+      AcceptorConnection[] snap = this.allSCList;
       for (int i = 0; i < snap.length; i++) {
         snap[i].cleanup();
       }
