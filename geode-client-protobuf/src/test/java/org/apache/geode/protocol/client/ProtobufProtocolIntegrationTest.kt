@@ -158,6 +158,7 @@ class ProtobufProtocolIntegrationTest {
         val props = Properties()
         props.setProperty(ConfigurationProperties.TCP_PORT, Integer.toString(port))
         props.setProperty(ConfigurationProperties.BIND_ADDRESS, "localhost")
+        props.setProperty(ConfigurationProperties.MCAST_PORT, "0")
         val cf = CacheFactory(props)
         val cache = cf.create()
         val cacheServer = cache.addCacheServer()

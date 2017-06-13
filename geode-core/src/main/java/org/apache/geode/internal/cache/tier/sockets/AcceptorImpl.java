@@ -1477,11 +1477,13 @@ public class AcceptorImpl extends Acceptor implements Runnable {
       AcceptorConnection serverConn = ServerConnectionFactory.makeServerConnection(s, this.cache,
           this.crHelper, this.stats, AcceptorImpl.handShakeTimeout, this.socketBufferSize,
           communicationModeStr, communicationMode, this, this.logger);
-      synchronized (this.allSCsLock) {
-        this.allSCs.add(serverConn);
-        ServerConnection snap[] = this.allSCList; // avoid volatile read
-        this.allSCList = (ServerConnection[]) ArrayUtils.insert(snap, snap.length, serverConn);
-      }
+//      if (communicationMode != Acceptor.CLIENT_TO_SERVER_NEW_PROTOCOL) {
+        synchronized (this.allSCsLock) {
+          this.allSCs.add(serverConn);
+          ServerConnection snap[] = this.allSCList; // avoid volatile read
+          this.allSCList = (ServerConnection[]) ArrayUtils.insert(snap, snap.length, serverConn);
+        }
+//      }
       if (communicationMode != CLIENT_TO_SERVER_FOR_QUEUE) {
         incClientServerCnxCount();
       }

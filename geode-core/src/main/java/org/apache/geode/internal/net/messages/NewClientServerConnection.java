@@ -15,7 +15,10 @@
 
 package org.apache.geode.internal.net.messages;
 
+import org.apache.geode.CancelException;
+import org.apache.geode.GemFireException;
 import org.apache.geode.cache.Cache;
+import org.apache.geode.internal.cache.tier.CachedRegionHelper;
 import org.apache.geode.internal.cache.tier.sockets.AcceptorImpl;
 import org.apache.geode.internal.cache.tier.sockets.ClientProtocolMessageHandler;
 import org.apache.geode.internal.net.runnable.AcceptorSocket;
@@ -30,12 +33,14 @@ public class NewClientServerConnection extends AcceptorSocket {
   // The new protocol lives in a separate module and gets loaded when this class is instantiated.
   private final ClientProtocolMessageHandler newClientProtocol;
   private final Cache cache;
+  private final CachedRegionHelper cachedRegionHelper;
 
   public NewClientServerConnection(Socket socket, Cache cache, AcceptorImpl acceptor, Logger logger,
-      ClientProtocolMessageHandler newClientProtocol) {
+                                   CachedRegionHelper crhelper, ClientProtocolMessageHandler newClientProtocol) {
     super(acceptor, logger, socket);
     this.cache = cache;
     this.newClientProtocol = newClientProtocol;
+    this.cachedRegionHelper = crhelper;
   }
 
   // /**
@@ -70,6 +75,7 @@ public class NewClientServerConnection extends AcceptorSocket {
       // TODO serialization types?
       newClientProtocol.receiveMessage(inputStream, outputStream, this.cache);
     } catch (IOException e) {
+      throw new RuntimeException(e);
       // TODO?
     }
     return;
@@ -88,6 +94,80 @@ public class NewClientServerConnection extends AcceptorSocket {
 
     }
     return true;
+  }
+
+  @Override
+  public void run() {
+    if (acceptor.isSelector()) {
+      runSingleMessage();
+    } else {
+      runAsThread();
+    }
+  }
+
+  private void runSingleMessage() {
+    try {
+      // this.stats.decThreadQueueSize();
+      // if (!isTerminated()) {
+      // Message.setTLCommBuffer(this.acceptor.takeCommBuffer());
+      if (isRunning()) {
+        doOneMessage();
+        registerWithSelector(); // finished msg so reregister
+      }
+    } catch (CancelException e) {
+      // TODO : do we really need CancelException?
+      // ok shutting down
+      // ok shutting down
+      // } catch (IOException ex) {
+      // logger.warn(
+      // LocalizedMessage.create(LocalizedStrings.ServerConnection_0__UNEXPECTED_EXCEPTION, ex));
+      // setClientDisconnectedException(ex);
+      // } finally {
+      // this.acceptor.releaseCommBuffer(Message.setTLCommBuffer(null));
+      // DistributedSystem.releaseThreadsSockets();
+      // unsetOwner();
+      // setNotProcessingMessage();
+      // unset request specific timeout
+      // this.unsetRequestSpecificTimeout(); todo?
+      // if (!finishedMsg) {
+      // try {
+      // handleTermination();
+      // } catch (CancelException e) {
+      // ignore
+      // }
+      // }
+      // }
+      logger.error(e.toString());
+    } catch (IOException e) {
+      logger.error(e.toString());
+    }
+  }
+
+  private void runAsThread() {
+    try {
+      while (isRunning()) {
+        cachedRegionHelper.checkCancelInProgress(null);
+        doOneMessage();
+        // allow finally block to handle termination
+        // } finally {
+        // this.unsetRequestSpecificTimeout();
+        // Breadcrumbs.clearBreadcrumb();
+        // }
+        // }
+        // } finally {
+        // try {
+        // this.unsetRequestSpecificTimeout();
+        // handleTermination();
+        // DistributedSystem.releaseThreadsSockets();
+        // } catch (CancelException e) {
+        // ignore
+        // }
+      }
+
+    } catch (CancelException ex) {
+    } finally {
+      cleanup();
+    }
   }
 
 }
