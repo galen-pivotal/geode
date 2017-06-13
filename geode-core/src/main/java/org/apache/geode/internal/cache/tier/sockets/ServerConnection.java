@@ -37,6 +37,7 @@ import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.apache.geode.internal.net.runnable.AcceptorConnection;
 import org.apache.geode.serialization.SerializationType;
 import org.apache.logging.log4j.Logger;
 import org.apache.shiro.subject.Subject;
@@ -83,7 +84,7 @@ import org.apache.geode.security.GemFireSecurityException;
  *
  * @since GemFire 2.0.2
  */
-public class ServerConnection implements Runnable {
+public class ServerConnection extends AcceptorConnection {
 
   private static final Logger logger = LogService.getLogger();
 
@@ -174,7 +175,6 @@ public class ServerConnection implements Runnable {
 
   private final InternalLogWriter logWriter;
   private final InternalLogWriter securityLogWriter;
-  final private AcceptorImpl acceptor;
   private Thread owner;
 
   /**
@@ -264,7 +264,8 @@ public class ServerConnection implements Runnable {
    */
   public ServerConnection(Socket s, Cache c, CachedRegionHelper helper, CacheServerStats stats,
       int hsTimeout, int socketBufferSize, String communicationModeStr, byte communicationMode,
-      Acceptor acceptor) {
+      AcceptorImpl acceptor) {
+    super(acceptor, logger);
     StringBuffer buffer = new StringBuffer(100);
     if (((AcceptorImpl) acceptor).isGatewayReceiver()) {
       buffer.append("GatewayReceiver connection from [");
@@ -277,7 +278,6 @@ public class ServerConnection implements Runnable {
     this.name = buffer.toString();
 
     this.stats = stats;
-    this.acceptor = (AcceptorImpl) acceptor;
     this.crHelper = helper;
     this.logWriter = (InternalLogWriter) c.getLoggerI18n();
     this.securityLogWriter = (InternalLogWriter) c.getSecurityLoggerI18n();
@@ -851,8 +851,9 @@ public class ServerConnection implements Runnable {
     }
   }
 
+  // todo make less private?
   // package access allowed so AcceptorImpl can call
-  void handleTermination() {
+  public void handleTermination() {
     if (this.crHelper.isShutdown()) {
       setClientDisconnectCleanly();
     }
@@ -947,7 +948,7 @@ public class ServerConnection implements Runnable {
     }
   }
 
-  private void doOneMessage() {
+  protected void doOneMessage() {
     boolean useNewClientProtocol =
         this.communicationMode == AcceptorImpl.CLIENT_TO_SERVER_NEW_PROTOCOL;
     if (useNewClientProtocol) {
@@ -1261,11 +1262,16 @@ public class ServerConnection implements Runnable {
     getAcceptor().registerSC(this);
   }
 
+  @Override
+  protected void releaseResources() {
+    // don't need because we override run().
+  }
+
   public SelectableChannel getSelectableChannel() {
     return this.theSocket.getChannel();
   }
 
-  public void registerWithSelector2(Selector s) throws IOException {
+  protected void registerWithSelector2(Selector s) throws IOException {
     /* this.sKey = */
     getSelectableChannel().register(s, SelectionKey.OP_READ, this);
   }

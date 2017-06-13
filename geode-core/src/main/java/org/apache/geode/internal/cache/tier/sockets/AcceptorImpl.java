@@ -57,6 +57,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.SSLException;
 
+import org.apache.geode.internal.net.runnable.AcceptorConnection;
 import org.apache.logging.log4j.Logger;
 
 import org.apache.geode.CancelException;
@@ -684,7 +685,7 @@ public class AcceptorImpl extends Acceptor implements Runnable {
     }
   }
 
-  public void registerSC(ServerConnection sc) {
+  public void registerSC(AcceptorConnection sc) {
     synchronized (this.syncLock) {
       if (!isRunning()) {
         finishCon(sc);
@@ -721,7 +722,7 @@ public class AcceptorImpl extends Acceptor implements Runnable {
     wakeupSelector();
   }
 
-  private void finishCon(ServerConnection sc) {
+  private void finishCon(AcceptorConnection sc) {
     if (sc != null) {
       sc.handleTermination();
     }
