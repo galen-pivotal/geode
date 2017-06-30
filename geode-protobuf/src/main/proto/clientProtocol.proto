@@ -65,6 +65,8 @@ message Response {
         RemoveAllResponse removeAllResponse = 7;
         ListKeysResponse listKeysResponse = 8;
 
+        ErrorResponse errorResponse = 13;
+
         CreateRegionResponse createRegionResponse = 20;
         DestroyRegionResponse destroyRegionResponse = 21;
 
@@ -72,6 +74,12 @@ message Response {
         GetServersResponse getServersResponse = 42;
         GetRegionsResponse getRegionsResponse = 43;
     }
+}
+
+message ErrorResponse {
+    bool internalServerError = 1;
+    bool retriable = 2;
+    string message = 3;
 }
 
 message ResponseHeader {

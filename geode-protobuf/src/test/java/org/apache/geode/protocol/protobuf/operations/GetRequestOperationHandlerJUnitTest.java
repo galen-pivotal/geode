@@ -18,7 +18,9 @@ import org.apache.geode.LogWriter;
 import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.Region;
 import org.apache.geode.protocol.MessageUtil;
+import org.apache.geode.protocol.operations.OperationHandler;
 import org.apache.geode.protocol.protobuf.BasicTypes;
+import org.apache.geode.protocol.protobuf.ClientProtocol;
 import org.apache.geode.protocol.protobuf.RegionAPI;
 import org.apache.geode.serialization.SerializationService;
 import org.apache.geode.serialization.exception.UnsupportedEncodingTypeException;
@@ -32,6 +34,8 @@ import org.junit.experimental.categories.Category;
 
 import java.nio.charset.Charset;
 
+import static junit.framework.TestCase.assertNotNull;
+import static junit.framework.TestCase.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -70,14 +74,14 @@ public class GetRequestOperationHandlerJUnitTest {
   public void processReturnsTheEncodedValueFromTheRegion()
       throws CodecAlreadyRegisteredForTypeException, UnsupportedEncodingTypeException,
       CodecNotRegisteredForTypeException {
-    RegionAPI.GetResponse response = operationHandler.process(serializationServiceStub,
+    OperationHandler.OperationResponse<RegionAPI.GetResponse, ClientProtocol.ErrorResponse>
+        response = operationHandler.process(serializationServiceStub,
         MessageUtil.makeGetRequest(TEST_KEY, TEST_REGION), cacheStub);
 
-    Assert.assertEquals(true, response.getSuccess());
-    Assert.assertEquals(true, response.getKeyExists());
-    Assert.assertEquals(BasicTypes.EncodingType.STRING, response.getResult().getEncodingType());
+    Assert.assertFalse(response.isError);
+    Assert.assertEquals(BasicTypes.EncodingType.STRING, response.response.getResult().getEncodingType());
     String actualValue =
-        MessageUtil.getStringCodec().decode(response.getResult().getValue().toByteArray());
+        MessageUtil.getStringCodec().decode(response.response.getResult().getValue().toByteArray());
     Assert.assertEquals(TEST_VALUE, actualValue);
   }
 
@@ -85,21 +89,27 @@ public class GetRequestOperationHandlerJUnitTest {
   public void processReturnsUnsucessfulResponseForInvalidRegion()
       throws CodecAlreadyRegisteredForTypeException, UnsupportedEncodingTypeException,
       CodecNotRegisteredForTypeException {
-    RegionAPI.GetResponse response = operationHandler.process(serializationServiceStub,
-        MessageUtil.makeGetRequest(TEST_KEY, MISSING_REGION), cacheStub);
+    GetRequestOperationHandler.OperationResponse response = operationHandler.process(serializationServiceStub,
+      MessageUtil.makeGetRequest(TEST_KEY, MISSING_REGION), cacheStub);
 
-    Assert.assertEquals(false, response.getSuccess());
+    assertTrue(response.isError);
+    Assert.assertNull(response.response);
+    Assert.assertNotNull(response.error);
   }
 
   @Test
   public void processReturnsKeyNotFoundWhenKeyIsNotFound()
       throws CodecAlreadyRegisteredForTypeException, UnsupportedEncodingTypeException,
       CodecNotRegisteredForTypeException {
-    RegionAPI.GetResponse response = operationHandler.process(serializationServiceStub,
+    OperationHandler.OperationResponse<RegionAPI.GetResponse, ClientProtocol.ErrorResponse>
+        response = operationHandler.process(serializationServiceStub,
         MessageUtil.makeGetRequest(MISSING_KEY, TEST_REGION), cacheStub);
 
-    Assert.assertEquals(true, response.getSuccess());
-    Assert.assertEquals(false, response.getKeyExists());
+    Assert.assertFalse(response.isError);
+    Assert.assertNotNull(response.response);
+    Assert.assertNull(response.error);
+    Assert.assertNotNull(response.response.getNull());
+    Assert.assertFalse(response.response.getNull().getKeyInKeySet());
   }
 
   @Test
@@ -114,10 +124,11 @@ public class GetRequestOperationHandlerJUnitTest {
     when(serializationServiceStub.decode(BasicTypes.EncodingType.STRING,
         TEST_KEY.getBytes(Charset.forName("UTF-8")))).thenThrow(exception);
 
-    RegionAPI.GetResponse response = operationHandler.process(serializationServiceStub,
+    OperationHandler.OperationResponse<RegionAPI.GetResponse, ClientProtocol.ErrorResponse>
+        response = operationHandler.process(serializationServiceStub,
         MessageUtil.makeGetRequest(TEST_KEY, TEST_REGION), cacheStub);
 
-    Assert.assertEquals(false, response.getSuccess());
+    Assert.assertFalse(response.isError);
     verify(loggerMock).error(any(String.class), eq(exception));
   }
 }

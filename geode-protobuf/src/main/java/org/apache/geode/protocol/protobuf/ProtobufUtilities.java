@@ -16,6 +16,7 @@ package org.apache.geode.protocol.protobuf;
 
 import com.google.protobuf.ByteString;
 
+import org.apache.geode.protocol.operations.OperationHandler;
 import org.apache.geode.protocol.protobuf.BasicTypes;
 import org.apache.geode.protocol.protobuf.ClientProtocol;
 import org.apache.geode.serialization.SerializationService;
@@ -41,5 +42,13 @@ public abstract class ProtobufUtilities {
     BasicTypes.EncodingType encoding = encodedValue.getEncodingType();
     byte[] bytes = encodedValue.getValue().toByteArray();
     return serializationService.decode(encoding, bytes);
+  }
+
+  public static ClientProtocol.ErrorResponse createErrorResponse(boolean serverInternal, boolean retriable, String errorMessage) {
+    return ClientProtocol.ErrorResponse.newBuilder()
+        .setInternalServerError(serverInternal)
+        .setRetriable(retriable)
+        .setMessage(errorMessage)
+        .build();
   }
 }

@@ -19,15 +19,41 @@ import org.apache.geode.protocol.protobuf.ProtobufOpsProcessor;
 import org.apache.geode.serialization.SerializationService;
 
 /**
- * This interface is implemented by a object capable of handling request types 'Req' and returning
- * an a response of type 'Resp'
+ * This interface is implemented by a object capable of handling request types 'Req' and returning a
+ * response of type 'Resp'
  *
  * See {@link ProtobufOpsProcessor}
  */
-public interface OperationHandler<Req, Resp> {
+public interface OperationHandler<Req, Resp, Err> {
+  class OperationResponse<Resp, Err> {
+    public final Resp response;
+    public final Err error;
+    public final boolean isError;
+
+    private OperationResponse(Object respOrError, boolean isError) {
+      this.isError = isError;
+      if (isError) {
+        this.error = (Err) respOrError;
+        this.response = null;
+      } else {
+        this.error = null;
+        this.response = (Resp) respOrError;
+      }
+    }
+
+    public static <Resp, Err> OperationResponse<Resp, Err> Response(Resp resp) {
+      return new OperationResponse<>(resp, false);
+    }
+
+
+    public static <Resp, Err> OperationResponse<Resp, Err> Error(Err err) {
+      return new OperationResponse<>(err, true);
+    }
+  }
+
   /**
    * Decode the message, deserialize contained values using the serialization service, do the work
    * indicated on the provided cache, and return a response.
    */
-  Resp process(SerializationService serializationService, Req request, Cache cache);
+  OperationResponse<Resp, Err> process(SerializationService serializationService, Req request, Cache cache);
 }
