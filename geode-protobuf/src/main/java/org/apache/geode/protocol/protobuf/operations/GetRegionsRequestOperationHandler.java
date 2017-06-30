@@ -18,17 +18,19 @@ import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.Region;
 import org.apache.geode.protocol.operations.OperationHandler;
 import org.apache.geode.protocol.protobuf.BasicTypes;
+import org.apache.geode.protocol.protobuf.ClientProtocol;
 import org.apache.geode.protocol.protobuf.RegionAPI;
 import org.apache.geode.serialization.SerializationService;
 
 import java.util.Set;
 
 public class GetRegionsRequestOperationHandler
-    implements OperationHandler<RegionAPI.GetRegionsRequest, RegionAPI.GetRegionsResponse> {
+    implements OperationHandler<RegionAPI.GetRegionsRequest, RegionAPI.GetRegionsResponse, ClientProtocol.ErrorResponse> {
 
   @Override
-  public RegionAPI.GetRegionsResponse process(SerializationService serializationService,
-      RegionAPI.GetRegionsRequest request, Cache cache) {
+  public OperationResponse<RegionAPI.GetRegionsResponse, ClientProtocol.ErrorResponse>
+  process(SerializationService serializationService,
+                                                                                 RegionAPI.GetRegionsRequest request, Cache cache) {
     Set<Region<?, ?>> regions = cache.rootRegions();
 
     RegionAPI.GetRegionsResponse.Builder builder = RegionAPI.GetRegionsResponse.newBuilder();
@@ -37,6 +39,6 @@ public class GetRegionsRequestOperationHandler
       builder.addRegions(BasicTypes.Region.newBuilder().setName(region.getName()));
     }
     builder.setSuccess(true);
-    return builder.build();
+    return OperationResponse.Response(builder.build());
   }
 }

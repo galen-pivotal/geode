@@ -44,11 +44,9 @@ public abstract class ProtobufUtilities {
     return serializationService.decode(encoding, bytes);
   }
 
-  public static ClientProtocol.ErrorResponse createErrorResponse(boolean serverInternal, boolean retriable, String errorMessage) {
-    return ClientProtocol.ErrorResponse.newBuilder()
-        .setInternalServerError(serverInternal)
-        .setRetriable(retriable)
-        .setMessage(errorMessage)
-        .build();
+  public static ClientProtocol.ErrorResponse createErrorResponse(boolean serverInternal,
+      boolean retriable, String errorMessage) {
+    return ClientProtocol.ErrorResponse.newBuilder().setInternalServerError(serverInternal)
+        .setRetriable(retriable).setMessage(errorMessage).build();
   }
 }

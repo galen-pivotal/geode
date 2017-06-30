@@ -41,7 +41,7 @@ public class ProtobufOpsProcessor {
     OperationHandler opsHandler =
         opsHandlerRegistry.getOperationHandlerForOperationId(requestType.getNumber());
 
-    OperationHandler.OperationResponse responseMessage =
+    Object responseMessage =
         opsHandler.process(serializationService, getRequestForOperationTypeID(request), cache);
     return wrapResponseForOperationTypeID(requestType, responseMessage);
   }
@@ -65,21 +65,18 @@ public class ProtobufOpsProcessor {
   }
 
   static ClientProtocol.Response wrapResponseForOperationTypeID(
-      ClientProtocol.Request.RequestAPICase requestType, OperationHandler.OperationResponse response)
+      ClientProtocol.Request.RequestAPICase requestType, Object response)
       throws InvalidProtocolMessageException {
     ClientProtocol.Response.Builder builder = ClientProtocol.Response.newBuilder();
-    if (response.isError) {
-      return builder.setErrorResponse((ClientProtocol.ErrorResponse) response.error).build();
-    }
     switch (requestType) {
       case PUTREQUEST:
-        return builder.setPutResponse((RegionAPI.PutResponse) response.response).build();
+        return builder.setPutResponse((RegionAPI.PutResponse) response).build();
       case GETREQUEST:
-        return builder.setGetResponse((RegionAPI.GetResponse) response.response).build();
+        return builder.setGetResponse((RegionAPI.GetResponse) response).build();
       case PUTALLREQUEST:
-        return builder.setPutAllResponse((RegionAPI.PutAllResponse) response.response).build();
+        return builder.setPutAllResponse((RegionAPI.PutAllResponse) response).build();
       case GETREGIONSREQUEST:
-        return builder.setGetRegionsResponse((RegionAPI.GetRegionsResponse) response.response).build();
+        return builder.setGetRegionsResponse((RegionAPI.GetRegionsResponse) response).build();
       default:
         throw new InvalidProtocolMessageException(
             "Unknown request type: " + requestType.getNumber());

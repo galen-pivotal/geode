@@ -24,13 +24,16 @@ import org.apache.geode.protocol.protobuf.RegionAPI;
 import org.apache.geode.serialization.SerializationService;
 import org.apache.geode.serialization.exception.UnsupportedEncodingTypeException;
 import org.apache.geode.serialization.registry.exception.CodecNotRegisteredForTypeException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class PutRequestOperationHandler
-    implements OperationHandler<RegionAPI.PutRequest, RegionAPI.PutResponse> {
+    implements OperationHandler<RegionAPI.PutRequest, RegionAPI.PutResponse, ClientProtocol.ErrorResponse> {
+private static Logger logger = LogManager.getLogger();
 
   @Override
-  public RegionAPI.PutResponse process(SerializationService serializationService,
-      RegionAPI.PutRequest request, Cache cache) {
+  public OperationResponse<RegionAPI.PutResponse, ClientProtocol.ErrorResponse> process(SerializationService serializationService,
+                                                                                        RegionAPI.PutRequest request, Cache cache) {
     try {
       String regionName = request.getRegionName();
       BasicTypes.Entry entry = request.getEntry();
@@ -40,23 +43,37 @@ public class PutRequestOperationHandler
 
       Region region = cache.getRegion(regionName);
       if (region == null) {
-        cache.getLogger().error("Region passed by client did not exist:" + region);
+        return error("Region passed by client did not exist: " + regionName, false, false);
       } else {
         try {
           region.put(decodedKey, decodedValue);
-          return RegionAPI.PutResponse.newBuilder().setSuccess(true).build();
+          return OperationResponse.Response(RegionAPI.PutResponse.newBuilder().build());
         } catch (ClassCastException ex) {
-          cache.getLogger()
-              .error("invalid key or value type for region " + regionName + ",passed key: "
+              return error("invalid key or value type for region " + regionName + ",passed key: "
                   + entry.getKey().getEncodingType() + " value: "
-                  + entry.getValue().getEncodingType(), ex);
+                  + entry.getValue().getEncodingType(), ex,
+                  false, false);
         }
       }
     } catch (UnsupportedEncodingTypeException ex) {
-      cache.getLogger().error("encoding not supported ", ex);
+      return error("encoding not supported ", ex, false, false);
     } catch (CodecNotRegisteredForTypeException ex) {
-      cache.getLogger().error("codec error in protobuf deserialization ", ex);
+      return error("codec error in protobuf deserialization ", ex, true, false);
     }
-    return RegionAPI.PutResponse.newBuilder().setSuccess(false).build();
+  }
+
+  private OperationResponse<RegionAPI.PutResponse, ClientProtocol.ErrorResponse> error(String message, Exception ex, boolean serverInternal, boolean retriable) {
+    if (ex != null) {
+      logger.error(message, ex);
+    } else {
+      logger.error(message);
+    }
+
+    return OperationResponse
+        .Error(ProtobufUtilities.createErrorResponse(serverInternal, retriable, message));
+  }
+
+  private OperationResponse<RegionAPI.PutResponse, ClientProtocol.ErrorResponse> error(String message, boolean serverInternal, boolean retriable) {
+    return error(message, null, serverInternal, retriable);
   }
 }

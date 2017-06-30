@@ -30,7 +30,7 @@ public interface OperationHandler<Req, Resp, Err> {
     public final Err error;
     public final boolean isError;
 
-    private OperationResponse(Object respOrError, boolean isError) {
+    protected OperationResponse(Object respOrError, boolean isError) {
       this.isError = isError;
       if (isError) {
         this.error = (Err) respOrError;
@@ -55,5 +55,6 @@ public interface OperationHandler<Req, Resp, Err> {
    * Decode the message, deserialize contained values using the serialization service, do the work
    * indicated on the provided cache, and return a response.
    */
-  OperationResponse<Resp, Err> process(SerializationService serializationService, Req request, Cache cache);
+  OperationResponse<Resp, Err> process(SerializationService serializationService, Req request,
+      Cache cache);
 }
