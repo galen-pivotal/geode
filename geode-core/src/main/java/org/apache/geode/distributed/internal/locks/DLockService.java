@@ -2547,11 +2547,11 @@ public class DLockService extends DistributedLockService {
   /**
    * Called by grantor recovery to return set of locks held by this process. Synchronizes on
    * lockGrantorIdLock, tokens map, and each lock token.
-   * 
+   *
    * @param newlockGrantorId the newly recovering grantor
    */
-  Set getLockTokensForRecovery(LockGrantorId newlockGrantorId) {
-    Set heldLockSet = Collections.EMPTY_SET;
+  Set<DLockRemoteToken> getLockTokensForRecovery(LockGrantorId newlockGrantorId) {
+    Set<DLockRemoteToken> heldLockSet = Collections.EMPTY_SET;
 
     LockGrantorId currentLockGrantorId = null;
     synchronized (this.lockGrantorIdLock) {
@@ -2589,7 +2589,7 @@ public class DLockService extends DistributedLockService {
               // add token to heldLockSet
               else {
                 if (heldLockSet == Collections.EMPTY_SET) {
-                  heldLockSet = new HashSet();
+                  heldLockSet = new HashSet<>();
                 }
                 heldLockSet.add(DLockRemoteToken.createFromDLockToken(token));
               }

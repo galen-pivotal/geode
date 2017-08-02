@@ -87,7 +87,8 @@ public class DLockToken {
   private Thread thread;
 
   /**
-   * Number of threads currently using this lock token.
+   * Number of usages of this lock token. usageCount = recursion + (# of threads waiting for this
+   * lock). It's weird, I know.
    */
   private int usageCount = 0;
 
@@ -230,10 +231,9 @@ public class DLockToken {
   // -------------------------------------------------------------------------
 
   /**
-   * Destroys this lock token. Caller must synchronize on this lock token.
+   * Destroys this lock token.
    */
   synchronized void destroy() {
-    // checkDestroyed();
     this.destroyed = true;
   }
 
