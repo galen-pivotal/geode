@@ -15,11 +15,10 @@ public class EchoNettyChannelHandler extends ChannelInboundHandlerAdapter {
 
 
     ctx.fireChannelRead(msg);
-    ctx.flush();
   }
 
-  @Override
-  public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-    ctx.flush();
-  }
+//  @Override
+//  public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+//    ctx.flush();
+//  }
 }

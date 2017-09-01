@@ -1,5 +1,6 @@
 package org.apache.geode.protocol;
 
+import static org.apache.geode.distributed.ConfigurationProperties.CONFLATE_EVENTS;
 import static org.apache.geode.distributed.ConfigurationProperties.SSL_ENABLED_COMPONENTS;
 import static org.apache.geode.distributed.ConfigurationProperties.SSL_KEYSTORE;
 import static org.apache.geode.distributed.ConfigurationProperties.SSL_KEYSTORE_PASSWORD;
@@ -30,6 +31,7 @@ import org.apache.geode.cache.server.CacheServer;
 import org.apache.geode.distributed.ConfigurationProperties;
 import org.apache.geode.internal.admin.SSLConfig;
 import org.apache.geode.internal.net.SocketCreator;
+import org.apache.geode.internal.protocol.protobuf.AuthenticationAPI;
 import org.apache.geode.internal.protocol.protobuf.ClientProtocol;
 import org.apache.geode.protocol.exception.InvalidProtocolMessageException;
 import org.apache.geode.protocol.protobuf.ProtobufSerializationService;
@@ -67,13 +69,13 @@ public class ProtobufPerformanceDUnitTest extends JUnit4CacheTestCase {
 
     ArrayList<Socket> connections = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
-      connections.add(initConnection(true));
+      connections.add(initConnection(false));
     }
 
     long startTime = System.currentTimeMillis();
 
     List<Object> objectList = connections.parallelStream().map((sock) -> {
-      int nputs = 5_000;
+      int nputs = 500;
       byte[] value = new byte[100];
       for (int i = 0; i < nputs; i++) {
         try {
@@ -133,6 +135,8 @@ public class ProtobufPerformanceDUnitTest extends JUnit4CacheTestCase {
     cacheFactory.set(ConfigurationProperties.MCAST_PORT, "0");
     cacheFactory.set(ConfigurationProperties.ENABLE_CLUSTER_CONFIGURATION, "false");
     cacheFactory.set(ConfigurationProperties.USE_CLUSTER_CONFIGURATION, "false");
+    cacheFactory.set(ConfigurationProperties.SECURITY_MANAGER,
+        "org.apache.geode.security.SimpleTestSecurityManager");
     cache = cacheFactory.create();
 
     CacheServer cacheServer = cache.addCacheServer();
@@ -155,7 +159,7 @@ public class ProtobufPerformanceDUnitTest extends JUnit4CacheTestCase {
 
   private Socket initConnection(boolean useSSL) throws Exception {
     Socket socket;
-    if(useSSL) {
+    if (useSSL) {
       socket = getSSLSocket(cacheServerPortNetty);
     } else {
       socket = new Socket("localhost", cacheServerPortNetty);
@@ -163,6 +167,12 @@ public class ProtobufPerformanceDUnitTest extends JUnit4CacheTestCase {
     }
     Awaitility.await().atMost(5, TimeUnit.SECONDS).until(socket::isConnected);
 //    outputStream.write(110);
+
+    AuthenticationAPI.SimpleAuthenticationRequest.newBuilder().setUsername("admin")
+        .setPassword("admin").build().writeDelimitedTo(socket.getOutputStream());
+
+    AuthenticationAPI.SimpleAuthenticationResponse.parseDelimitedFrom(socket.getInputStream());
+
     return socket;
   }
 

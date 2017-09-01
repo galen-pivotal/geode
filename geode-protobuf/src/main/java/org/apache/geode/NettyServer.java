@@ -26,23 +26,18 @@ import io.netty.handler.codec.protobuf.ProtobufDecoder;
 import io.netty.handler.codec.protobuf.ProtobufEncoder;
 import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
-import io.netty.handler.ssl.OpenSslEngine;
-import io.netty.handler.ssl.OpenSslServerContext;
-import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
-import sun.security.ssl.SSLContextImpl;
-import sun.security.ssl.SSLEngineImpl;
 
 import org.apache.geode.cache.Cache;
 import org.apache.geode.internal.admin.SSLConfig;
-import org.apache.geode.internal.cache.CacheService;
+import org.apache.geode.internal.cache.InternalCache;
 import org.apache.geode.internal.cache.tier.sockets.MessageExecutionContext;
 import org.apache.geode.internal.net.SocketCreator;
 import org.apache.geode.internal.protocol.protobuf.ClientProtocol;
-import org.apache.geode.management.internal.beans.CacheServiceMBeanBase;
 import org.apache.geode.protocol.protobuf.ProtobufOpsProcessor;
 import org.apache.geode.protocol.protobuf.ProtobufSerializationService;
 import org.apache.geode.protocol.protobuf.registry.OperationContextRegistry;
+import org.apache.geode.security.SecurityManager;
 import org.apache.geode.security.server.NoOpAuthorizer;
 
 public class NettyServer {
@@ -147,22 +142,33 @@ public class NettyServer {
                 new ProtobufOpsProcessor(new ProtobufSerializationService(),
                     new OperationContextRegistry());
 
+            SecurityManager
+                securityManager =
+                ((InternalCache) cache).getSecurityService().getSecurityManager();
+
             ChannelPipeline pipeline = ch.pipeline();
 
             // SSL
-            if(sslConfig.isEnabled())
-              pipeline.addLast("ssl", new SslHandler(makeSslEngine()));
+//            if(sslConfig.isEnabled())
+//              pipeline.addLast("ssl", new SslHandler(makeSslEngine()));
+
 
             // Decoder
             pipeline.addLast("frameDecoder",
                 new ProtobufVarint32FrameDecoder());
-            pipeline.addLast("protobufDecoder",
-                new ProtobufDecoder(ClientProtocol.Message.getDefaultInstance()));
-//            pipeline.addLast("echo1", new EchoNettyChannelHandler());
 
             // Encoder
             pipeline.addLast("frameEncoder", new ProtobufVarint32LengthFieldPrepender());
             pipeline.addLast("protobufEncoder", new ProtobufEncoder());
+
+            pipeline.addLast("authenticator", new ProtobufAuthenticatorHandler(securityManager));
+
+//            pipeline.addLast(workerGroup, "authenticator", new Stream)
+            pipeline.addLast("protobufDecoder",
+                new ProtobufDecoder(ClientProtocol.Message.getDefaultInstance()));
+//            pipeline.addLast("echo1", new EchoNettyChannelHandler());
+
+
 
             // Business Logic
             pipeline.addLast(workerGroup,"protobufOpsHandler",
