@@ -18,6 +18,8 @@ package org.apache.geode.internal.cache.tier.sockets;
 import static org.apache.geode.internal.cache.tier.CommunicationMode.ProtobufClientServerProtocol;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.util.HashMap;
@@ -105,7 +107,18 @@ public class ServerConnectionFactory {
             socketBufferSize, communicationModeStr, communicationMode, acceptor,
             getOrCreateClientProtocolMessageHandler(cache.getDistributedSystem(),
                 acceptor.getServerName()),
-            securityService, findStreamAuthenticator(authenticationMode));
+            securityService, findStreamAuthenticator(authenticationMode),
+            new ClientProtocolHandshaker() {
+              @Override
+              public Authenticator handshake(InputStream inputStream, OutputStream outputStream) {
+                return null;
+              }
+
+              @Override
+              public boolean shaken() {
+                return false;
+              }
+            });
       }
     } else {
       return new LegacyServerConnection(socket, cache, helper, stats, hsTimeout, socketBufferSize,

@@ -41,7 +41,8 @@ public class GenericProtocolServerConnection extends ServerConnection {
   // The new protocol lives in a separate module and gets loaded when this class is instantiated.
   private final ClientProtocolMessageHandler messageHandler;
   private final SecurityManager securityManager;
-  private final Authenticator authenticator;
+  private final ClientProtocolHandshaker handshaker;
+  private Authenticator authenticator;
   private boolean cleanedUp;
   private ClientProxyMembershipID clientProxyMembershipID;
 
@@ -52,13 +53,14 @@ public class GenericProtocolServerConnection extends ServerConnection {
   public GenericProtocolServerConnection(Socket socket, InternalCache c, CachedRegionHelper helper,
       CacheServerStats stats, int hsTimeout, int socketBufferSize, String communicationModeStr,
       byte communicationMode, Acceptor acceptor, ClientProtocolMessageHandler newClientProtocol,
-      SecurityService securityService, Authenticator authenticator) {
+      SecurityService securityService, Authenticator authenticator, ClientProtocolHandshaker handshaker) {
     super(socket, c, helper, stats, hsTimeout, socketBufferSize, communicationModeStr,
         communicationMode, acceptor, securityService);
     securityManager = securityService.getSecurityManager();
     this.messageHandler = newClientProtocol;
     this.authenticator = authenticator;
     this.messageHandler.getStatistics().clientConnected();
+    this.handshaker = handshaker;
 
     setClientProxyMembershipId();
 
@@ -72,7 +74,10 @@ public class GenericProtocolServerConnection extends ServerConnection {
       InputStream inputStream = socket.getInputStream();
       OutputStream outputStream = socket.getOutputStream();
 
-      if (!authenticator.isAuthenticated()) {
+      if (!handshaker.shaken()) { // not stirred
+        authenticator = handshaker.handshake(inputStream, outputStream);
+      }
+      else if (!authenticator.isAuthenticated()) {
         authenticator.authenticate(inputStream, outputStream, securityManager);
       } else {
         messageHandler.receiveMessage(inputStream, outputStream, new MessageExecutionContext(
