@@ -9,7 +9,7 @@ import org.apache.geode.internal.protocol.protobuf.Handshaker;
 import org.apache.geode.internal.protocol.protobuf.ProtobufStreamProcessor;
 import org.apache.geode.security.server.Authenticator;
 
-public class ClientProtocolServiceImpl implements ClientProtocolService {
+public class ProtobufProtocolService implements ClientProtocolService {
   @Override
   public ClientProtocolHandshaker getHandshaker(Map<String, Authenticator> availableAuthenticators) {
     return new Handshaker(availableAuthenticators);
@@ -17,6 +17,7 @@ public class ClientProtocolServiceImpl implements ClientProtocolService {
 
   @Override
   public ClientProtocolMessageHandler getMessageHandler() {
-    return new ProtobufStreamProcessor();
+    return new ClientProtocolMessageHandler() {
+    };
   }
 }
