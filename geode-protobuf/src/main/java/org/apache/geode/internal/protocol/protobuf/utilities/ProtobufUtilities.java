@@ -14,7 +14,12 @@
  */
 package org.apache.geode.internal.protocol.protobuf.utilities;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
 import com.google.protobuf.ByteString;
+import com.google.protobuf.GeneratedMessageV3;
 
 import org.apache.geode.annotations.Experimental;
 import org.apache.geode.cache.Region;
@@ -311,5 +316,13 @@ public abstract class ProtobufUtilities {
         throw new UnknownProtobufPrimitiveType(
             "Unknown primitive type for: " + encodedValue.getValueCase());
     }
+  }
+
+  public static ByteArrayInputStream messageToByteArrayInputStream(
+      GeneratedMessageV3 message)
+      throws IOException {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    message.writeDelimitedTo(byteArrayOutputStream);
+    return new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
   }
 }

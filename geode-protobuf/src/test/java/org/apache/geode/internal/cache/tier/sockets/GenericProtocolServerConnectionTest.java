@@ -108,6 +108,11 @@ public class GenericProtocolServerConnectionTest {
         clientProxyMembershipIDArgumentCaptor.getValue().toString());
   }
 
+  @Test
+  public void handshakeMovesAlong() {
+    fail("test not implemented yet.");
+  }
+
   private GenericProtocolServerConnection IOExceptionThrowingServerConnection() throws IOException {
     ClientProtocolMessageHandler clientProtocolMock = mock(ClientProtocolMessageHandler.class);
     ClientProtocolStatistics statisticsMock = mock(ClientProtocolStatistics.class);

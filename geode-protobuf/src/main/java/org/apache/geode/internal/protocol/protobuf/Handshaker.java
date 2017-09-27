@@ -1,3 +1,18 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership. The ASF licenses this file to You under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the License. You may obtain a
+ * copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
 package org.apache.geode.internal.protocol.protobuf;
 
 import java.io.IOException;
@@ -5,6 +20,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
 
+import org.apache.geode.cache.IncompatibleVersionException;
 import org.apache.geode.internal.cache.tier.sockets.ClientProtocolHandshaker;
 import org.apache.geode.security.server.Authenticator;
 
@@ -20,14 +36,18 @@ public class Handshaker implements ClientProtocolHandshaker {
 
   @Override
   public Authenticator handshake(InputStream inputStream, OutputStream outputStream)
-      throws IOException {
+      throws IOException, IncompatibleVersionException {
     HandshakeAPI.HandshakeRequest handshakeRequest =
         HandshakeAPI.HandshakeRequest.parseDelimitedFrom(inputStream);
 
     HandshakeAPI.Semver version = handshakeRequest.getVersion();
-    if (version.getMajor() != MAJOR_VERSION || version.getMinor() > MINOR_VERSION) {
-      writeFailureTo(outputStream, 42, "Version mismatch");
-      throw new IllegalStateException("Major version does not match");
+    if (version.getMajor() != MAJOR_VERSION) {
+      writeFailureTo(outputStream, 42, "Version mismatch: incompatible major version");
+      throw new IncompatibleVersionException("Client major version does not match server major version");
+    }
+    if (version.getMinor() > MINOR_VERSION) {
+      writeFailureTo(outputStream, 42, "Version mismatch: client newer than server");
+      throw new IncompatibleVersionException("Client minor version is greater than server minor version");
     }
 
     Authenticator authenticator =
@@ -35,10 +55,11 @@ public class Handshaker implements ClientProtocolHandshaker {
 
     if (authenticator == null) {
       writeFailureTo(outputStream, 43, "Invalid authentication mode");
-      throw new IllegalStateException("Major version does not match");
+      throw new IncompatibleVersionException("Invalid authentication mode");
     }
 
     HandshakeAPI.HandshakeResponse.newBuilder().setOk(true).build().writeDelimitedTo(outputStream);
+    shaken = true;
     return authenticator;
   }
 
