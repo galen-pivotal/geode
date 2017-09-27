@@ -133,7 +133,8 @@ public class GenericProtocolServerConnectionTest {
     return new GenericProtocolServerConnection(socketMock, mock(InternalCache.class),
         mock(CachedRegionHelper.class), mock(CacheServerStats.class), 0, 0, "",
         CommunicationMode.ProtobufClientServerProtocol.getModeNumber(), acceptorStub,
-        clientProtocolMock, mock(SecurityService.class), new NoOpAuthenticator(), /* GALEN */ mock(ClientProtocolHandshaker.class));
+        clientProtocolMock, mock(SecurityService.class), new NoOpAuthenticator(),
+        /* GALEN */ mock(ClientProtocolHandshaker.class));
   }
 
   private GenericProtocolServerConnection getServerConnection(

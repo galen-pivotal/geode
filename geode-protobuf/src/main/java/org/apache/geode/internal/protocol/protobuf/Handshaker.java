@@ -21,8 +21,7 @@ public class Handshaker implements ClientProtocolHandshaker {
   @Override
   public Authenticator handshake(InputStream inputStream, OutputStream outputStream)
       throws IOException {
-    HandshakeAPI.HandshakeRequest
-        handshakeRequest =
+    HandshakeAPI.HandshakeRequest handshakeRequest =
         HandshakeAPI.HandshakeRequest.parseDelimitedFrom(inputStream);
 
     HandshakeAPI.Semver version = handshakeRequest.getVersion();
@@ -31,8 +30,7 @@ public class Handshaker implements ClientProtocolHandshaker {
       throw new IllegalStateException("Major version does not match");
     }
 
-    Authenticator
-        authenticator =
+    Authenticator authenticator =
         selectAuthenticator(authenticators, handshakeRequest.getAuthenticationMode());
 
     if (authenticator == null) {
@@ -45,7 +43,7 @@ public class Handshaker implements ClientProtocolHandshaker {
   }
 
   private Authenticator selectAuthenticator(Map<String, Authenticator> authenticators,
-                                            HandshakeAPI.AuthenticationMode authenticationMode) {
+      HandshakeAPI.AuthenticationMode authenticationMode) {
     switch (authenticationMode) {
       case SIMPLE:
         return authenticators.get("SIMPLE");
@@ -58,8 +56,10 @@ public class Handshaker implements ClientProtocolHandshaker {
     }
   }
 
-  private void writeFailureTo(OutputStream outputStream, int errorCode, String errorMessage) throws IOException {
-    HandshakeAPI.HandshakeResponse.newBuilder().setOk(false).setError(BasicTypes.Error.newBuilder().setErrorCode(errorCode).setMessage(errorMessage))
+  private void writeFailureTo(OutputStream outputStream, int errorCode, String errorMessage)
+      throws IOException {
+    HandshakeAPI.HandshakeResponse.newBuilder().setOk(false)
+        .setError(BasicTypes.Error.newBuilder().setErrorCode(errorCode).setMessage(errorMessage))
         .build().writeDelimitedTo(outputStream);
   }
 

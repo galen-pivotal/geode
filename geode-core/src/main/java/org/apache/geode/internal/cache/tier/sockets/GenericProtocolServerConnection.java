@@ -53,7 +53,8 @@ public class GenericProtocolServerConnection extends ServerConnection {
   public GenericProtocolServerConnection(Socket socket, InternalCache c, CachedRegionHelper helper,
       CacheServerStats stats, int hsTimeout, int socketBufferSize, String communicationModeStr,
       byte communicationMode, Acceptor acceptor, ClientProtocolMessageHandler newClientProtocol,
-      SecurityService securityService, Authenticator authenticator, ClientProtocolHandshaker handshaker) {
+      SecurityService securityService, Authenticator authenticator,
+      ClientProtocolHandshaker handshaker) {
     super(socket, c, helper, stats, hsTimeout, socketBufferSize, communicationModeStr,
         communicationMode, acceptor, securityService);
     securityManager = securityService.getSecurityManager();
@@ -76,8 +77,7 @@ public class GenericProtocolServerConnection extends ServerConnection {
 
       if (!handshaker.shaken()) { // not stirred
         authenticator = handshaker.handshake(inputStream, outputStream);
-      }
-      else if (!authenticator.isAuthenticated()) {
+      } else if (!authenticator.isAuthenticated()) {
         authenticator.authenticate(inputStream, outputStream, securityManager);
       } else {
         messageHandler.receiveMessage(inputStream, outputStream, new MessageExecutionContext(

@@ -619,7 +619,7 @@ public class AcceptorImpl extends Acceptor implements Runnable, CommBufferPool {
         tmp_maxThreads = 0;
       }
     }
-    return  tmp_maxThreads;
+    return tmp_maxThreads;
   }
 
   public long getAcceptorId() {
