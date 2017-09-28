@@ -25,11 +25,12 @@ import org.apache.geode.security.server.Authenticator;
 public interface ClientProtocolService {
   /**
    * The handshaker chooses an authenticator from those available based on the protocol.
+   *
    * @param availableAuthenticators A list of valid authenticators for the current system.
    */
-  ClientProtocolHandshaker getHandshaker(Map<String, Authenticator> availableAuthenticators);
+  ClientProtocolHandshaker getHandshaker(
+      Map<String, Class<? extends Authenticator>> availableAuthenticators);
 
   ClientProtocolMessageHandler getMessageHandler();
-
 
 }

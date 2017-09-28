@@ -27,6 +27,7 @@ import org.apache.geode.cache.RegionAttributes;
 import org.apache.geode.internal.protocol.protobuf.BasicTypes;
 import org.apache.geode.internal.protocol.protobuf.ClientProtocol;
 import org.apache.geode.internal.protocol.protobuf.EncodingTypeTranslator;
+import org.apache.geode.internal.protocol.protobuf.HandshakeAPI;
 import org.apache.geode.internal.protocol.protobuf.ProtobufSerializationService;
 import org.apache.geode.internal.protocol.protobuf.RegionAPI;
 import org.apache.geode.internal.protocol.protobuf.utilities.exception.UnknownProtobufPrimitiveType;
@@ -226,12 +227,6 @@ public abstract class ProtobufUtilities {
     return protoRegionBuilder.build();
   }
 
-  public static ClientProtocol.Request createProtobufRequestWithGetRegionNamesRequest(
-      RegionAPI.GetRegionNamesRequest getRegionNamesRequest) {
-    return ClientProtocol.Request.newBuilder().setGetRegionNamesRequest(getRegionNamesRequest)
-        .build();
-  }
-
   public static ClientProtocol.Request.Builder createProtobufRequestBuilder() {
     return ClientProtocol.Request.newBuilder();
   }
@@ -316,13 +311,5 @@ public abstract class ProtobufUtilities {
         throw new UnknownProtobufPrimitiveType(
             "Unknown primitive type for: " + encodedValue.getValueCase());
     }
-  }
-
-  public static ByteArrayInputStream messageToByteArrayInputStream(
-      GeneratedMessageV3 message)
-      throws IOException {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    message.writeDelimitedTo(byteArrayOutputStream);
-    return new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
   }
 }

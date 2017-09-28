@@ -20,17 +20,23 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
 
+import org.apache.logging.log4j.Logger;
+
 import org.apache.geode.cache.IncompatibleVersionException;
 import org.apache.geode.internal.cache.tier.sockets.ClientProtocolHandshaker;
+import org.apache.geode.internal.cache.tier.sockets.ServiceLoadingFailureException;
+import org.apache.geode.internal.logging.LogService;
 import org.apache.geode.security.server.Authenticator;
 
 public class Handshaker implements ClientProtocolHandshaker {
   private static final int MAJOR_VERSION = 1;
   private static final int MINOR_VERSION = 0;
-  private final Map<String, Authenticator> authenticators;
+  private static final Logger logger = LogService.getLogger();
+
+  private final Map<String, Class<? extends Authenticator>> authenticators;
   private boolean shaken = false;
 
-  public Handshaker(Map<String, Authenticator> availableAuthenticators) {
+  public Handshaker(Map<String, Class<? extends Authenticator>> availableAuthenticators) {
     this.authenticators = availableAuthenticators;
   }
 
@@ -42,29 +48,43 @@ public class Handshaker implements ClientProtocolHandshaker {
 
     HandshakeAPI.Semver version = handshakeRequest.getVersion();
     if (version.getMajor() != MAJOR_VERSION) {
-      writeFailureTo(outputStream, 42, "Version mismatch: incompatible major version");
-      throw new IncompatibleVersionException("Client major version does not match server major version");
+      writeFailureTo(outputStream, ProtocolErrorCode.UNSUPPORTED_VERSION.codeValue,
+          "Version mismatch: incompatible major version");
+      throw new IncompatibleVersionException(
+          "Client major version does not match server major version");
     }
     if (version.getMinor() > MINOR_VERSION) {
-      writeFailureTo(outputStream, 42, "Version mismatch: client newer than server");
-      throw new IncompatibleVersionException("Client minor version is greater than server minor version");
+      writeFailureTo(outputStream, ProtocolErrorCode.UNSUPPORTED_VERSION.codeValue,
+          "Version mismatch: client newer than server");
+      throw new IncompatibleVersionException(
+          "Client minor version is greater than server minor version");
     }
 
-    Authenticator authenticator =
-        selectAuthenticator(authenticators, handshakeRequest.getAuthenticationMode());
+    try {
+      Class<? extends Authenticator> authenticatorClass =
+          selectAuthenticator(authenticators, handshakeRequest.getAuthenticationMode());
 
-    if (authenticator == null) {
-      writeFailureTo(outputStream, 43, "Invalid authentication mode");
-      throw new IncompatibleVersionException("Invalid authentication mode");
+      if (authenticatorClass == null) {
+        writeFailureTo(outputStream, ProtocolErrorCode.UNSUPPORTED_AUTHENTICATION_MODE.codeValue,
+            "Invalid authentication mode");
+        throw new IncompatibleVersionException("Invalid authentication mode");
+      }
+
+      HandshakeAPI.HandshakeResponse.newBuilder().setOk(true).build()
+          .writeDelimitedTo(outputStream);
+      shaken = true;
+      return authenticatorClass.newInstance();
+
+    } catch (IllegalAccessException | InstantiationException e) {
+      logger.error("Could not instantiate authenticator from handshake: ", e);
+      throw new ServiceLoadingFailureException(e);
     }
-
-    HandshakeAPI.HandshakeResponse.newBuilder().setOk(true).build().writeDelimitedTo(outputStream);
-    shaken = true;
-    return authenticator;
   }
 
-  private Authenticator selectAuthenticator(Map<String, Authenticator> authenticators,
-      HandshakeAPI.AuthenticationMode authenticationMode) {
+  private Class<? extends Authenticator> selectAuthenticator(
+      Map<String, Class<? extends Authenticator>> authenticators,
+      HandshakeAPI.AuthenticationMode authenticationMode)
+      throws IllegalAccessException, InstantiationException {
     switch (authenticationMode) {
       case SIMPLE:
         return authenticators.get("SIMPLE");

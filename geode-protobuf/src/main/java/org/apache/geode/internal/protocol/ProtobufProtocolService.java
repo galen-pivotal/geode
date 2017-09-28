@@ -11,13 +11,13 @@ import org.apache.geode.security.server.Authenticator;
 
 public class ProtobufProtocolService implements ClientProtocolService {
   @Override
-  public ClientProtocolHandshaker getHandshaker(Map<String, Authenticator> availableAuthenticators) {
+  public ClientProtocolHandshaker getHandshaker(
+      Map<String, Class<? extends Authenticator>> availableAuthenticators) {
     return new Handshaker(availableAuthenticators);
   }
 
   @Override
   public ClientProtocolMessageHandler getMessageHandler() {
-    return new ClientProtocolMessageHandler() {
-    };
+    return new ProtobufStreamProcessor();
   }
 }

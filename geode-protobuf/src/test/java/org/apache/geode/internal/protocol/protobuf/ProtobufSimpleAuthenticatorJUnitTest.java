@@ -60,7 +60,8 @@ public class ProtobufSimpleAuthenticatorJUnitTest {
     expectedAuthProperties.setProperty(ResourceConstants.USER_NAME, TEST_USERNAME);
     expectedAuthProperties.setProperty(ResourceConstants.PASSWORD, TEST_PASSWORD);
 
-    byteArrayInputStream = ProtobufUtilities.messageToByteArrayInputStream(basicAuthenticationRequest);
+    byteArrayInputStream =
+        ProtobufTestUtilities.messageToByteArrayInputStream(basicAuthenticationRequest);
     byteArrayOutputStream = new ByteArrayOutputStream();
 
     securityPrincipal = new Object();

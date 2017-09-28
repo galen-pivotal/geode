@@ -15,14 +15,14 @@
 
 package org.apache.geode.internal.protocol.protobuf;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,26 +32,54 @@ import org.junit.experimental.categories.Category;
 
 import org.apache.geode.cache.IncompatibleVersionException;
 import org.apache.geode.internal.protocol.protobuf.utilities.ProtobufUtilities;
+import org.apache.geode.security.AuthenticationRequiredException;
+import org.apache.geode.security.SecurityManager;
 import org.apache.geode.security.server.Authenticator;
+import org.apache.geode.security.server.Authorizer;
 import org.apache.geode.test.junit.categories.UnitTest;
 
 @Category(UnitTest.class)
 public class HandshakerTest {
 
-  private Map<String, Authenticator> authenticatorMap;
-  private Authenticator noopMock;
-  private Authenticator simpleMock;
+  private Map<String, Class<? extends Authenticator>> authenticatorMap;
   private Handshaker handshaker;
+
+  public static class AuthenticatorMock implements Authenticator {
+
+    @Override
+    public void authenticate(InputStream inputStream, OutputStream outputStream,
+        SecurityManager securityManager) throws IOException {
+
+    }
+
+    @Override
+    public boolean isAuthenticated() {
+      return false;
+    }
+
+    @Override
+    public Authorizer getAuthorizer() throws AuthenticationRequiredException {
+      return null;
+    }
+
+    @Override
+    public String implementationID() {
+      return null;
+    }
+  }
+
+  public static class SimpleMock extends AuthenticatorMock {
+  }
+
+  public static class NoopMock extends AuthenticatorMock {
+  }
 
   @Before
   public void setUp() {
     authenticatorMap = new HashMap<>();
 
-    noopMock = mock(Authenticator.class);
-    simpleMock = mock(Authenticator.class);
-
-    authenticatorMap.put("NOOP", noopMock);
-    authenticatorMap.put("SIMPLE", simpleMock);
+    authenticatorMap.put("NOOP", NoopMock.class);
+    authenticatorMap.put("SIMPLE", SimpleMock.class);
 
     handshaker = new Handshaker(authenticatorMap);
     assertFalse(handshaker.shaken());
@@ -61,18 +89,16 @@ public class HandshakerTest {
   public void version1_0IsSupported() throws Exception {
     HandshakeAPI.HandshakeRequest handshakeRequest = HandshakeAPI.HandshakeRequest.newBuilder()
         .setVersion(HandshakeAPI.Semver.newBuilder().setMajor(1).setMinor(0))
-        .setAuthenticationMode(HandshakeAPI.AuthenticationMode.NONE)
-        .build();
+        .setAuthenticationMode(HandshakeAPI.AuthenticationMode.NONE).build();
 
-    ByteArrayInputStream
-        byteArrayInputStream =
-        ProtobufUtilities.messageToByteArrayInputStream(handshakeRequest);
+    ByteArrayInputStream byteArrayInputStream =
+        ProtobufTestUtilities.messageToByteArrayInputStream(handshakeRequest);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
-    Authenticator actualAuthenticator = handshaker
-        .handshake(byteArrayInputStream, byteArrayOutputStream);
-    assertEquals(noopMock,actualAuthenticator);
+    Authenticator actualAuthenticator =
+        handshaker.handshake(byteArrayInputStream, byteArrayOutputStream);
+    assertTrue(actualAuthenticator instanceof NoopMock);
 
     assertTrue(handshaker.shaken());
   }
@@ -81,12 +107,10 @@ public class HandshakerTest {
   public void version2NotSupported() throws Exception {
     HandshakeAPI.HandshakeRequest handshakeRequest = HandshakeAPI.HandshakeRequest.newBuilder()
         .setVersion(HandshakeAPI.Semver.newBuilder().setMajor(2).setMinor(0))
-        .setAuthenticationMode(HandshakeAPI.AuthenticationMode.NONE)
-        .build();
+        .setAuthenticationMode(HandshakeAPI.AuthenticationMode.NONE).build();
 
-    ByteArrayInputStream
-        byteArrayInputStream =
-        ProtobufUtilities.messageToByteArrayInputStream(handshakeRequest);
+    ByteArrayInputStream byteArrayInputStream =
+        ProtobufTestUtilities.messageToByteArrayInputStream(handshakeRequest);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
@@ -97,12 +121,10 @@ public class HandshakerTest {
   public void bogusAuthenticationMode() throws Exception {
     HandshakeAPI.HandshakeRequest handshakeRequest = HandshakeAPI.HandshakeRequest.newBuilder()
         .setVersion(HandshakeAPI.Semver.newBuilder().setMajor(1).setMinor(0))
-        .setAuthenticationModeValue(-1)
-        .build();
+        .setAuthenticationModeValue(-1).build();
 
-    ByteArrayInputStream
-        byteArrayInputStream =
-        ProtobufUtilities.messageToByteArrayInputStream(handshakeRequest);
+    ByteArrayInputStream byteArrayInputStream =
+        ProtobufTestUtilities.messageToByteArrayInputStream(handshakeRequest);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
@@ -113,18 +135,16 @@ public class HandshakerTest {
   public void simpleIsSupported() throws Exception {
     HandshakeAPI.HandshakeRequest handshakeRequest = HandshakeAPI.HandshakeRequest.newBuilder()
         .setVersion(HandshakeAPI.Semver.newBuilder().setMajor(1).setMinor(0))
-        .setAuthenticationMode(HandshakeAPI.AuthenticationMode.SIMPLE)
-        .build();
+        .setAuthenticationMode(HandshakeAPI.AuthenticationMode.SIMPLE).build();
 
-    ByteArrayInputStream
-        byteArrayInputStream =
-        ProtobufUtilities.messageToByteArrayInputStream(handshakeRequest);
+    ByteArrayInputStream byteArrayInputStream =
+        ProtobufTestUtilities.messageToByteArrayInputStream(handshakeRequest);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
-    Authenticator actualAuthenticator = handshaker
-        .handshake(byteArrayInputStream, byteArrayOutputStream);
-    assertEquals(simpleMock, actualAuthenticator);
+    Authenticator actualAuthenticator =
+        handshaker.handshake(byteArrayInputStream, byteArrayOutputStream);
+    assertTrue(actualAuthenticator instanceof SimpleMock);
 
     assertTrue(handshaker.shaken());
   }

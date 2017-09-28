@@ -54,13 +54,11 @@ public class GenericProtocolServerConnection extends ServerConnection {
   public GenericProtocolServerConnection(Socket socket, InternalCache c, CachedRegionHelper helper,
       CacheServerStats stats, int hsTimeout, int socketBufferSize, String communicationModeStr,
       byte communicationMode, Acceptor acceptor, ClientProtocolMessageHandler newClientProtocol,
-      SecurityService securityService, Authenticator authenticator,
-      ClientProtocolHandshaker handshaker) {
+      SecurityService securityService, ClientProtocolHandshaker handshaker) {
     super(socket, c, helper, stats, hsTimeout, socketBufferSize, communicationModeStr,
         communicationMode, acceptor, securityService);
     securityManager = securityService.getSecurityManager();
     this.messageHandler = newClientProtocol;
-    this.authenticator = authenticator;
     this.messageHandler.getStatistics().clientConnected();
     this.handshaker = handshaker;
 

@@ -39,8 +39,30 @@ import org.apache.geode.security.server.Authenticator;
 public class ServerConnectionFactory {
   private ClientProtocolMessageHandler protocolHandler;
   private Map<String, Class<? extends Authenticator>> authenticators = null;
+  private ClientProtocolService clientProtocolService;
 
   public ServerConnectionFactory() {}
+
+  private synchronized ClientProtocolService initializeClientProtocolService(
+      StatisticsFactory statisticsFactory, String statisticsName) {
+    if (clientProtocolService != null) {
+      return clientProtocolService;
+    }
+
+    clientProtocolService = new ClientProtocolServiceLoader().loadService();
+    protocolHandler = clientProtocolService.getMessageHandler();
+    protocolHandler.initializeStatistics(statisticsName, statisticsFactory);
+
+    ensureAuthenticatorsAreInitialized();
+
+    return clientProtocolService;
+  }
+
+  private void ensureAuthenticatorsAreInitialized() {
+    if (authenticators == null) {
+      initializeAuthenticatorsMap();
+    }
+  }
 
   private synchronized void initializeAuthenticatorsMap() {
     if (authenticators != null) {
@@ -53,22 +75,8 @@ public class ServerConnectionFactory {
     }
   }
 
-  private synchronized ClientProtocolMessageHandler initializeMessageHandler(
-      StatisticsFactory statisticsFactory, String statisticsName) {
-    if (protocolHandler != null) {
-      return protocolHandler;
-    }
-
-    protocolHandler = new MessageHandlerFactory().makeMessageHandler();
-    protocolHandler.initializeStatistics(statisticsName, statisticsFactory);
-
-    return protocolHandler;
-  }
-
   private Authenticator findStreamAuthenticator(String implementationID) {
-    if (authenticators == null) {
-      initializeAuthenticatorsMap();
-    }
+    ensureAuthenticatorsAreInitialized();
     Class<? extends Authenticator> streamAuthenticatorClass = authenticators.get(implementationID);
     if (streamAuthenticatorClass == null) {
       throw new ServiceLoadingFailureException(
@@ -84,12 +92,12 @@ public class ServerConnectionFactory {
     }
   }
 
-  private ClientProtocolMessageHandler getOrCreateClientProtocolMessageHandler(
+  private ClientProtocolService getOrCreateClientProtocolService(
       StatisticsFactory statisticsFactory, String serverName) {
-    if (protocolHandler == null) {
-      return initializeMessageHandler(statisticsFactory, serverName);
+    if (clientProtocolService == null) {
+      return initializeClientProtocolService(statisticsFactory, serverName);
     }
-    return protocolHandler;
+    return clientProtocolService;
   }
 
   public ServerConnection makeServerConnection(Socket socket, InternalCache cache,
@@ -100,25 +108,15 @@ public class ServerConnectionFactory {
       if (!Boolean.getBoolean("geode.feature-protobuf-protocol")) {
         throw new IOException("Server received unknown communication mode: " + communicationMode);
       } else {
-        String authenticationMode =
-            System.getProperty("geode.protocol-authentication-mode", "NOOP");
+        // String authenticationMode =
+        // System.getProperty("geode.protocol-authentication-mode", "NOOP");
+        // findStreamAuthenticator(authenticationMode);
+
+        getOrCreateClientProtocolService(cache.getDistributedSystem(), acceptor.getServerName());
 
         return new GenericProtocolServerConnection(socket, cache, helper, stats, hsTimeout,
-            socketBufferSize, communicationModeStr, communicationMode, acceptor,
-            getOrCreateClientProtocolMessageHandler(cache.getDistributedSystem(),
-                acceptor.getServerName()),
-            securityService, findStreamAuthenticator(authenticationMode),
-            new ClientProtocolHandshaker() {
-              @Override
-              public Authenticator handshake(InputStream inputStream, OutputStream outputStream) {
-                return null;
-              }
-
-              @Override
-              public boolean shaken() {
-                return false;
-              }
-            });
+            socketBufferSize, communicationModeStr, communicationMode, acceptor, protocolHandler,
+            securityService, clientProtocolService.getHandshaker(authenticators));
       }
     } else {
       return new LegacyServerConnection(socket, cache, helper, stats, hsTimeout, socketBufferSize,

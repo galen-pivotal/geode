@@ -42,6 +42,8 @@ import org.apache.geode.distributed.ConfigurationProperties;
 import org.apache.geode.internal.AvailablePortHelper;
 import org.apache.geode.internal.protocol.protobuf.AuthenticationAPI;
 import org.apache.geode.internal.protocol.protobuf.ClientProtocol;
+import org.apache.geode.internal.protocol.protobuf.HandshakeAPI;
+import org.apache.geode.internal.protocol.protobuf.ProtobufTestUtilities;
 import org.apache.geode.internal.protocol.protobuf.RegionAPI;
 import org.apache.geode.internal.protocol.protobuf.serializer.ProtobufProtocolSerializer;
 import org.apache.geode.management.internal.security.ResourceConstants;
@@ -62,7 +64,8 @@ public class AuthenticationIntegrationTest {
   private InputStream inputStream;
   private ProtobufProtocolSerializer protobufProtocolSerializer;
 
-  public void setUp(String authenticationMode) throws IOException {
+  // not @Before, the tests set system properties.
+  public void setUp() throws IOException {
     Properties expectedAuthProperties = new Properties();
     expectedAuthProperties.setProperty(ResourceConstants.USER_NAME, TEST_USERNAME);
     expectedAuthProperties.setProperty(ResourceConstants.PASSWORD, TEST_PASSWORD);
@@ -75,7 +78,7 @@ public class AuthenticationIntegrationTest {
     Properties properties = new Properties();
     CacheFactory cacheFactory = new CacheFactory(properties);
     cacheFactory.set(ConfigurationProperties.MCAST_PORT, "0"); // sometimes it isn't due to other
-                                                               // tests.
+    // tests.
     cacheFactory.set(ConfigurationProperties.USE_CLUSTER_CONFIGURATION, "false");
     cacheFactory.set(ConfigurationProperties.ENABLE_CLUSTER_CONFIGURATION, "false");
 
@@ -87,9 +90,7 @@ public class AuthenticationIntegrationTest {
     cacheServer.setPort(cacheServerPort);
     cacheServer.start();
 
-
     System.setProperty("geode.feature-protobuf-protocol", "true");
-    System.setProperty("geode.protocol-authentication-mode", authenticationMode);
     Socket socket = new Socket("localhost", cacheServerPort);
 
     Awaitility.await().atMost(5, TimeUnit.SECONDS).until(socket::isConnected);
@@ -110,7 +111,12 @@ public class AuthenticationIntegrationTest {
 
   @Test
   public void noopAuthenticationSucceeds() throws Exception {
-    setUp("NOOP");
+    System.setProperty("geode.protocol-authentication-mode", "NOOP");
+    setUp();
+
+    ProtobufTestUtilities.verifyHandshake(inputStream, outputStream,
+        HandshakeAPI.AuthenticationMode.NONE);
+
     ClientProtocol.Message getRegionsMessage =
         ClientProtocol.Message.newBuilder().setRequest(ClientProtocol.Request.newBuilder()
             .setGetRegionNamesRequest(RegionAPI.GetRegionNamesRequest.newBuilder())).build();
@@ -123,7 +129,12 @@ public class AuthenticationIntegrationTest {
 
   @Test
   public void simpleAuthenticationSucceeds() throws Exception {
-    setUp("SIMPLE");
+    System.setProperty("geode.protocol-authentication-mode", "SIMPLE");
+    setUp();
+
+    ProtobufTestUtilities.verifyHandshake(inputStream, outputStream,
+        HandshakeAPI.AuthenticationMode.SIMPLE);
+
     AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
         AuthenticationAPI.SimpleAuthenticationRequest.newBuilder().setUsername(TEST_USERNAME)
             .setPassword(TEST_PASSWORD).build();
@@ -143,4 +154,5 @@ public class AuthenticationIntegrationTest {
         regionsResponse.getResponse().getResponseAPICase());
 
   }
+
 }

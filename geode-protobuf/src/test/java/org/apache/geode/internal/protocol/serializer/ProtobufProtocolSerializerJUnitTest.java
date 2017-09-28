@@ -27,6 +27,7 @@ import org.junit.experimental.categories.Category;
 import org.apache.geode.internal.protocol.MessageUtil;
 import org.apache.geode.internal.protocol.exception.InvalidProtocolMessageException;
 import org.apache.geode.internal.protocol.protobuf.ClientProtocol;
+import org.apache.geode.internal.protocol.protobuf.ProtobufTestUtilities;
 import org.apache.geode.internal.protocol.protobuf.serializer.ProtobufProtocolSerializer;
 import org.apache.geode.internal.protocol.protobuf.utilities.ProtobufUtilities;
 import org.apache.geode.test.junit.categories.UnitTest;
@@ -45,7 +46,8 @@ public class ProtobufProtocolSerializerJUnitTest {
       throws IOException, InvalidProtocolMessageException {
     ClientProtocol.Message expectedRequestMessage = MessageUtil.createGetRequestMessage();
 
-    InputStream inputStream =ProtobufUtilities.messageToByteArrayInputStream(expectedRequestMessage);
+    InputStream inputStream =
+        ProtobufTestUtilities.messageToByteArrayInputStream(expectedRequestMessage);
 
     ClientProtocol.Message actualMessage = protocolSerializer.deserialize(inputStream);
     Assert.assertEquals(expectedRequestMessage, actualMessage);
