@@ -15,6 +15,8 @@
 package org.apache.geode.internal.protocol;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.same;
@@ -44,6 +46,7 @@ import org.apache.geode.internal.protocol.protobuf.AuthenticationAPI;
 import org.apache.geode.internal.protocol.protobuf.ClientProtocol;
 import org.apache.geode.internal.protocol.protobuf.HandshakeAPI;
 import org.apache.geode.internal.protocol.protobuf.ProtobufTestUtilities;
+import org.apache.geode.internal.protocol.protobuf.ProtocolErrorCode;
 import org.apache.geode.internal.protocol.protobuf.RegionAPI;
 import org.apache.geode.internal.protocol.protobuf.serializer.ProtobufProtocolSerializer;
 import org.apache.geode.management.internal.security.ResourceConstants;
@@ -155,4 +158,45 @@ public class AuthenticationIntegrationTest {
 
   }
 
+  @Test(expected = IOException.class)
+  public void simpleAuthenticationFailsWithNoopModeSet() throws Exception {
+    System.setProperty("geode.protocol-authentication-mode", "NOOP");
+    setUp();
+
+    ProtobufTestUtilities.buildHandshakeRequest(HandshakeAPI.AuthenticationMode.SIMPLE).writeDelimitedTo(outputStream);
+
+    HandshakeAPI.HandshakeResponse
+        handshakeResponse =
+        HandshakeAPI.HandshakeResponse.parseDelimitedFrom(inputStream);
+
+    assertFalse(handshakeResponse.getOk());
+    assertNotNull(handshakeResponse.getError());
+
+    // socket is closed, writing should throw an IOException.
+    AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
+        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder().setUsername(TEST_USERNAME)
+            .setPassword(TEST_PASSWORD).build();
+    authenticationRequest.writeDelimitedTo(outputStream);
+  }
+
+  @Test(expected = IOException.class)
+  public void noopAuthenticationFailsWithSimpleAuthenticationEnabled() throws Exception {
+    System.setProperty("geode.protocol-authentication-mode", "SIMPLE");
+    setUp();
+
+    ProtobufTestUtilities.buildHandshakeRequest(HandshakeAPI.AuthenticationMode.NONE).writeDelimitedTo(outputStream);
+
+    HandshakeAPI.HandshakeResponse
+        handshakeResponse =
+        HandshakeAPI.HandshakeResponse.parseDelimitedFrom(inputStream);
+
+    assertFalse(handshakeResponse.getOk());
+    assertNotNull(handshakeResponse.getError());
+
+    // this should throw.
+    ClientProtocol.Message getRegionsMessage =
+        ClientProtocol.Message.newBuilder().setRequest(ClientProtocol.Request.newBuilder()
+            .setGetRegionNamesRequest(RegionAPI.GetRegionNamesRequest.newBuilder())).build();
+    protobufProtocolSerializer.serialize(getRegionsMessage, outputStream);
+  }
 }
