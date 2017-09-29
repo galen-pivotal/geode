@@ -27,15 +27,20 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
+import junitparams.JUnitParamsRunner;
+import junitparams.Parameters;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.contrib.java.lang.system.RestoreSystemProperties;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.CacheFactory;
@@ -54,21 +59,22 @@ import org.apache.geode.security.SecurityManager;
 import org.apache.geode.test.junit.categories.IntegrationTest;
 
 @Category(IntegrationTest.class)
+@RunWith(JUnitParamsRunner.class)
 public class AuthenticationIntegrationTest {
 
-  private static final String TEST_USERNAME = "bob";
-  private static final String TEST_PASSWORD = "bobspassword";
-  private Cache cache;
+  protected static final String TEST_USERNAME = "bob";
+  protected static final String TEST_PASSWORD = "bobspassword";
+  protected Cache cache;
 
   @Rule
-  public final RestoreSystemProperties restoreSystemProperties = new RestoreSystemProperties();
+  protected final RestoreSystemProperties restoreSystemProperties = new RestoreSystemProperties();
 
-  private OutputStream outputStream;
-  private InputStream inputStream;
-  private ProtobufProtocolSerializer protobufProtocolSerializer;
+  protected OutputStream outputStream;
+  protected InputStream inputStream;
+  protected ProtobufProtocolSerializer protobufProtocolSerializer;
 
   // not @Before, the tests set system properties.
-  public void setUp() throws IOException {
+  private void setUp() throws IOException {
     Properties expectedAuthProperties = new Properties();
     expectedAuthProperties.setProperty(ResourceConstants.USER_NAME, TEST_USERNAME);
     expectedAuthProperties.setProperty(ResourceConstants.PASSWORD, TEST_PASSWORD);
@@ -158,15 +164,23 @@ public class AuthenticationIntegrationTest {
 
   }
 
+  @Test
+  public void ensureAuthenticationModes() {
+    // This assertion is for the following tests, to make sure they test all authentication modes.
+    HandshakeAPI.AuthenticationMode[] modes =
+        {HandshakeAPI.AuthenticationMode.NONE, HandshakeAPI.AuthenticationMode.SIMPLE};
+    assertTrue(Arrays.equals(modes, HandshakeAPI.AuthenticationMode.class.getEnumConstants()));
+  }
+
   @Test(expected = IOException.class)
   public void simpleAuthenticationFailsWithNoopModeSet() throws Exception {
     System.setProperty("geode.protocol-authentication-mode", "NOOP");
     setUp();
 
-    ProtobufTestUtilities.buildHandshakeRequest(HandshakeAPI.AuthenticationMode.SIMPLE).writeDelimitedTo(outputStream);
+    ProtobufTestUtilities.buildHandshakeRequest(HandshakeAPI.AuthenticationMode.SIMPLE)
+        .writeDelimitedTo(outputStream);
 
-    HandshakeAPI.HandshakeResponse
-        handshakeResponse =
+    HandshakeAPI.HandshakeResponse handshakeResponse =
         HandshakeAPI.HandshakeResponse.parseDelimitedFrom(inputStream);
 
     assertFalse(handshakeResponse.getOk());
@@ -184,10 +198,10 @@ public class AuthenticationIntegrationTest {
     System.setProperty("geode.protocol-authentication-mode", "SIMPLE");
     setUp();
 
-    ProtobufTestUtilities.buildHandshakeRequest(HandshakeAPI.AuthenticationMode.NONE).writeDelimitedTo(outputStream);
+    ProtobufTestUtilities.buildHandshakeRequest(HandshakeAPI.AuthenticationMode.NONE)
+        .writeDelimitedTo(outputStream);
 
-    HandshakeAPI.HandshakeResponse
-        handshakeResponse =
+    HandshakeAPI.HandshakeResponse handshakeResponse =
         HandshakeAPI.HandshakeResponse.parseDelimitedFrom(inputStream);
 
     assertFalse(handshakeResponse.getOk());

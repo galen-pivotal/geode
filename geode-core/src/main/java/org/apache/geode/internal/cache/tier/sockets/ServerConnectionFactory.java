@@ -18,11 +18,9 @@ package org.apache.geode.internal.cache.tier.sockets;
 import static org.apache.geode.internal.cache.tier.CommunicationMode.ProtobufClientServerProtocol;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.Map;
 import java.util.ServiceLoader;
 
@@ -68,28 +66,30 @@ public class ServerConnectionFactory {
     if (authenticators != null) {
       return;
     }
-    authenticators = new HashMap<>();
-    ServiceLoader<Authenticator> loader = ServiceLoader.load(Authenticator.class);
-    for (Authenticator streamAuthenticator : loader) {
-      authenticators.put(streamAuthenticator.implementationID(), streamAuthenticator.getClass());
-    }
-  }
 
-  private Authenticator findStreamAuthenticator(String implementationID) {
-    ensureAuthenticatorsAreInitialized();
-    Class<? extends Authenticator> streamAuthenticatorClass = authenticators.get(implementationID);
-    if (streamAuthenticatorClass == null) {
-      throw new ServiceLoadingFailureException(
-          "Could not find implementation for Authenticator with implementation ID "
-              + implementationID);
-    } else {
-      try {
-        return streamAuthenticatorClass.newInstance();
-      } catch (InstantiationException | IllegalAccessException e) {
-        throw new ServiceLoadingFailureException(
-            "Unable to instantiate authenticator for ID " + implementationID, e);
+    String authenticationMode = System.getProperty("geode.protocol-authentication-mode", "NOOP");
+
+    ServiceLoader<Authenticator> loader = ServiceLoader.load(Authenticator.class);
+
+    Authenticator found = null;
+
+    for (Authenticator streamAuthenticator : loader) {
+      if (authenticationMode.equals(streamAuthenticator.implementationID())) {
+        if (found != null) {
+          throw new ServiceLoadingFailureException(
+              "Multiple Authenticators present for mode " + authenticationMode);
+        }
+        found = streamAuthenticator;
       }
     }
+
+    if (found == null) {
+      throw new ServiceLoadingFailureException(
+          "Could not find implementation for Authenticator with implementation ID "
+              + authenticationMode);
+    }
+
+    authenticators = Collections.singletonMap(authenticationMode, found.getClass());
   }
 
   private ClientProtocolService getOrCreateClientProtocolService(
@@ -108,9 +108,7 @@ public class ServerConnectionFactory {
       if (!Boolean.getBoolean("geode.feature-protobuf-protocol")) {
         throw new IOException("Server received unknown communication mode: " + communicationMode);
       } else {
-        // String authenticationMode =
-        // System.getProperty("geode.protocol-authentication-mode", "NOOP");
-        // findStreamAuthenticator(authenticationMode);
+
 
         getOrCreateClientProtocolService(cache.getDistributedSystem(), acceptor.getServerName());
 
