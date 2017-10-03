@@ -14,6 +14,7 @@
  */
 package org.apache.geode.internal.protocol.protobuf;
 
+import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.management.internal.security.ResourceConstants;
 import org.apache.geode.security.AuthenticationRequiredException;
 import org.apache.geode.security.server.Authenticator;
@@ -25,6 +26,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Map;
 import java.util.Properties;
 
 public class ProtobufSimpleAuthenticator implements Authenticator {
@@ -32,7 +34,7 @@ public class ProtobufSimpleAuthenticator implements Authenticator {
 
   @Override
   public void authenticate(InputStream inputStream, OutputStream outputStream,
-      SecurityManager securityManager) throws IOException {
+      SecurityService securityService) throws IOException {
     AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
         AuthenticationAPI.SimpleAuthenticationRequest.parseDelimitedFrom(inputStream);
     if (authenticationRequest == null) {
@@ -40,8 +42,7 @@ public class ProtobufSimpleAuthenticator implements Authenticator {
     }
 
     Properties properties = new Properties();
-    properties.setProperty(ResourceConstants.USER_NAME, authenticationRequest.getUsername());
-    properties.setProperty(ResourceConstants.PASSWORD, authenticationRequest.getPassword());
+    properties.putAll(authenticationRequest.getCredentialsMap());
 
     authorizer = null; // authenticating a new user clears current authorizer
     try {

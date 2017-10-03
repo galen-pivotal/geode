@@ -50,9 +50,11 @@ public class ProtobufSimpleAuthenticatorJUnitTest {
 
   @Before
   public void setUp() throws IOException {
-    AuthenticationAPI.SimpleAuthenticationRequest basicAuthenticationRequest =
-        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder().setUsername(TEST_USERNAME)
-            .setPassword(TEST_PASSWORD).build();
+        AuthenticationAPI.SimpleAuthenticationRequest basicAuthenticationRequest =
+        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder()
+            .putCredentials(ResourceConstants.USER_NAME, TEST_USERNAME)
+            .putCredentials(ResourceConstants.PASSWORD, TEST_PASSWORD)
+    .build();
 
     expectedAuthProperties = new Properties();
     expectedAuthProperties.setProperty(ResourceConstants.USER_NAME, TEST_USERNAME);
@@ -118,6 +120,12 @@ public class ProtobufSimpleAuthenticatorJUnitTest {
 
     assertTrue(simpleAuthenticationResponse.getAuthenticated());
     assertTrue(protobufSimpleAuthenticator.isAuthenticated());
+  }
+
+  @Test
+  public void nullSecurityManager() throws IOException {
+    protobufSimpleAuthenticator.authenticate(byteArrayInputStream, byteArrayOutputStream,  null);
+
   }
 
   private AuthenticationAPI.SimpleAuthenticationResponse getSimpleAuthenticationResponse(

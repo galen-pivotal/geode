@@ -32,8 +32,6 @@ import org.apache.geode.internal.cache.tier.Acceptor;
 import org.apache.geode.internal.cache.tier.CachedRegionHelper;
 import org.apache.geode.internal.cache.tier.CommunicationMode;
 import org.apache.geode.internal.security.SecurityService;
-import org.apache.geode.security.SecurityManager;
-import org.apache.geode.security.server.Authenticator;
 
 /**
  * Holds the socket and protocol handler for the new client protocol.

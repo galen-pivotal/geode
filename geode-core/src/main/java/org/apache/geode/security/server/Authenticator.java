@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.security.AuthenticationRequiredException;
 import org.apache.geode.security.SecurityManager;
 
@@ -33,11 +34,11 @@ public interface Authenticator {
    *
    * @param inputStream to read auth messages from.
    * @param outputStream to send messages to.
-   * @param securityManager can be used for validating credentials against.
+   * @param securityService used for validating credentials.
    * @throws IOException if EOF or if invalid input is received.
    */
   void authenticate(InputStream inputStream, OutputStream outputStream,
-      SecurityManager securityManager) throws IOException;
+      SecurityService securityService) throws IOException;
 
   /**
    * Until authentication is complete, isAuthenticated() must return false, and the socket will

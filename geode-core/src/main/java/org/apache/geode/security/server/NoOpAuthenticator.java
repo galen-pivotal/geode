@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.security.SecurityManager;
 
 /**
@@ -27,7 +28,7 @@ import org.apache.geode.security.SecurityManager;
 public class NoOpAuthenticator implements Authenticator {
   @Override
   public void authenticate(InputStream inputStream, OutputStream outputStream,
-      SecurityManager securityManager) throws IOException {
+      SecurityService securityService) throws IOException {
     // this method needs to do nothing as it is a pass-through implementation
   }
 

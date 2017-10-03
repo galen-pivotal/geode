@@ -125,8 +125,7 @@ public class AuthenticationIntegrationTest {
   public void simpleAuthenticationSucceeds() throws Exception {
     setUp("SIMPLE");
     AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
-        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder().setUsername(TEST_USERNAME)
-            .setPassword(TEST_PASSWORD).build();
+        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder().putCredentials(ResourceConstants.USER_NAME,TEST_USERNAME).putCredentials(ResourceConstants.PASSWORD,TEST_PASSWORD).build();
     authenticationRequest.writeDelimitedTo(outputStream);
 
     AuthenticationAPI.SimpleAuthenticationResponse authenticationResponse =
@@ -141,6 +140,10 @@ public class AuthenticationIntegrationTest {
     ClientProtocol.Message regionsResponse = protobufProtocolSerializer.deserialize(inputStream);
     assertEquals(ClientProtocol.Response.ResponseAPICase.GETREGIONNAMESRESPONSE,
         regionsResponse.getResponse().getResponseAPICase());
+
+  }
+
+  @Test public void noAuthenticatorSet() {
 
   }
 }
