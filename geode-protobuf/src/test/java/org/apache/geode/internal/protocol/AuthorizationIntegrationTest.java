@@ -116,7 +116,9 @@ public class AuthorizationIntegrationTest {
 
     when(mockSecurityManager.authorize(same(securityPrincipal), any())).thenReturn(false);
     AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
-        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder().putCredentials(ResourceConstants.USER_NAME,TEST_USERNAME).putCredentials(ResourceConstants.PASSWORD,TEST_PASSWORD).build();
+        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder()
+            .putCredentials(ResourceConstants.USER_NAME, TEST_USERNAME)
+            .putCredentials(ResourceConstants.PASSWORD, TEST_PASSWORD).build();
     authenticationRequest.writeDelimitedTo(outputStream);
 
     AuthenticationAPI.SimpleAuthenticationResponse authenticationResponse =

@@ -29,6 +29,8 @@ import java.io.OutputStream;
 import java.util.Map;
 import java.util.Properties;
 
+import org.apache.shiro.subject.Subject;
+
 public class ProtobufSimpleAuthenticator implements Authenticator {
   private ProtobufSimpleAuthorizer authorizer = null;
 
@@ -46,9 +48,9 @@ public class ProtobufSimpleAuthenticator implements Authenticator {
 
     authorizer = null; // authenticating a new user clears current authorizer
     try {
-      Object principal = securityManager.authenticate(properties);
-      if (principal != null) {
-        authorizer = new ProtobufSimpleAuthorizer(principal, securityManager);
+      Subject subject = securityService.login(properties);
+      if (subject != null) {
+        authorizer = new ProtobufSimpleAuthorizer(subject, securityService);
       }
     } catch (AuthenticationFailedException e) {
       authorizer = null;

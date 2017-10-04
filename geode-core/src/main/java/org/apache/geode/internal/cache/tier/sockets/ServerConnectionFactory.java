@@ -102,7 +102,8 @@ public class ServerConnectionFactory {
       if (!Boolean.getBoolean("geode.feature-protobuf-protocol")) {
         throw new IOException("Server received unknown communication mode: " + communicationMode);
       } else {
-        String authenticationMode =
+        boolean authenticationEnabled = shouldUseAuthentication(securityService)
+        String authenticationMode = //securityService.isIntegratedSecurity() ? "SIMPLE" : "NOOP"
             System.getProperty("geode.protocol-authentication-mode", "NOOP");
 
         ClientProtocolService service = getOrCreateClientProtocolService(
@@ -118,6 +119,20 @@ public class ServerConnectionFactory {
     } else {
       return new LegacyServerConnection(socket, cache, helper, stats, hsTimeout, socketBufferSize,
           communicationModeStr, communicationMode, acceptor, securityService);
+    }
+  }
+
+  private boolean shouldUseAuthentication(SecurityService securityService) {
+    if (securityService.isIntegratedSecurity()) {
+      // Simple authenticator...normal shiro
+      return true;
+    }
+    if (securityService.isPeerSecurityRequired() || securityService.isClientSecurityRequired()){
+      // Failing authentication...legacy security
+      return false;
+    } else {
+      // Noop authenticator...no security
+      return false;
     }
   }
 }

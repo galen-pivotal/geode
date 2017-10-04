@@ -14,21 +14,30 @@
  */
 package org.apache.geode.internal.protocol.protobuf;
 
+import org.apache.shiro.subject.Subject;
+
+import org.apache.geode.internal.security.SecurityService;
+import org.apache.geode.security.NotAuthorizedException;
 import org.apache.geode.security.ResourcePermission;
-import org.apache.geode.security.SecurityManager;
 import org.apache.geode.security.server.Authorizer;
 
 public class ProtobufSimpleAuthorizer implements Authorizer {
-  private final Object authenticatedPrincipal;
-  private final SecurityManager securityManager;
+  private final Subject authenticatedSubject;
+  private final SecurityService securityService;
 
-  public ProtobufSimpleAuthorizer(Object authenticatedPrincipal, SecurityManager securityManager) {
-    this.authenticatedPrincipal = authenticatedPrincipal;
-    this.securityManager = securityManager;
+  public ProtobufSimpleAuthorizer(Subject authenticatedSubject, SecurityService securityService) {
+    this.authenticatedSubject = authenticatedSubject;
+    this.securityService = securityService;
   }
 
   @Override
   public boolean authorize(ResourcePermission permissionRequested) {
-    return securityManager.authorize(authenticatedPrincipal, permissionRequested);
+    securityService.bindSubject(authenticatedSubject);
+    try {
+      securityService.authorize(permissionRequested);
+      return true;
+    } catch (NotAuthorizedException ex) {
+      return false;
+    }
   }
 }

@@ -15,6 +15,7 @@
 package org.apache.geode.internal.protocol;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.same;
@@ -30,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.contrib.java.lang.system.RestoreSystemProperties;
@@ -40,6 +42,7 @@ import org.apache.geode.cache.CacheFactory;
 import org.apache.geode.cache.server.CacheServer;
 import org.apache.geode.distributed.ConfigurationProperties;
 import org.apache.geode.internal.AvailablePortHelper;
+import org.apache.geode.internal.cache.InternalCache;
 import org.apache.geode.internal.protocol.protobuf.AuthenticationAPI;
 import org.apache.geode.internal.protocol.protobuf.ClientProtocol;
 import org.apache.geode.internal.protocol.protobuf.RegionAPI;
@@ -62,7 +65,28 @@ public class AuthenticationIntegrationTest {
   private InputStream inputStream;
   private ProtobufProtocolSerializer protobufProtocolSerializer;
 
-  public void setUp(String authenticationMode) throws IOException {
+  @Before
+  public void setUp() {
+    System.setProperty("geode.feature-protobuf-protocol", "true");
+  }
+
+  public void setupServerAndStreams() throws IOException {
+    CacheServer cacheServer = cache.addCacheServer();
+    int cacheServerPort = AvailablePortHelper.getRandomAvailableTCPPort();
+    cacheServer.setPort(cacheServerPort);
+    cacheServer.start();
+
+    Socket socket = new Socket("localhost", cacheServerPort);
+
+    Awaitility.await().atMost(5, TimeUnit.SECONDS).until(socket::isConnected);
+    outputStream = socket.getOutputStream();
+    inputStream = socket.getInputStream();
+    outputStream.write(110);
+
+    protobufProtocolSerializer = new ProtobufProtocolSerializer();
+  }
+
+  private Cache createMockCache() {
     Properties expectedAuthProperties = new Properties();
     expectedAuthProperties.setProperty(ResourceConstants.USER_NAME, TEST_USERNAME);
     expectedAuthProperties.setProperty(ResourceConstants.PASSWORD, TEST_PASSWORD);
@@ -75,29 +99,23 @@ public class AuthenticationIntegrationTest {
     Properties properties = new Properties();
     CacheFactory cacheFactory = new CacheFactory(properties);
     cacheFactory.set(ConfigurationProperties.MCAST_PORT, "0"); // sometimes it isn't due to other
-                                                               // tests.
+    // tests.
     cacheFactory.set(ConfigurationProperties.USE_CLUSTER_CONFIGURATION, "false");
     cacheFactory.set(ConfigurationProperties.ENABLE_CLUSTER_CONFIGURATION, "false");
 
     cacheFactory.setSecurityManager(mockSecurityManager);
-    cache = cacheFactory.create();
+    return cacheFactory.create();
+  }
 
-    CacheServer cacheServer = cache.addCacheServer();
-    int cacheServerPort = AvailablePortHelper.getRandomAvailableTCPPort();
-    cacheServer.setPort(cacheServerPort);
-    cacheServer.start();
+  private Cache createNoSecurityCache() {
+    Properties properties = new Properties();
+    CacheFactory cacheFactory = new CacheFactory(properties);
+    cacheFactory.set(ConfigurationProperties.MCAST_PORT, "0"); // sometimes it isn't due to other
+    // tests.
+    cacheFactory.set(ConfigurationProperties.USE_CLUSTER_CONFIGURATION, "false");
+    cacheFactory.set(ConfigurationProperties.ENABLE_CLUSTER_CONFIGURATION, "false");
 
-
-    System.setProperty("geode.feature-protobuf-protocol", "true");
-    System.setProperty("geode.protocol-authentication-mode", authenticationMode);
-    Socket socket = new Socket("localhost", cacheServerPort);
-
-    Awaitility.await().atMost(5, TimeUnit.SECONDS).until(socket::isConnected);
-    outputStream = socket.getOutputStream();
-    inputStream = socket.getInputStream();
-    outputStream.write(110);
-
-    protobufProtocolSerializer = new ProtobufProtocolSerializer();
+    return cacheFactory.create();
   }
 
   @After
@@ -110,7 +128,9 @@ public class AuthenticationIntegrationTest {
 
   @Test
   public void noopAuthenticationSucceeds() throws Exception {
-    setUp("NOOP");
+    System.setProperty("geode.protocol-authentication-mode", "NOOP");
+    cache = createMockCache();
+    setupServerAndStreams();
     ClientProtocol.Message getRegionsMessage =
         ClientProtocol.Message.newBuilder().setRequest(ClientProtocol.Request.newBuilder()
             .setGetRegionNamesRequest(RegionAPI.GetRegionNamesRequest.newBuilder())).build();
@@ -123,9 +143,18 @@ public class AuthenticationIntegrationTest {
 
   @Test
   public void simpleAuthenticationSucceeds() throws Exception {
-    setUp("SIMPLE");
+    System.setProperty("geode.protocol-authentication-mode", "SIMPLE");
+    cache = createMockCache();
+    setupServerAndStreams();
+
+    assertTrue(((InternalCache)cache).getSecurityService().isIntegratedSecurity());
+    assertTrue(((InternalCache)cache).getSecurityService().isClientSecurityRequired());
+    assertTrue(((InternalCache)cache).getSecurityService().isPeerSecurityRequired());
+
     AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
-        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder().putCredentials(ResourceConstants.USER_NAME,TEST_USERNAME).putCredentials(ResourceConstants.PASSWORD,TEST_PASSWORD).build();
+        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder()
+            .putCredentials(ResourceConstants.USER_NAME, TEST_USERNAME)
+            .putCredentials(ResourceConstants.PASSWORD, TEST_PASSWORD).build();
     authenticationRequest.writeDelimitedTo(outputStream);
 
     AuthenticationAPI.SimpleAuthenticationResponse authenticationResponse =
@@ -143,7 +172,13 @@ public class AuthenticationIntegrationTest {
 
   }
 
-  @Test public void noAuthenticatorSet() {
+  @Test
+  public void noAuthenticatorSet() throws IOException {
+    cache = createNoSecurityCache();
+    setupServerAndStreams();
 
+    assertFalse(((InternalCache)cache).getSecurityService().isIntegratedSecurity());
+    assertFalse(((InternalCache)cache).getSecurityService().isClientSecurityRequired());
+    assertFalse(((InternalCache)cache).getSecurityService().isPeerSecurityRequired());
   }
 }
