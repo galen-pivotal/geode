@@ -19,12 +19,20 @@ import org.apache.geode.cache.Cache;
 import org.apache.geode.distributed.internal.InternalLocator;
 import org.apache.geode.internal.cache.tier.sockets.ClientProtocolProcessor;
 import org.apache.geode.internal.cache.tier.sockets.ClientProtocolService;
+import org.apache.geode.internal.cache.tier.sockets.ClientProtocolStatistics;
+import org.apache.geode.internal.cache.tier.sockets.MessageExecutionContext;
+import org.apache.geode.internal.protocol.protobuf.security.Authorizer;
+import org.apache.geode.internal.protocol.protobuf.security.InvalidConfigAuthenticator;
+import org.apache.geode.internal.protocol.protobuf.security.NoOpAuthorizer;
+import org.apache.geode.internal.protocol.protobuf.security.ProtobufSimpleAuthenticator;
 import org.apache.geode.internal.protocol.protobuf.ProtobufStreamProcessor;
+import org.apache.geode.internal.protocol.protobuf.security.ProtobufSimpleAuthorizer;
 import org.apache.geode.internal.protocol.protobuf.statistics.NoOpStatistics;
 import org.apache.geode.internal.protocol.protobuf.statistics.ProtobufClientStatistics;
 import org.apache.geode.internal.protocol.protobuf.statistics.ProtobufClientStatisticsImpl;
 import org.apache.geode.internal.security.SecurityService;
-import org.apache.geode.security.server.Authenticator;
+import org.apache.geode.internal.protocol.protobuf.security.Authenticator;
+import org.apache.geode.internal.protocol.protobuf.security.NoOpAuthenticator;
 
 public class ProtobufProtocolService implements ClientProtocolService {
   private volatile ProtobufClientStatistics statistics;
@@ -48,8 +56,12 @@ public class ProtobufProtocolService implements ClientProtocolService {
   }
 
   @Override
-  public ClientProtocolProcessor createProcessorForCache(Cache cache, Authenticator authenticator,
-      SecurityService securityService) {
+  public ClientProtocolProcessor createCachePipeline(Cache cache, SecurityService securityService) {
+    assert (statistics != null);
+
+    Authenticator authenticator = getAuthenticator(securityService);
+    Authorizer authorizer = getAuthorizer(securityService);
+
     return new ProtobufCachePipeline(protobufStreamProcessor, getStatistics(), cache, authenticator,
         securityService);
   }
@@ -57,5 +69,34 @@ public class ProtobufProtocolService implements ClientProtocolService {
   @Override
   public ClientProtocolProcessor createProcessorForLocator(InternalLocator locator) {
     return new ProtobufLocatorPipeline(protobufStreamProcessor, getStatistics(), locator);
+  }
+
+  private Authenticator getAuthenticator(SecurityService securityService) {
+    if (securityService.isIntegratedSecurity()) {
+      // Simple authenticator...normal shiro
+      return new ProtobufSimpleAuthenticator();
+    }
+    if (securityService.isPeerSecurityRequired() || securityService.isClientSecurityRequired()) {
+      // Failing authentication...legacy security
+      return new InvalidConfigAuthenticator();
+    } else {
+      // Noop authenticator...no security
+      return new NoOpAuthenticator();
+    }
+  }
+
+  private Authorizer getAuthorizer(SecurityService securityService) {
+    if (securityService.isIntegratedSecurity()) {
+      // Simple authenticator...normal shiro
+      return new ProtobufSimpleAuthorizer(securityService);
+    }
+    if (securityService.isPeerSecurityRequired() || securityService.isClientSecurityRequired()) {
+      // Failing authentication...legacy security
+      // This should never be called.
+      return null;
+    } else {
+      // Noop authenticator...no security
+      return new NoOpAuthorizer();
+    }
   }
 }

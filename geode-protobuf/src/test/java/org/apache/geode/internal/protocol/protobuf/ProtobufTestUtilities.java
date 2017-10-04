@@ -14,33 +14,33 @@
  */
 package org.apache.geode.internal.protocol.protobuf;
 
-import static org.mockito.Mockito.mock;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.EOFException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.IOException;
 
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
+import com.google.protobuf.GeneratedMessageV3;
 
-import org.apache.geode.internal.cache.InternalCache;
+import org.apache.geode.cache.Cache;
 import org.apache.geode.internal.cache.tier.sockets.MessageExecutionContext;
-import org.apache.geode.internal.protocol.protobuf.statistics.NoOpProtobufStatistics;
 import org.apache.geode.internal.protocol.protobuf.security.NoOpAuthorizer;
-import org.apache.geode.test.junit.categories.UnitTest;
+import org.apache.geode.internal.protocol.protobuf.statistics.NoOpProtobufStatistics;
 
-@Category(UnitTest.class)
-public class ProtobufStreamProcessorTest {
-  @Test(expected = EOFException.class)
-  public void receiveMessage() throws Exception {
-    InputStream inputStream = new ByteArrayInputStream(new byte[0]);
-    OutputStream outputStream = new ByteArrayOutputStream(2);
+public class ProtobufTestUtilities {
+  public static ByteArrayInputStream messageToByteArrayInputStream(GeneratedMessageV3 message)
+      throws IOException {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    message.writeDelimitedTo(byteArrayOutputStream);
+    return new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+  }
 
-    ProtobufStreamProcessor protobufStreamProcessor = new ProtobufStreamProcessor();
-    InternalCache mockInternalCache = mock(InternalCache.class);
-    protobufStreamProcessor.receiveMessage(inputStream, outputStream, new MessageExecutionContext(
-        mockInternalCache, new NoOpAuthorizer(), new Object(), new NoOpProtobufStatistics()));
+  public static ClientProtocol.Request createProtobufRequestWithGetRegionNamesRequest(
+      RegionAPI.GetRegionNamesRequest getRegionNamesRequest) {
+    return ClientProtocol.Request.newBuilder().setGetRegionNamesRequest(getRegionNamesRequest)
+        .build();
+  }
+
+  public static MessageExecutionContext getNoAuthExecutionContext(Cache cache) {
+    return new MessageExecutionContext(cache,
+        new NoOpAuthorizer(), new Object(), new NoOpProtobufStatistics());
   }
 }

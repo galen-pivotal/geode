@@ -12,10 +12,18 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.geode.security.server;
 
-import org.apache.geode.security.ResourcePermission;
+package org.apache.geode.internal.cache.tier.sockets;
 
-public interface Authorizer {
-  boolean authorize(ResourcePermission permissionRequested);
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import org.apache.geode.cache.IncompatibleVersionException;
+
+public interface ClientProtocolPipeline {
+  void processMessage(InputStream inputStream, OutputStream outputStream)
+      throws IOException, IncompatibleVersionException;
+
+  ClientProtocolStatistics getStatistics();
 }

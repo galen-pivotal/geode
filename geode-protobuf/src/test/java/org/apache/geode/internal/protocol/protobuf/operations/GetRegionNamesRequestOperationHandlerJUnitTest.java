@@ -14,6 +14,7 @@
  */
 package org.apache.geode.internal.protocol.protobuf.operations;
 
+import static org.apache.geode.internal.protocol.protobuf.ProtobufTestUtilities.getNoAuthExecutionContext;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -37,7 +38,7 @@ import org.apache.geode.internal.protocol.protobuf.statistics.NoOpProtobufStatis
 import org.apache.geode.internal.protocol.protobuf.utilities.ProtobufRequestUtilities;
 import org.apache.geode.internal.serialization.exception.UnsupportedEncodingTypeException;
 import org.apache.geode.internal.serialization.registry.exception.CodecNotRegisteredForTypeException;
-import org.apache.geode.security.server.NoOpAuthorizer;
+import org.apache.geode.internal.protocol.protobuf.security.NoOpAuthorizer;
 import org.apache.geode.test.junit.categories.UnitTest;
 
 @Category(UnitTest.class)
@@ -67,7 +68,7 @@ public class GetRegionNamesRequestOperationHandlerJUnitTest extends OperationHan
       CodecNotRegisteredForTypeException, InvalidExecutionContextException {
     Result<RegionAPI.GetRegionNamesResponse> result = operationHandler.process(
         serializationServiceStub, ProtobufRequestUtilities.createGetRegionNamesRequest(),
-        new MessageExecutionContext(cacheStub, new NoOpAuthorizer(), new NoOpProtobufStatistics()));
+    getNoAuthExecutionContext(cacheStub));
     Assert.assertTrue(result instanceof Success);
 
     RegionAPI.GetRegionNamesResponse getRegionsResponse = result.getMessage();
@@ -91,8 +92,7 @@ public class GetRegionNamesRequestOperationHandlerJUnitTest extends OperationHan
         .thenReturn(Collections.unmodifiableSet(new HashSet<Region<String, String>>()));
     Result<RegionAPI.GetRegionNamesResponse> result =
         operationHandler.process(serializationServiceStub,
-            ProtobufRequestUtilities.createGetRegionNamesRequest(), new MessageExecutionContext(
-                emptyCache, new NoOpAuthorizer(), new NoOpProtobufStatistics()));
+            ProtobufRequestUtilities.createGetRegionNamesRequest(), getNoAuthExecutionContext(emptyCache));
     Assert.assertTrue(result instanceof Success);
 
     RegionAPI.GetRegionNamesResponse getRegionsResponse = result.getMessage();

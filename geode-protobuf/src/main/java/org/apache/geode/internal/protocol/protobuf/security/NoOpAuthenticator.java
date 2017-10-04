@@ -12,23 +12,23 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.geode.internal.protocol.protobuf;
+package org.apache.geode.internal.protocol.protobuf.security;
 
-import org.apache.geode.security.ResourcePermission;
-import org.apache.geode.security.SecurityManager;
-import org.apache.geode.security.server.Authorizer;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
-public class ProtobufSimpleAuthorizer implements Authorizer {
-  private final Object authenticatedPrincipal;
-  private final SecurityManager securityManager;
+import org.apache.geode.internal.security.SecurityService;
 
-  public ProtobufSimpleAuthorizer(Object authenticatedPrincipal, SecurityManager securityManager) {
-    this.authenticatedPrincipal = authenticatedPrincipal;
-    this.securityManager = securityManager;
-  }
-
+/**
+ * An implementation of {@link Authenticator} that doesn't use its parameters and always returns
+ * true.
+ */
+public class NoOpAuthenticator implements Authenticator {
   @Override
-  public boolean authorize(ResourcePermission permissionRequested) {
-    return securityManager.authorize(authenticatedPrincipal, permissionRequested);
+  public Object authenticate(InputStream inputStream, OutputStream outputStream,
+      SecurityService securityService) throws IOException {
+    // this method needs to do nothing as it is a pass-through implementation
+    return new Object();
   }
 }

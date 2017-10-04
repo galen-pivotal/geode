@@ -14,22 +14,24 @@
  */
 package org.apache.geode.internal.protocol;
 
+import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.contrib.java.lang.system.RestoreSystemProperties;
@@ -40,14 +42,25 @@ import org.apache.geode.cache.CacheFactory;
 import org.apache.geode.cache.server.CacheServer;
 import org.apache.geode.distributed.ConfigurationProperties;
 import org.apache.geode.internal.AvailablePortHelper;
+import org.apache.geode.internal.cache.InternalCache;
 import org.apache.geode.internal.protocol.protobuf.AuthenticationAPI;
 import org.apache.geode.internal.protocol.protobuf.ClientProtocol;
 import org.apache.geode.internal.protocol.protobuf.RegionAPI;
 import org.apache.geode.internal.protocol.protobuf.serializer.ProtobufProtocolSerializer;
 import org.apache.geode.management.internal.security.ResourceConstants;
+import org.apache.geode.security.AuthenticationFailedException;
+import org.apache.geode.security.ResourcePermission;
 import org.apache.geode.security.SecurityManager;
 import org.apache.geode.test.junit.categories.IntegrationTest;
 
+/**
+ * Security seems to have a few possible setups:
+ * * Manual SecurityManager set: integrated security
+ * * Security enabled without SecurityManager set: integrated security
+ * * Legacy security:
+ *   - with peer or client auth enabled: we call this incompatible with our auth.
+ *   - with neither enabled: this is what we call "security off". Don't auth at all.
+ */
 @Category(IntegrationTest.class)
 public class AuthenticationIntegrationTest {
 
@@ -61,36 +74,21 @@ public class AuthenticationIntegrationTest {
   private OutputStream outputStream;
   private InputStream inputStream;
   private ProtobufProtocolSerializer protobufProtocolSerializer;
+  private Properties expectedAuthProperties;
+  private Socket socket;
 
-  public void setUp(String authenticationMode) throws IOException {
-    Properties expectedAuthProperties = new Properties();
-    expectedAuthProperties.setProperty(ResourceConstants.USER_NAME, TEST_USERNAME);
-    expectedAuthProperties.setProperty(ResourceConstants.PASSWORD, TEST_PASSWORD);
+  @Before
+  public void setUp() {
+    System.setProperty("geode.feature-protobuf-protocol", "true");
+  }
 
-    Object securityPrincipal = new Object();
-    SecurityManager mockSecurityManager = mock(SecurityManager.class);
-    when(mockSecurityManager.authenticate(expectedAuthProperties)).thenReturn(securityPrincipal);
-    when(mockSecurityManager.authorize(same(securityPrincipal), any())).thenReturn(true);
-
-    Properties properties = new Properties();
-    CacheFactory cacheFactory = new CacheFactory(properties);
-    cacheFactory.set(ConfigurationProperties.MCAST_PORT, "0"); // sometimes it isn't due to other
-                                                               // tests.
-    cacheFactory.set(ConfigurationProperties.USE_CLUSTER_CONFIGURATION, "false");
-    cacheFactory.set(ConfigurationProperties.ENABLE_CLUSTER_CONFIGURATION, "false");
-
-    cacheFactory.setSecurityManager(mockSecurityManager);
-    cache = cacheFactory.create();
-
+  public void setupCacheServerAndSocket() throws IOException {
     CacheServer cacheServer = cache.addCacheServer();
     int cacheServerPort = AvailablePortHelper.getRandomAvailableTCPPort();
     cacheServer.setPort(cacheServerPort);
     cacheServer.start();
 
-
-    System.setProperty("geode.feature-protobuf-protocol", "true");
-    System.setProperty("geode.protocol-authentication-mode", authenticationMode);
-    Socket socket = new Socket("localhost", cacheServerPort);
+    socket = new Socket("localhost", cacheServerPort);
 
     Awaitility.await().atMost(5, TimeUnit.SECONDS).until(socket::isConnected);
     outputStream = socket.getOutputStream();
@@ -100,17 +98,79 @@ public class AuthenticationIntegrationTest {
     protobufProtocolSerializer = new ProtobufProtocolSerializer();
   }
 
+  private static class SimpleSecurityManager implements SecurityManager {
+    private final Object authorizedPrincipal;
+    private final Properties authorizedCredentials;
+
+    SimpleSecurityManager(Object validPrincipal, Properties validCredentials) {
+      this.authorizedPrincipal = validPrincipal;
+      authorizedCredentials = validCredentials;
+    }
+
+    @Override
+    public Object authenticate(Properties credentials) throws AuthenticationFailedException {
+      if (authorizedCredentials.equals(credentials)) {
+        return authorizedPrincipal;
+      } else {
+        throw new AuthenticationFailedException(
+            "Test properties: " + credentials + " don't match authorized " + authorizedCredentials);
+      }
+    }
+
+    @Override
+    public boolean authorize(Object principal, ResourcePermission permission) {
+      return principal == authorizedPrincipal;
+    }
+  }
+
+  private Cache createCacheWithSecurityManagerTakingExpectedCreds() {
+    expectedAuthProperties = new Properties();
+    expectedAuthProperties.setProperty(ResourceConstants.USER_NAME, TEST_USERNAME);
+    expectedAuthProperties.setProperty(ResourceConstants.PASSWORD, TEST_PASSWORD);
+
+    SimpleSecurityManager securityManager =
+        new SimpleSecurityManager("this is a secret string or something.", expectedAuthProperties);
+
+    Properties properties = new Properties();
+    CacheFactory cacheFactory = new CacheFactory(properties);
+    cacheFactory.set(ConfigurationProperties.MCAST_PORT, "0"); // sometimes it isn't due to other
+    // tests.
+    cacheFactory.set(ConfigurationProperties.USE_CLUSTER_CONFIGURATION, "false");
+    cacheFactory.set(ConfigurationProperties.ENABLE_CLUSTER_CONFIGURATION, "false");
+
+    cacheFactory.setSecurityManager(securityManager);
+    return cacheFactory.create();
+  }
+
+  private Cache createNoSecurityCache() {
+    Properties properties = new Properties();
+    CacheFactory cacheFactory = new CacheFactory(properties);
+    cacheFactory.set(ConfigurationProperties.MCAST_PORT, "0"); // sometimes it isn't due to other
+    // tests.
+    cacheFactory.set(ConfigurationProperties.USE_CLUSTER_CONFIGURATION, "false");
+    cacheFactory.set(ConfigurationProperties.ENABLE_CLUSTER_CONFIGURATION, "false");
+
+    return cacheFactory.create();
+  }
+
   @After
-  public void tearDown() {
+  public void tearDown() throws IOException {
     if (cache != null) {
       cache.close();
       cache = null;
     }
+    if (socket != null) {
+      socket.close();
+    }
+    socket = null;
+    inputStream = null;
+    outputStream = null;
   }
 
   @Test
   public void noopAuthenticationSucceeds() throws Exception {
-    setUp("NOOP");
+    cache = createNoSecurityCache();
+    setupCacheServerAndSocket();
     ClientProtocol.Message getRegionsMessage =
         ClientProtocol.Message.newBuilder().setRequest(ClientProtocol.Request.newBuilder()
             .setGetRegionNamesRequest(RegionAPI.GetRegionNamesRequest.newBuilder())).build();
@@ -123,10 +183,17 @@ public class AuthenticationIntegrationTest {
 
   @Test
   public void simpleAuthenticationSucceeds() throws Exception {
-    setUp("SIMPLE");
+    cache = createCacheWithSecurityManagerTakingExpectedCreds();
+    setupCacheServerAndSocket();
+
+    assertTrue(((InternalCache) cache).getSecurityService().isIntegratedSecurity());
+    assertTrue(((InternalCache) cache).getSecurityService().isClientSecurityRequired());
+    assertTrue(((InternalCache) cache).getSecurityService().isPeerSecurityRequired());
+
     AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
-        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder().setUsername(TEST_USERNAME)
-            .setPassword(TEST_PASSWORD).build();
+        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder()
+            .putCredentials(ResourceConstants.USER_NAME, TEST_USERNAME)
+            .putCredentials(ResourceConstants.PASSWORD, TEST_PASSWORD).build();
     authenticationRequest.writeDelimitedTo(outputStream);
 
     AuthenticationAPI.SimpleAuthenticationResponse authenticationResponse =
@@ -143,4 +210,95 @@ public class AuthenticationIntegrationTest {
         regionsResponse.getResponse().getResponseAPICase());
 
   }
+
+  @Test
+  public void simpleAuthenticationWithEmptyCreds() throws Exception {
+    cache = createCacheWithSecurityManagerTakingExpectedCreds();
+    setupCacheServerAndSocket();
+
+    AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
+        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder().build();
+
+    authenticationRequest.writeDelimitedTo(outputStream);
+
+    AuthenticationAPI.SimpleAuthenticationResponse authenticationResponse =
+        AuthenticationAPI.SimpleAuthenticationResponse.parseDelimitedFrom(inputStream);
+    assertFalse(authenticationResponse.getAuthenticated());
+  }
+
+  @Test
+  public void simpleAuthenticationWithInvalidCreds() throws Exception {
+    cache = createCacheWithSecurityManagerTakingExpectedCreds();
+    setupCacheServerAndSocket();
+
+    AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
+        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder()
+            .putCredentials(ResourceConstants.USER_NAME, TEST_USERNAME)
+            .putCredentials(ResourceConstants.PASSWORD, "wrong password").build();
+
+    authenticationRequest.writeDelimitedTo(outputStream);
+
+    AuthenticationAPI.SimpleAuthenticationResponse authenticationResponse =
+        AuthenticationAPI.SimpleAuthenticationResponse.parseDelimitedFrom(inputStream);
+    assertFalse(authenticationResponse.getAuthenticated());
+  }
+
+  @Test
+  public void noAuthenticatorSet() throws IOException {
+    cache = createNoSecurityCache();
+    setupCacheServerAndSocket();
+
+    // expect the cache to be in what we recognize as a no-security state.
+    assertFalse(((InternalCache) cache).getSecurityService().isIntegratedSecurity());
+    assertFalse(((InternalCache) cache).getSecurityService().isClientSecurityRequired());
+    assertFalse(((InternalCache) cache).getSecurityService().isPeerSecurityRequired());
+
+
+  }
+
+  @Test
+  public void someAuthenticatorSet() throws IOException {
+    createLegacyAuthCache("security-client-authenticator");
+    setupCacheServerAndSocket();
+
+    AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
+        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder().build();
+
+    authenticationRequest.writeDelimitedTo(outputStream);
+
+    AuthenticationAPI.SimpleAuthenticationResponse authenticationResponse =
+        AuthenticationAPI.SimpleAuthenticationResponse.parseDelimitedFrom(inputStream);
+    assertFalse(authenticationResponse.getAuthenticated());
+  }
+
+  @Test
+  public void peerAuthenticatorSet() throws IOException {
+    createLegacyAuthCache("security-peer-authenticator");
+    setupCacheServerAndSocket();
+
+    AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
+        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder().build();
+
+    authenticationRequest.writeDelimitedTo(outputStream);
+
+    AuthenticationAPI.SimpleAuthenticationResponse authenticationResponse =
+        AuthenticationAPI.SimpleAuthenticationResponse.parseDelimitedFrom(inputStream);
+    assertFalse(authenticationResponse.getAuthenticated());
+  }
+
+  private void createLegacyAuthCache(String authenticationProperty) {
+    String authenticatorLoadFunction = "org.apache.geode.security.templates.DummyAuthenticator.create";
+
+    Properties properties = new Properties();
+    properties.setProperty(authenticationProperty, authenticatorLoadFunction);
+    CacheFactory cacheFactory = new CacheFactory(properties);
+    cacheFactory.set(ConfigurationProperties.MCAST_PORT, "0"); // sometimes it isn't due to other
+    // tests.
+    cacheFactory.set(ConfigurationProperties.USE_CLUSTER_CONFIGURATION, "false");
+    cacheFactory.set(ConfigurationProperties.ENABLE_CLUSTER_CONFIGURATION, "false");
+
+    cache = cacheFactory.create();
+  }
+
+
 }
