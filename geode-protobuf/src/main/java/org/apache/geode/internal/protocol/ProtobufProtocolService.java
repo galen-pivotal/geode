@@ -25,12 +25,15 @@ import org.apache.geode.internal.cache.tier.sockets.ClientProtocolPipeline;
 import org.apache.geode.internal.cache.tier.sockets.ClientProtocolService;
 import org.apache.geode.internal.cache.tier.sockets.ClientProtocolStatistics;
 import org.apache.geode.internal.cache.tier.sockets.MessageExecutionContext;
+import org.apache.geode.internal.protocol.protobuf.security.InvalidConfigAuthenticator;
+import org.apache.geode.internal.protocol.protobuf.security.ProtobufSimpleAuthenticator;
 import org.apache.geode.internal.protocol.protobuf.ProtobufStreamProcessor;
 import org.apache.geode.internal.protocol.protobuf.statistics.NoOpStatistics;
 import org.apache.geode.internal.protocol.protobuf.statistics.ProtobufClientStatistics;
 import org.apache.geode.internal.protocol.protobuf.statistics.ProtobufClientStatisticsImpl;
 import org.apache.geode.internal.security.SecurityService;
-import org.apache.geode.security.server.Authenticator;
+import org.apache.geode.internal.protocol.protobuf.security.Authenticator;
+import org.apache.geode.internal.protocol.protobuf.security.NoOpAuthenticator;
 
 public class ProtobufProtocolService implements ClientProtocolService {
   private ProtobufClientStatistics statistics;
@@ -47,9 +50,11 @@ public class ProtobufProtocolService implements ClientProtocolService {
   }
 
   @Override
-  public ClientProtocolPipeline createCachePipeline(Cache cache, Authenticator authenticator,
-      SecurityService securityService) {
+  public ClientProtocolPipeline createCachePipeline(Cache cache, SecurityService securityService) {
     assert (statistics != null);
+
+    Authenticator authenticator = getAuthenticator(securityService);
+
     return new ProtobufPipeline(protobufStreamProcessor, statistics, cache, authenticator,
         securityService);
   }
@@ -68,4 +73,17 @@ public class ProtobufProtocolService implements ClientProtocolService {
     statistics.clientDisconnected();
   }
 
+  private Authenticator getAuthenticator(SecurityService securityService) {
+    if (securityService.isIntegratedSecurity()) {
+      // Simple authenticator...normal shiro
+      return new ProtobufSimpleAuthenticator();
+    }
+    if (securityService.isPeerSecurityRequired() || securityService.isClientSecurityRequired()) {
+      // Failing authentication...legacy security
+      return new InvalidConfigAuthenticator();
+    } else {
+      // Noop authenticator...no security
+      return new NoOpAuthenticator();
+    }
+  }
 }

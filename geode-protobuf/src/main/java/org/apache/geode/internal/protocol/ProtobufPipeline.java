@@ -28,7 +28,7 @@ import org.apache.geode.internal.cache.tier.sockets.MessageExecutionContext;
 import org.apache.geode.internal.protocol.protobuf.ProtobufStreamProcessor;
 import org.apache.geode.internal.protocol.protobuf.statistics.ProtobufClientStatistics;
 import org.apache.geode.internal.security.SecurityService;
-import org.apache.geode.security.server.Authenticator;
+import org.apache.geode.internal.protocol.protobuf.security.Authenticator;
 
 @Experimental
 public final class ProtobufPipeline implements ClientProtocolPipeline {
@@ -52,7 +52,7 @@ public final class ProtobufPipeline implements ClientProtocolPipeline {
   public void processMessage(InputStream inputStream, OutputStream outputStream)
       throws IOException, IncompatibleVersionException {
     if (!authenticator.isAuthenticated()) {
-      authenticator.authenticate(inputStream, outputStream, securityService.getSecurityManager());
+      authenticator.authenticate(inputStream, outputStream, securityService);
     } else {
       streamProcessor.receiveMessage(inputStream, outputStream,
           new MessageExecutionContext(cache, authenticator.getAuthorizer(), statistics));

@@ -12,7 +12,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.geode.security.server;
+package org.apache.geode.internal.protocol.protobuf.security;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,7 +20,6 @@ import java.io.OutputStream;
 
 import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.security.AuthenticationRequiredException;
-import org.apache.geode.security.SecurityManager;
 
 /**
  * Implementers of this interface do some message passing over a socket to authenticate a client,
@@ -52,9 +51,4 @@ public interface Authenticator {
    * according to the provided securityManager.
    */
   Authorizer getAuthorizer() throws AuthenticationRequiredException;
-
-  /**
-   * @return a unique identifier for this particular implementation (NOOP, PASSTHROUGH, etc.)
-   */
-  String implementationID();
 }

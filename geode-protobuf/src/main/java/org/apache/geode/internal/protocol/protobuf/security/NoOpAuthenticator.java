@@ -12,14 +12,13 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.geode.security.server;
+package org.apache.geode.internal.protocol.protobuf.security;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
 import org.apache.geode.internal.security.SecurityService;
-import org.apache.geode.security.SecurityManager;
 
 /**
  * An implementation of {@link Authenticator} that doesn't use its parameters and always returns
@@ -40,10 +39,5 @@ public class NoOpAuthenticator implements Authenticator {
   @Override
   public Authorizer getAuthorizer() {
     return new NoOpAuthorizer();
-  }
-
-  @Override
-  public String implementationID() {
-    return "NOOP";
   }
 }

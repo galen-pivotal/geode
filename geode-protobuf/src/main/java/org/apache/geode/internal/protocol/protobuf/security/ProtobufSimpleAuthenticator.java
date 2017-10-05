@@ -12,21 +12,17 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.geode.internal.protocol.protobuf;
+package org.apache.geode.internal.protocol.protobuf.security;
 
+import org.apache.geode.internal.protocol.protobuf.AuthenticationAPI;
 import org.apache.geode.internal.security.SecurityService;
-import org.apache.geode.management.internal.security.ResourceConstants;
 import org.apache.geode.security.AuthenticationRequiredException;
-import org.apache.geode.security.server.Authenticator;
 import org.apache.geode.security.AuthenticationFailedException;
-import org.apache.geode.security.SecurityManager;
-import org.apache.geode.security.server.Authorizer;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Map;
 import java.util.Properties;
 
 import org.apache.shiro.subject.Subject;
@@ -72,10 +68,5 @@ public class ProtobufSimpleAuthenticator implements Authenticator {
       throw new AuthenticationRequiredException("Not yet authenticated");
     }
     return authorizer;
-  }
-
-  @Override
-  public String implementationID() {
-    return "SIMPLE";
   }
 }

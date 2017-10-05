@@ -14,18 +14,18 @@
  */
 package org.apache.geode.internal.protocol;
 
+import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
@@ -48,6 +48,8 @@ import org.apache.geode.internal.protocol.protobuf.ClientProtocol;
 import org.apache.geode.internal.protocol.protobuf.RegionAPI;
 import org.apache.geode.internal.protocol.protobuf.serializer.ProtobufProtocolSerializer;
 import org.apache.geode.management.internal.security.ResourceConstants;
+import org.apache.geode.security.AuthenticationFailedException;
+import org.apache.geode.security.ResourcePermission;
 import org.apache.geode.security.SecurityManager;
 import org.apache.geode.test.junit.categories.IntegrationTest;
 
@@ -64,6 +66,8 @@ public class AuthenticationIntegrationTest {
   private OutputStream outputStream;
   private InputStream inputStream;
   private ProtobufProtocolSerializer protobufProtocolSerializer;
+  private Properties expectedAuthProperties;
+  private Socket socket;
 
   @Before
   public void setUp() {
@@ -76,7 +80,7 @@ public class AuthenticationIntegrationTest {
     cacheServer.setPort(cacheServerPort);
     cacheServer.start();
 
-    Socket socket = new Socket("localhost", cacheServerPort);
+    socket = new Socket("localhost", cacheServerPort);
 
     Awaitility.await().atMost(5, TimeUnit.SECONDS).until(socket::isConnected);
     outputStream = socket.getOutputStream();
@@ -86,15 +90,38 @@ public class AuthenticationIntegrationTest {
     protobufProtocolSerializer = new ProtobufProtocolSerializer();
   }
 
-  private Cache createMockCache() {
-    Properties expectedAuthProperties = new Properties();
+  private static class SimpleSecurityManager implements SecurityManager{
+    private final Object authorizedPrincipal;
+    private final Properties authorizedCredentials;
+
+    SimpleSecurityManager(Object validPrincipal, Properties validCredentials) {
+      this.authorizedPrincipal = validPrincipal;
+      authorizedCredentials = validCredentials;
+    }
+
+    @Override
+    public Object authenticate(Properties credentials) throws AuthenticationFailedException {
+      if (authorizedCredentials.equals(credentials)) {
+        return authorizedPrincipal;
+      } else {
+        throw new AuthenticationFailedException("Test properties: " + credentials + " don't match authorized " + authorizedCredentials);
+      }
+    }
+
+    @Override
+    public boolean authorize(Object principal, ResourcePermission permission) {
+      return principal == authorizedPrincipal;
+    }
+  }
+
+  private Cache createCacheWithSecurityManagerTakingExpectedCreds() {
+    expectedAuthProperties = new Properties();
     expectedAuthProperties.setProperty(ResourceConstants.USER_NAME, TEST_USERNAME);
     expectedAuthProperties.setProperty(ResourceConstants.PASSWORD, TEST_PASSWORD);
 
-    Object securityPrincipal = new Object();
-    SecurityManager mockSecurityManager = mock(SecurityManager.class);
-    when(mockSecurityManager.authenticate(expectedAuthProperties)).thenReturn(securityPrincipal);
-    when(mockSecurityManager.authorize(same(securityPrincipal), any())).thenReturn(true);
+    SimpleSecurityManager
+        securityManager =
+        new SimpleSecurityManager("this is a secret string or something.", expectedAuthProperties);
 
     Properties properties = new Properties();
     CacheFactory cacheFactory = new CacheFactory(properties);
@@ -103,7 +130,7 @@ public class AuthenticationIntegrationTest {
     cacheFactory.set(ConfigurationProperties.USE_CLUSTER_CONFIGURATION, "false");
     cacheFactory.set(ConfigurationProperties.ENABLE_CLUSTER_CONFIGURATION, "false");
 
-    cacheFactory.setSecurityManager(mockSecurityManager);
+    cacheFactory.setSecurityManager(securityManager);
     return cacheFactory.create();
   }
 
@@ -128,8 +155,7 @@ public class AuthenticationIntegrationTest {
 
   @Test
   public void noopAuthenticationSucceeds() throws Exception {
-    System.setProperty("geode.protocol-authentication-mode", "NOOP");
-    cache = createMockCache();
+    cache = createNoSecurityCache();
     setupServerAndStreams();
     ClientProtocol.Message getRegionsMessage =
         ClientProtocol.Message.newBuilder().setRequest(ClientProtocol.Request.newBuilder()
@@ -143,13 +169,12 @@ public class AuthenticationIntegrationTest {
 
   @Test
   public void simpleAuthenticationSucceeds() throws Exception {
-    System.setProperty("geode.protocol-authentication-mode", "SIMPLE");
-    cache = createMockCache();
+    cache = createCacheWithSecurityManagerTakingExpectedCreds();
     setupServerAndStreams();
 
-    assertTrue(((InternalCache)cache).getSecurityService().isIntegratedSecurity());
-    assertTrue(((InternalCache)cache).getSecurityService().isClientSecurityRequired());
-    assertTrue(((InternalCache)cache).getSecurityService().isPeerSecurityRequired());
+    assertTrue(((InternalCache) cache).getSecurityService().isIntegratedSecurity());
+    assertTrue(((InternalCache) cache).getSecurityService().isClientSecurityRequired());
+    assertTrue(((InternalCache) cache).getSecurityService().isPeerSecurityRequired());
 
     AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
         AuthenticationAPI.SimpleAuthenticationRequest.newBuilder()
@@ -173,12 +198,53 @@ public class AuthenticationIntegrationTest {
   }
 
   @Test
+  public void simpleAuthenticationWithEmptyCreds() throws Exception {
+    cache = createCacheWithSecurityManagerTakingExpectedCreds();
+    setupServerAndStreams();
+
+    AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
+        AuthenticationAPI.SimpleAuthenticationRequest.newBuilder().build();
+
+    authenticationRequest.writeDelimitedTo(outputStream);
+
+    AuthenticationAPI.SimpleAuthenticationResponse authenticationResponse =
+        AuthenticationAPI.SimpleAuthenticationResponse.parseDelimitedFrom(inputStream);
+    assertFalse(authenticationResponse.getAuthenticated());
+
+    try {
+      authenticationRequest.writeDelimitedTo(outputStream);
+      fail("Should have thrown socket closed exception");
+    } catch (SocketException expected) {
+      return;
+    }
+  }
+
+  @Test
+  public void simpleAuthenticationWithInvalidCreds() throws Exception {
+    cache = createCacheWithSecurityManagerTakingExpectedCreds();
+    setupServerAndStreams();
+
+    AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
+        AuthenticationAPI.SimpleAuthenticationRequest.
+            newBuilder().putCredentials(ResourceConstants.USER_NAME, TEST_USERNAME)
+        .putCredentials(ResourceConstants.PASSWORD, "wrong password").build();
+
+    authenticationRequest.writeDelimitedTo(outputStream);
+
+    AuthenticationAPI.SimpleAuthenticationResponse authenticationResponse =
+        AuthenticationAPI.SimpleAuthenticationResponse.parseDelimitedFrom(inputStream);
+    assertFalse(authenticationResponse.getAuthenticated());
+    Awaitility.await().atMost(10, TimeUnit.SECONDS).until(socket::isInputShutdown);
+    assertEquals("Socket should be closed",-1, inputStream.read());
+  }
+
+  @Test
   public void noAuthenticatorSet() throws IOException {
     cache = createNoSecurityCache();
     setupServerAndStreams();
 
-    assertFalse(((InternalCache)cache).getSecurityService().isIntegratedSecurity());
-    assertFalse(((InternalCache)cache).getSecurityService().isClientSecurityRequired());
-    assertFalse(((InternalCache)cache).getSecurityService().isPeerSecurityRequired());
+    assertFalse(((InternalCache) cache).getSecurityService().isIntegratedSecurity());
+    assertFalse(((InternalCache) cache).getSecurityService().isClientSecurityRequired());
+    assertFalse(((InternalCache) cache).getSecurityService().isPeerSecurityRequired());
   }
 }

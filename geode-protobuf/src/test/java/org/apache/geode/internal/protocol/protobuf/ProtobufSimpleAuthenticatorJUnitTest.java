@@ -16,10 +16,10 @@
 package org.apache.geode.internal.protocol.protobuf;
 
 import org.apache.geode.examples.security.ExampleSecurityManager;
+import org.apache.geode.internal.protocol.protobuf.security.ProtobufSimpleAuthenticator;
 import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.management.internal.security.ResourceConstants;
 import org.apache.geode.security.AuthenticationFailedException;
-import org.apache.geode.security.SecurityManager;
 import org.apache.geode.test.junit.categories.UnitTest;
 
 import org.apache.shiro.subject.Subject;
@@ -37,7 +37,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -137,7 +136,8 @@ public class ProtobufSimpleAuthenticatorJUnitTest {
     when(mockSecurityService.isPeerSecurityRequired()).thenReturn(false);
 
     assertFalse(protobufSimpleAuthenticator.isAuthenticated());
-    protobufSimpleAuthenticator.authenticate(byteArrayInputStream, byteArrayOutputStream, mockSecurityService);
+    protobufSimpleAuthenticator.authenticate(byteArrayInputStream, byteArrayOutputStream,
+        mockSecurityService);
 
     AuthenticationAPI.SimpleAuthenticationResponse simpleAuthenticationResponse =
         getSimpleAuthenticationResponse(byteArrayOutputStream);

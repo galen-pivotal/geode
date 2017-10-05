@@ -12,14 +12,14 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.geode.internal.protocol.protobuf;
+package org.apache.geode.internal.protocol.protobuf.security;
 
 import org.apache.shiro.subject.Subject;
 
 import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.security.NotAuthorizedException;
 import org.apache.geode.security.ResourcePermission;
-import org.apache.geode.security.server.Authorizer;
+import org.apache.geode.internal.protocol.protobuf.security.Authorizer;
 
 public class ProtobufSimpleAuthorizer implements Authorizer {
   private final Subject authenticatedSubject;

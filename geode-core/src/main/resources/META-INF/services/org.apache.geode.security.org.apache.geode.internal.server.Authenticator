@@ -1,1 +1,1 @@
-org.apache.geode.internal.server.NoOpAuthenticator
+NoOpAuthenticator
