@@ -34,21 +34,9 @@ public interface Authenticator {
    * @param inputStream to read auth messages from.
    * @param outputStream to send messages to.
    * @param securityService used for validating credentials.
+   * @return authenticated principal
    * @throws IOException if EOF or if invalid input is received.
    */
-  void authenticate(InputStream inputStream, OutputStream outputStream,
+  Object authenticate(InputStream inputStream, OutputStream outputStream,
       SecurityService securityService) throws IOException;
-
-  /**
-   * Until authentication is complete, isAuthenticated() must return false, and the socket will
-   * always be passed to the Authenticator. Once authentication succeeds, calls to this function
-   * must always return true.
-   */
-  boolean isAuthenticated();
-
-  /**
-   * Return an authorization object which can be used to determine which permissions this stream has
-   * according to the provided securityManager.
-   */
-  Authorizer getAuthorizer() throws AuthenticationRequiredException;
 }

@@ -14,6 +14,7 @@
  */
 package org.apache.geode.internal.protocol.protobuf.operations;
 
+import static org.apache.geode.internal.protocol.protobuf.ProtobufTestUtilities.getNoAuthExecutionContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
@@ -29,6 +30,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.Region;
 import org.apache.geode.internal.cache.tier.sockets.MessageExecutionContext;
 import org.apache.geode.internal.protocol.protobuf.BasicTypes;
@@ -74,7 +76,7 @@ public class PutAllRequestOperationHandlerJUnitTest extends OperationHandlerJUni
 
     Result<RegionAPI.PutAllResponse> result = operationHandler.process(serializationServiceStub,
         generateTestRequest(false, true),
-        new MessageExecutionContext(cacheStub, new NoOpAuthorizer(), new NoOpProtobufStatistics()));
+        getNoAuthExecutionContext(cacheStub));
 
     Assert.assertTrue(result instanceof Success);
 
@@ -89,7 +91,7 @@ public class PutAllRequestOperationHandlerJUnitTest extends OperationHandlerJUni
 
     Result<RegionAPI.PutAllResponse> result = operationHandler.process(serializationServiceStub,
         generateTestRequest(true, true),
-        new MessageExecutionContext(cacheStub, new NoOpAuthorizer(), new NoOpProtobufStatistics()));
+        getNoAuthExecutionContext(cacheStub));
 
     assertTrue(result instanceof Success);
     verify(regionMock).put(TEST_KEY1, TEST_VALUE1);
@@ -109,7 +111,7 @@ public class PutAllRequestOperationHandlerJUnitTest extends OperationHandlerJUni
 
     Result<RegionAPI.PutAllResponse> result = operationHandler.process(serializationServiceStub,
         generateTestRequest(false, false),
-        new MessageExecutionContext(cacheStub, new NoOpAuthorizer(), new NoOpProtobufStatistics()));
+        getNoAuthExecutionContext(cacheStub));
 
     assertTrue(result instanceof Success);
 

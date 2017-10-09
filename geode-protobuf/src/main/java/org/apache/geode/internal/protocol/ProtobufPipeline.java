@@ -26,6 +26,7 @@ import org.apache.geode.internal.cache.tier.sockets.ClientProtocolPipeline;
 import org.apache.geode.internal.cache.tier.sockets.ClientProtocolStatistics;
 import org.apache.geode.internal.cache.tier.sockets.MessageExecutionContext;
 import org.apache.geode.internal.protocol.protobuf.ProtobufStreamProcessor;
+import org.apache.geode.internal.protocol.protobuf.security.Authorizer;
 import org.apache.geode.internal.protocol.protobuf.statistics.ProtobufClientStatistics;
 import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.internal.protocol.protobuf.security.Authenticator;
@@ -37,25 +38,30 @@ public final class ProtobufPipeline implements ClientProtocolPipeline {
   private final SecurityService securityService;
   private final ProtobufStreamProcessor streamProcessor;
   private final Authenticator authenticator;
+  private final Authorizer authorizer;
+
+  // Whatever object represents an authenticated user.
+  private Object authenticatedSubject;
 
   ProtobufPipeline(ProtobufStreamProcessor protobufStreamProcessor,
-      ProtobufClientStatistics statistics, Cache cache, Authenticator authenticator,
+      ProtobufClientStatistics statistics, Cache cache, Authenticator authenticator, Authorizer authorizer,
       SecurityService securityService) {
     this.streamProcessor = protobufStreamProcessor;
     this.statistics = statistics;
     this.cache = cache;
     this.authenticator = authenticator;
+    this.authorizer = authorizer;
     this.securityService = securityService;
   }
 
   @Override
   public void processMessage(InputStream inputStream, OutputStream outputStream)
       throws IOException, IncompatibleVersionException {
-    if (!authenticator.isAuthenticated()) {
-      authenticator.authenticate(inputStream, outputStream, securityService);
+    if (authorizer == null) {
+      authenticatedSubject = authenticator.authenticate(inputStream, outputStream, securityService);
     } else {
       streamProcessor.receiveMessage(inputStream, outputStream,
-          new MessageExecutionContext(cache, authenticator.getAuthorizer(), statistics));
+          new MessageExecutionContext(cache, authorizer, authenticatedSubject, statistics));
     }
   }
 

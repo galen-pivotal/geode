@@ -25,9 +25,12 @@ import org.apache.geode.internal.cache.tier.sockets.ClientProtocolPipeline;
 import org.apache.geode.internal.cache.tier.sockets.ClientProtocolService;
 import org.apache.geode.internal.cache.tier.sockets.ClientProtocolStatistics;
 import org.apache.geode.internal.cache.tier.sockets.MessageExecutionContext;
+import org.apache.geode.internal.protocol.protobuf.security.Authorizer;
 import org.apache.geode.internal.protocol.protobuf.security.InvalidConfigAuthenticator;
+import org.apache.geode.internal.protocol.protobuf.security.NoOpAuthorizer;
 import org.apache.geode.internal.protocol.protobuf.security.ProtobufSimpleAuthenticator;
 import org.apache.geode.internal.protocol.protobuf.ProtobufStreamProcessor;
+import org.apache.geode.internal.protocol.protobuf.security.ProtobufSimpleAuthorizer;
 import org.apache.geode.internal.protocol.protobuf.statistics.NoOpStatistics;
 import org.apache.geode.internal.protocol.protobuf.statistics.ProtobufClientStatistics;
 import org.apache.geode.internal.protocol.protobuf.statistics.ProtobufClientStatisticsImpl;
@@ -54,8 +57,9 @@ public class ProtobufProtocolService implements ClientProtocolService {
     assert (statistics != null);
 
     Authenticator authenticator = getAuthenticator(securityService);
+    Authorizer authorizer = getAuthorizer(securityService);
 
-    return new ProtobufPipeline(protobufStreamProcessor, statistics, cache, authenticator,
+    return new ProtobufPipeline(protobufStreamProcessor, statistics, cache, authenticator, authorizer,
         securityService);
   }
 
@@ -84,6 +88,21 @@ public class ProtobufProtocolService implements ClientProtocolService {
     } else {
       // Noop authenticator...no security
       return new NoOpAuthenticator();
+    }
+  }
+
+  private Authorizer getAuthorizer(SecurityService securityService) {
+    if (securityService.isIntegratedSecurity()) {
+      // Simple authenticator...normal shiro
+      return new ProtobufSimpleAuthorizer(securityService);
+    }
+    if (securityService.isPeerSecurityRequired() || securityService.isClientSecurityRequired()) {
+      // Failing authentication...legacy security
+      // This should never be called.
+      return null;
+    } else {
+      // Noop authenticator...no security
+      return new NoOpAuthorizer();
     }
   }
 }

@@ -26,18 +26,9 @@ import org.apache.geode.internal.security.SecurityService;
  */
 public class NoOpAuthenticator implements Authenticator {
   @Override
-  public void authenticate(InputStream inputStream, OutputStream outputStream,
+  public Object authenticate(InputStream inputStream, OutputStream outputStream,
       SecurityService securityService) throws IOException {
     // this method needs to do nothing as it is a pass-through implementation
-  }
-
-  @Override
-  public boolean isAuthenticated() {
-    return true;
-  }
-
-  @Override
-  public Authorizer getAuthorizer() {
-    return new NoOpAuthorizer();
+    return new Object();
   }
 }

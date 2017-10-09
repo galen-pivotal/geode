@@ -14,6 +14,7 @@
  */
 package org.apache.geode.internal.protocol.protobuf.operations;
 
+import static org.apache.geode.internal.protocol.protobuf.ProtobufTestUtilities.getNoAuthExecutionContext;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -73,7 +74,7 @@ public class GetRegionRequestOperationHandlerJUnitTest extends OperationHandlerJ
 
     Result<RegionAPI.GetRegionResponse> result = operationHandler.process(serializationServiceStub,
         MessageUtil.makeGetRegionRequest(TEST_REGION1),
-        new MessageExecutionContext(cacheStub, new NoOpAuthorizer(), new NoOpProtobufStatistics()));
+        getNoAuthExecutionContext(cacheStub));
     RegionAPI.GetRegionResponse response = result.getMessage();
     BasicTypes.Region region = response.getRegion();
     Assert.assertEquals(TEST_REGION1, region.getName());
@@ -96,10 +97,10 @@ public class GetRegionRequestOperationHandlerJUnitTest extends OperationHandlerJ
         .thenReturn(Collections.unmodifiableSet(new HashSet<Region<String, String>>()));
     String unknownRegionName = "UNKNOWN_REGION";
     Result<RegionAPI.GetRegionResponse> result = operationHandler.process(serializationServiceStub,
-        MessageUtil.makeGetRegionRequest(unknownRegionName), new MessageExecutionContext(emptyCache,
-            new NoOpAuthorizer(), new NoOpProtobufStatistics()));
+        MessageUtil.makeGetRegionRequest(unknownRegionName), getNoAuthExecutionContext(emptyCache));
     Assert.assertTrue(result instanceof Failure);
     Assert.assertEquals(ProtocolErrorCode.REGION_NOT_FOUND.codeValue,
         result.getErrorMessage().getError().getErrorCode());
   }
+
 }

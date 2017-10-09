@@ -14,6 +14,7 @@
  */
 package org.apache.geode.internal.protocol.protobuf.operations;
 
+import static org.apache.geode.internal.protocol.protobuf.ProtobufTestUtilities.getNoAuthExecutionContext;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -67,7 +68,7 @@ public class GetRegionNamesRequestOperationHandlerJUnitTest extends OperationHan
       CodecNotRegisteredForTypeException, InvalidExecutionContextException {
     Result<RegionAPI.GetRegionNamesResponse> result = operationHandler.process(
         serializationServiceStub, ProtobufRequestUtilities.createGetRegionNamesRequest(),
-        new MessageExecutionContext(cacheStub, new NoOpAuthorizer(), new NoOpProtobufStatistics()));
+    getNoAuthExecutionContext(cacheStub));
     Assert.assertTrue(result instanceof Success);
 
     RegionAPI.GetRegionNamesResponse getRegionsResponse = result.getMessage();
@@ -91,8 +92,7 @@ public class GetRegionNamesRequestOperationHandlerJUnitTest extends OperationHan
         .thenReturn(Collections.unmodifiableSet(new HashSet<Region<String, String>>()));
     Result<RegionAPI.GetRegionNamesResponse> result =
         operationHandler.process(serializationServiceStub,
-            ProtobufRequestUtilities.createGetRegionNamesRequest(), new MessageExecutionContext(
-                emptyCache, new NoOpAuthorizer(), new NoOpProtobufStatistics()));
+            ProtobufRequestUtilities.createGetRegionNamesRequest(), getNoAuthExecutionContext(emptyCache));
     Assert.assertTrue(result instanceof Success);
 
     RegionAPI.GetRegionNamesResponse getRegionsResponse = result.getMessage();

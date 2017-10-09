@@ -32,6 +32,7 @@ import org.apache.geode.cache.Region;
 import org.apache.geode.internal.cache.tier.sockets.MessageExecutionContext;
 import org.apache.geode.internal.protocol.protobuf.BasicTypes;
 import org.apache.geode.internal.protocol.protobuf.Failure;
+import org.apache.geode.internal.protocol.protobuf.ProtobufTestUtilities;
 import org.apache.geode.internal.protocol.protobuf.ProtocolErrorCode;
 import org.apache.geode.internal.protocol.protobuf.RegionAPI;
 import org.apache.geode.internal.protocol.protobuf.Result;
@@ -66,7 +67,7 @@ public class PutRequestOperationHandlerJUnitTest extends OperationHandlerJUnitTe
     PutRequestOperationHandler operationHandler = new PutRequestOperationHandler();
     Result<RegionAPI.PutResponse> result = operationHandler.process(serializationServiceStub,
         generateTestRequest(),
-        new MessageExecutionContext(cacheStub, new NoOpAuthorizer(), new NoOpProtobufStatistics()));
+       ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
 
     assertTrue(result instanceof Success);
 
@@ -96,7 +97,7 @@ public class PutRequestOperationHandlerJUnitTest extends OperationHandlerJUnitTe
         ProtobufRequestUtilities.createPutRequest(TEST_REGION, testEntry).getPutRequest();
     Result<RegionAPI.PutResponse> result = operationHandler.process(serializationServiceStub,
         putRequest,
-        new MessageExecutionContext(cacheStub, new NoOpAuthorizer(), new NoOpProtobufStatistics()));
+       ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
 
     assertTrue(result instanceof Failure);
     assertEquals(ProtocolErrorCode.VALUE_ENCODING_ERROR.codeValue,
@@ -109,7 +110,7 @@ public class PutRequestOperationHandlerJUnitTest extends OperationHandlerJUnitTe
     PutRequestOperationHandler operationHandler = new PutRequestOperationHandler();
     Result<RegionAPI.PutResponse> result = operationHandler.process(serializationServiceStub,
         generateTestRequest(),
-        new MessageExecutionContext(cacheStub, new NoOpAuthorizer(), new NoOpProtobufStatistics()));
+       ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
 
     assertTrue(result instanceof Failure);
     assertEquals(ProtocolErrorCode.REGION_NOT_FOUND.codeValue,
@@ -123,7 +124,7 @@ public class PutRequestOperationHandlerJUnitTest extends OperationHandlerJUnitTe
     PutRequestOperationHandler operationHandler = new PutRequestOperationHandler();
     Result<RegionAPI.PutResponse> result = operationHandler.process(serializationServiceStub,
         generateTestRequest(),
-        new MessageExecutionContext(cacheStub, new NoOpAuthorizer(), new NoOpProtobufStatistics()));
+       ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
 
     assertTrue(result instanceof Failure);
     assertEquals(ProtocolErrorCode.CONSTRAINT_VIOLATION.codeValue,

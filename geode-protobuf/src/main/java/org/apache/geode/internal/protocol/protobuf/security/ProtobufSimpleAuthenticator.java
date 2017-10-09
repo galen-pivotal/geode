@@ -28,11 +28,9 @@ import java.util.Properties;
 import org.apache.shiro.subject.Subject;
 
 public class ProtobufSimpleAuthenticator implements Authenticator {
-  private ProtobufSimpleAuthorizer authorizer = null;
-
   @Override
-  public void authenticate(InputStream inputStream, OutputStream outputStream,
-      SecurityService securityService) throws IOException {
+  public Subject authenticate(InputStream inputStream, OutputStream outputStream,
+      SecurityService securityService) throws IOException, AuthenticationFailedException {
     AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
         AuthenticationAPI.SimpleAuthenticationRequest.parseDelimitedFrom(inputStream);
     if (authenticationRequest == null) {
@@ -42,31 +40,12 @@ public class ProtobufSimpleAuthenticator implements Authenticator {
     Properties properties = new Properties();
     properties.putAll(authenticationRequest.getCredentialsMap());
 
-    authorizer = null; // authenticating a new user clears current authorizer
-    try {
-      Subject subject = securityService.login(properties);
-      if (subject != null) {
-        authorizer = new ProtobufSimpleAuthorizer(subject, securityService);
-      }
-    } catch (AuthenticationFailedException e) {
-      authorizer = null;
-    }
+    // throws AuthenticationFailedException on failure.
+    Subject subject = securityService.login(properties);
 
-    AuthenticationAPI.SimpleAuthenticationResponse.newBuilder().setAuthenticated(isAuthenticated())
+    AuthenticationAPI.SimpleAuthenticationResponse.newBuilder().setAuthenticated(true)
         .build().writeDelimitedTo(outputStream);
-  }
 
-  @Override
-  public boolean isAuthenticated() {
-    // note: an authorizer is only created if the user has been authenticated
-    return authorizer != null;
-  }
-
-  @Override
-  public Authorizer getAuthorizer() throws AuthenticationRequiredException {
-    if (authorizer == null) {
-      throw new AuthenticationRequiredException("Not yet authenticated");
-    }
-    return authorizer;
+    return subject;
   }
 }

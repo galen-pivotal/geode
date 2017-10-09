@@ -15,30 +15,26 @@
 
 package org.apache.geode.internal.protocol.protobuf;
 
-import org.apache.geode.examples.security.ExampleSecurityManager;
-import org.apache.geode.internal.protocol.protobuf.security.ProtobufSimpleAuthenticator;
-import org.apache.geode.internal.security.SecurityService;
-import org.apache.geode.management.internal.security.ResourceConstants;
-import org.apache.geode.security.AuthenticationFailedException;
-import org.apache.geode.test.junit.categories.UnitTest;
-
-import org.apache.shiro.subject.Subject;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
+import static junit.framework.TestCase.fail;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Properties;
 
-import static junit.framework.TestCase.fail;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import org.apache.shiro.subject.Subject;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+
+import org.apache.geode.internal.protocol.protobuf.security.ProtobufSimpleAuthenticator;
+import org.apache.geode.internal.security.SecurityService;
+import org.apache.geode.management.internal.security.ResourceConstants;
+import org.apache.geode.security.AuthenticationFailedException;
+import org.apache.geode.test.junit.categories.UnitTest;
 
 @Category(UnitTest.class)
 public class ProtobufSimpleAuthenticatorJUnitTest {
@@ -77,8 +73,6 @@ public class ProtobufSimpleAuthenticatorJUnitTest {
 
   @Test
   public void successfulAuthentication() throws IOException {
-    assertFalse(protobufSimpleAuthenticator.isAuthenticated());
-
     protobufSimpleAuthenticator.authenticate(byteArrayInputStream, byteArrayOutputStream,
         mockSecurityService);
 
@@ -86,13 +80,10 @@ public class ProtobufSimpleAuthenticatorJUnitTest {
         getSimpleAuthenticationResponse(byteArrayOutputStream);
 
     assertTrue(simpleAuthenticationResponse.getAuthenticated());
-    assertTrue(protobufSimpleAuthenticator.isAuthenticated());
   }
 
-  @Test
-  public void authenticationFails() throws IOException {
-    assertFalse(protobufSimpleAuthenticator.isAuthenticated());
-
+  @Test(expected = AuthenticationFailedException.class)
+  public void failedAuthentication() throws IOException {
     Properties expectedAuthProperties = new Properties();
     expectedAuthProperties.setProperty(ResourceConstants.USER_NAME, TEST_USERNAME);
     expectedAuthProperties.setProperty(ResourceConstants.PASSWORD, TEST_PASSWORD);
@@ -102,11 +93,6 @@ public class ProtobufSimpleAuthenticatorJUnitTest {
     protobufSimpleAuthenticator.authenticate(byteArrayInputStream, byteArrayOutputStream,
         mockSecurityService);
 
-    AuthenticationAPI.SimpleAuthenticationResponse simpleAuthenticationResponse =
-        getSimpleAuthenticationResponse(byteArrayOutputStream);
-
-    assertFalse(simpleAuthenticationResponse.getAuthenticated());
-    assertFalse(protobufSimpleAuthenticator.isAuthenticated());
   }
 
   @Test
@@ -115,35 +101,18 @@ public class ProtobufSimpleAuthenticatorJUnitTest {
   }
 
   @Test
-  public void testExampleSecurityManager() throws IOException {
-    assertFalse(protobufSimpleAuthenticator.isAuthenticated());
-
-    protobufSimpleAuthenticator.authenticate(byteArrayInputStream, byteArrayOutputStream,
-        mockSecurityService);
-
-    new ExampleSecurityManager().init(expectedAuthProperties);
-    AuthenticationAPI.SimpleAuthenticationResponse simpleAuthenticationResponse =
-        getSimpleAuthenticationResponse(byteArrayOutputStream);
-
-    assertTrue(simpleAuthenticationResponse.getAuthenticated());
-    assertTrue(protobufSimpleAuthenticator.isAuthenticated());
-  }
-
-  @Test
   public void authenticationRequestedWithNoCacheSecurity() throws IOException {
     when(mockSecurityService.isIntegratedSecurity()).thenReturn(false);
     when(mockSecurityService.isClientSecurityRequired()).thenReturn(false);
     when(mockSecurityService.isPeerSecurityRequired()).thenReturn(false);
 
-    assertFalse(protobufSimpleAuthenticator.isAuthenticated());
     protobufSimpleAuthenticator.authenticate(byteArrayInputStream, byteArrayOutputStream,
         mockSecurityService);
 
     AuthenticationAPI.SimpleAuthenticationResponse simpleAuthenticationResponse =
         getSimpleAuthenticationResponse(byteArrayOutputStream);
 
-    assertFalse(simpleAuthenticationResponse.getAuthenticated());
-    assertFalse(protobufSimpleAuthenticator.isAuthenticated());
+    assertTrue(simpleAuthenticationResponse.getAuthenticated());
   }
 
   private AuthenticationAPI.SimpleAuthenticationResponse getSimpleAuthenticationResponse(

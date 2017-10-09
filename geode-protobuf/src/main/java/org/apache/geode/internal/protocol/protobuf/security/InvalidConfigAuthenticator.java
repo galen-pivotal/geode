@@ -30,7 +30,7 @@ public class InvalidConfigAuthenticator implements Authenticator {
   private static final Logger logger = LogService.getLogger(InvalidConfigAuthenticator.class);
 
   @Override
-  public void authenticate(InputStream inputStream, OutputStream outputStream,
+  public Object authenticate(InputStream inputStream, OutputStream outputStream,
       SecurityService securityService) throws IOException {
     logger.warn(
         "Attempting to authenticate incoming protobuf message using legacy security implementation. This is not supported. Failing authentication.");
@@ -39,15 +39,5 @@ public class InvalidConfigAuthenticator implements Authenticator {
         .writeDelimitedTo(outputStream);
 
     throw new IOException("Protobuf clients not supported with legacy security.");
-  }
-
-  @Override
-  public boolean isAuthenticated() {
-    return false;
-  }
-
-  @Override
-  public Authorizer getAuthorizer() throws AuthenticationRequiredException {
-    return null;
   }
 }
