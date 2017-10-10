@@ -43,8 +43,8 @@ public class ProtobufSimpleAuthenticator implements Authenticator {
     // throws AuthenticationFailedException on failure.
     Subject subject = securityService.login(properties);
 
-    AuthenticationAPI.SimpleAuthenticationResponse.newBuilder().setAuthenticated(true)
-        .build().writeDelimitedTo(outputStream);
+    AuthenticationAPI.SimpleAuthenticationResponse.newBuilder().setAuthenticated(true).build()
+        .writeDelimitedTo(outputStream);
 
     return subject;
   }

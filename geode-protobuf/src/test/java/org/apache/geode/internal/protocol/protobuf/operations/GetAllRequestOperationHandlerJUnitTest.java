@@ -79,9 +79,9 @@ public class GetAllRequestOperationHandlerJUnitTest extends OperationHandlerJUni
 
   @Test
   public void processReturnsExpectedValuesForValidKeys() throws Exception {
-    Result<RegionAPI.GetAllResponse> result = operationHandler.process(serializationServiceStub,
-        generateTestRequest(true, false),
-        ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
+    Result<RegionAPI.GetAllResponse> result =
+        operationHandler.process(serializationServiceStub, generateTestRequest(true, false),
+            ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
 
     assertTrue(result instanceof Success);
 
@@ -100,9 +100,9 @@ public class GetAllRequestOperationHandlerJUnitTest extends OperationHandlerJUni
   @Test
   public void processReturnsNoEntriesForNoKeysRequested() throws UnsupportedEncodingTypeException,
       CodecNotRegisteredForTypeException, InvalidExecutionContextException {
-    Result<RegionAPI.GetAllResponse> result = operationHandler.process(serializationServiceStub,
-        generateTestRequest(false, false),
-        ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
+    Result<RegionAPI.GetAllResponse> result =
+        operationHandler.process(serializationServiceStub, generateTestRequest(false, false),
+            ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
 
     assertTrue(result instanceof Success);
 
@@ -119,8 +119,7 @@ public class GetAllRequestOperationHandlerJUnitTest extends OperationHandlerJUni
     RegionAPI.GetAllRequest getAllRequest =
         ProtobufRequestUtilities.createGetAllRequest(TEST_REGION, testKeys);
     Result<RegionAPI.GetAllResponse> result = operationHandler.process(serializationServiceStub,
-        getAllRequest,
-        ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
+        getAllRequest, ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
 
     assertTrue(result instanceof Success);
     RegionAPI.GetAllResponse message = result.getMessage();
@@ -134,9 +133,9 @@ public class GetAllRequestOperationHandlerJUnitTest extends OperationHandlerJUni
   @Test
   public void multipleKeysWhereOneThrows() throws UnsupportedEncodingTypeException,
       CodecNotRegisteredForTypeException, InvalidExecutionContextException {
-    Result<RegionAPI.GetAllResponse> result = operationHandler.process(serializationServiceStub,
-        generateTestRequest(true, true),
-       ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
+    Result<RegionAPI.GetAllResponse> result =
+        operationHandler.process(serializationServiceStub, generateTestRequest(true, true),
+            ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
 
     assertTrue(result instanceof Success);
 

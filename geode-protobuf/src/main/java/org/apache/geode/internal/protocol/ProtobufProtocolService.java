@@ -44,6 +44,18 @@ public class ProtobufProtocolService implements ClientProtocolService {
         ProtobufClientStatistics.PROTOBUF_STATS_NAME);
   }
 
+  @Override
+  public ClientProtocolProcessor createProcessorForCache(Cache cache,
+      SecurityService securityService) {
+    assert (statistics != null);
+
+    Authenticator authenticator = getAuthenticator(securityService);
+    Authorizer authorizer = getAuthorizer(securityService);
+
+    return new ProtobufCachePipeline(protobufStreamProcessor, getStatistics(), cache, authenticator,
+        authorizer, securityService);
+  }
+
   /**
    * For internal use. This is necessary because the statistics may get initialized in another
    * thread.
@@ -53,17 +65,6 @@ public class ProtobufProtocolService implements ClientProtocolService {
       return new NoOpStatistics();
     }
     return statistics;
-  }
-
-  @Override
-  public ClientProtocolProcessor createCachePipeline(Cache cache, SecurityService securityService) {
-    assert (statistics != null);
-
-    Authenticator authenticator = getAuthenticator(securityService);
-    Authorizer authorizer = getAuthorizer(securityService);
-
-    return new ProtobufCachePipeline(protobufStreamProcessor, getStatistics(), cache, authenticator,
-        securityService);
   }
 
   @Override

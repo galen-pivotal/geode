@@ -44,8 +44,8 @@ public final class ProtobufPipeline implements ClientProtocolPipeline {
   private Object authenticatedSubject;
 
   ProtobufPipeline(ProtobufStreamProcessor protobufStreamProcessor,
-      ProtobufClientStatistics statistics, Cache cache, Authenticator authenticator, Authorizer authorizer,
-      SecurityService securityService) {
+      ProtobufClientStatistics statistics, Cache cache, Authenticator authenticator,
+      Authorizer authorizer, SecurityService securityService) {
     this.streamProcessor = protobufStreamProcessor;
     this.statistics = statistics;
     this.cache = cache;

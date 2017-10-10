@@ -54,12 +54,10 @@ import org.apache.geode.security.SecurityManager;
 import org.apache.geode.test.junit.categories.IntegrationTest;
 
 /**
- * Security seems to have a few possible setups:
- * * Manual SecurityManager set: integrated security
- * * Security enabled without SecurityManager set: integrated security
- * * Legacy security:
- *   - with peer or client auth enabled: we call this incompatible with our auth.
- *   - with neither enabled: this is what we call "security off". Don't auth at all.
+ * Security seems to have a few possible setups: * Manual SecurityManager set: integrated security *
+ * Security enabled without SecurityManager set: integrated security * Legacy security: - with peer
+ * or client auth enabled: we call this incompatible with our auth. - with neither enabled: this is
+ * what we call "security off". Don't auth at all.
  */
 @Category(IntegrationTest.class)
 public class AuthenticationIntegrationTest {
@@ -287,7 +285,8 @@ public class AuthenticationIntegrationTest {
   }
 
   private void createLegacyAuthCache(String authenticationProperty) {
-    String authenticatorLoadFunction = "org.apache.geode.security.templates.DummyAuthenticator.create";
+    String authenticatorLoadFunction =
+        "org.apache.geode.security.templates.DummyAuthenticator.create";
 
     Properties properties = new Properties();
     properties.setProperty(authenticationProperty, authenticatorLoadFunction);

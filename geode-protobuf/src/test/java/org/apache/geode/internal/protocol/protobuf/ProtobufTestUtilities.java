@@ -40,7 +40,7 @@ public class ProtobufTestUtilities {
   }
 
   public static MessageExecutionContext getNoAuthExecutionContext(Cache cache) {
-    return new MessageExecutionContext(cache,
-        new NoOpAuthorizer(), new Object(), new NoOpProtobufStatistics());
+    return new MessageExecutionContext(cache, new NoOpAuthorizer(), new Object(),
+        new NoOpProtobufStatistics());
   }
 }

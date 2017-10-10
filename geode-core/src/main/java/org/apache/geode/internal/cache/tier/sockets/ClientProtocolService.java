@@ -32,8 +32,7 @@ public interface ClientProtocolService {
    * handshake has happened.
    *
    */
-  ClientProtocolProcessor createProcessorForCache(Cache cache,
-      SecurityService securityService);
+  ClientProtocolProcessor createProcessorForCache(Cache cache, SecurityService securityService);
 
   /**
    * Create a locator pipeline. The locator does not currently provide any authentication.

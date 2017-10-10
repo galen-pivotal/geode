@@ -73,8 +73,7 @@ public class GetRegionRequestOperationHandlerJUnitTest extends OperationHandlerJ
 
 
     Result<RegionAPI.GetRegionResponse> result = operationHandler.process(serializationServiceStub,
-        MessageUtil.makeGetRegionRequest(TEST_REGION1),
-        getNoAuthExecutionContext(cacheStub));
+        MessageUtil.makeGetRegionRequest(TEST_REGION1), getNoAuthExecutionContext(cacheStub));
     RegionAPI.GetRegionResponse response = result.getMessage();
     BasicTypes.Region region = response.getRegion();
     Assert.assertEquals(TEST_REGION1, region.getName());

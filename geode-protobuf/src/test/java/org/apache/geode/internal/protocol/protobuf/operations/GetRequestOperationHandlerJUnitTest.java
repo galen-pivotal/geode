@@ -70,8 +70,7 @@ public class GetRequestOperationHandlerJUnitTest extends OperationHandlerJUnitTe
   public void processReturnsTheEncodedValueFromTheRegion() throws Exception {
     RegionAPI.GetRequest getRequest = generateTestRequest(false, false, false);
     Result<RegionAPI.GetResponse> result = operationHandler.process(serializationServiceStub,
-        getRequest,
-       ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
+        getRequest, ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
 
     Assert.assertTrue(result instanceof Success);
     Assert.assertEquals(BasicTypes.EncodedValue.ValueCase.STRINGRESULT,
@@ -84,8 +83,7 @@ public class GetRequestOperationHandlerJUnitTest extends OperationHandlerJUnitTe
   public void processReturnsUnsucessfulResponseForInvalidRegion() throws Exception {
     RegionAPI.GetRequest getRequest = generateTestRequest(true, false, false);
     Result<RegionAPI.GetResponse> response = operationHandler.process(serializationServiceStub,
-        getRequest,
-       ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
+        getRequest, ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
 
     Assert.assertTrue(response instanceof Failure);
     Assert.assertEquals(ProtocolErrorCode.REGION_NOT_FOUND.codeValue,
@@ -96,8 +94,7 @@ public class GetRequestOperationHandlerJUnitTest extends OperationHandlerJUnitTe
   public void processReturnsKeyNotFoundWhenKeyIsNotFound() throws Exception {
     RegionAPI.GetRequest getRequest = generateTestRequest(false, true, false);
     Result<RegionAPI.GetResponse> response = operationHandler.process(serializationServiceStub,
-        getRequest,
-        ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
+        getRequest, ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
 
     Assert.assertTrue(response instanceof Success);
   }
@@ -106,8 +103,7 @@ public class GetRequestOperationHandlerJUnitTest extends OperationHandlerJUnitTe
   public void processReturnsLookupFailureWhenKeyFoundWithNoValue() throws Exception {
     RegionAPI.GetRequest getRequest = generateTestRequest(false, false, true);
     Result<RegionAPI.GetResponse> response = operationHandler.process(serializationServiceStub,
-        getRequest,
-       ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
+        getRequest, ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
 
     Assert.assertTrue(response instanceof Success);
   }
@@ -126,8 +122,7 @@ public class GetRequestOperationHandlerJUnitTest extends OperationHandlerJUnitTe
     RegionAPI.GetRequest getRequest =
         ProtobufRequestUtilities.createGetRequest(TEST_REGION, encodedKey).getGetRequest();
     Result<RegionAPI.GetResponse> response = operationHandler.process(serializationServiceStub,
-        getRequest,
-       ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
+        getRequest, ProtobufTestUtilities.getNoAuthExecutionContext(cacheStub));
 
     Assert.assertTrue(response instanceof Failure);
     Assert.assertEquals(ProtocolErrorCode.VALUE_ENCODING_ERROR.codeValue,

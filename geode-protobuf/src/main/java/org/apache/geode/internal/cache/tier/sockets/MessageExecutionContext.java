@@ -34,8 +34,8 @@ public class MessageExecutionContext {
   private final ProtobufClientStatistics statistics;
 
 
-  public MessageExecutionContext(Cache cache, Authorizer streamAuthorizer, Object  authenticatedSubject,
-      ProtobufClientStatistics statistics) {
+  public MessageExecutionContext(Cache cache, Authorizer streamAuthorizer,
+      Object authenticatedSubject, ProtobufClientStatistics statistics) {
     this.cache = cache;
     this.authorizer = streamAuthorizer;
     this.authenticatedSubject = authenticatedSubject;
