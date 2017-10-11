@@ -84,20 +84,25 @@ public class ProtobufSimpleAuthenticatorJUnitTest {
 
   @Test(expected = AuthenticationFailedException.class)
   public void failedAuthentication() throws IOException {
-    Properties expectedAuthProperties = new Properties();
-    expectedAuthProperties.setProperty(ResourceConstants.USER_NAME, TEST_USERNAME);
-    expectedAuthProperties.setProperty(ResourceConstants.PASSWORD, TEST_PASSWORD);
     when(mockSecurityService.login(expectedAuthProperties))
         .thenThrow(new AuthenticationFailedException("BOOM!"));
 
     protobufSimpleAuthenticator.authenticate(byteArrayInputStream, byteArrayOutputStream,
         mockSecurityService);
-
   }
 
   @Test
-  public void authenticationSucceedsButAuthorizationFails() {
-    fail("unimplemented");
+  public void authenticationSucceedsButAuthorizationFails() throws IOException {
+    when(mockSecurityService.)
+    protobufSimpleAuthenticator.authenticate(byteArrayInputStream, byteArrayOutputStream,
+        mockSecurityService);
+
+    AuthenticationAPI.SimpleAuthenticationResponse simpleAuthenticationResponse =
+        getSimpleAuthenticationResponse(byteArrayOutputStream);
+
+    assertTrue(simpleAuthenticationResponse.getAuthenticated());
+
+
   }
 
   @Test

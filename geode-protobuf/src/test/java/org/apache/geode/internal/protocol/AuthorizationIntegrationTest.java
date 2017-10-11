@@ -72,7 +72,6 @@ public class AuthorizationIntegrationTest {
   private ProtobufProtocolSerializer protobufProtocolSerializer;
   private Object securityPrincipal;
   private SecurityManager mockSecurityManager;
-  private String testRegion;
   public static final ResourcePermission READ_PERMISSION =
       new ResourcePermission(ResourcePermission.Resource.DATA, ResourcePermission.Operation.READ);
   public static final ResourcePermission WRITE_PERMISSION =
