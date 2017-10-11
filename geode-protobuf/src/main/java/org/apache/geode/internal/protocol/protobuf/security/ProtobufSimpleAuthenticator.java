@@ -14,7 +14,12 @@
  */
 package org.apache.geode.internal.protocol.protobuf.security;
 
+import static org.apache.geode.internal.protocol.protobuf.ProtocolErrorCode.AUTHENTICATION_FAILED;
+
 import org.apache.geode.internal.protocol.protobuf.AuthenticationAPI;
+
+import org.apache.geode.internal.protocol.protobuf.BasicTypes;
+import org.apache.geode.internal.protocol.protobuf.ClientProtocol;
 import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.security.AuthenticationRequiredException;
 import org.apache.geode.security.AuthenticationFailedException;
@@ -28,24 +33,42 @@ import java.util.Properties;
 import org.apache.shiro.subject.Subject;
 
 public class ProtobufSimpleAuthenticator implements Authenticator {
+
+  public static final String SHOULD_HAVE_AUTHED =
+      "Got non-auth request while expecting authentication request";
+
   @Override
   public Subject authenticate(InputStream inputStream, OutputStream outputStream,
       SecurityService securityService) throws IOException, AuthenticationFailedException {
+    ClientProtocol.Message message = ClientProtocol.Message.parseDelimitedFrom(inputStream);
+
+    if (message.getRequest().getRequestAPICase()
+        .getNumber() != ClientProtocol.Request.SIMPLEAUTHENTICATIONREQUEST_FIELD_NUMBER) {
+      failAuth(outputStream);
+    }
+
     AuthenticationAPI.SimpleAuthenticationRequest authenticationRequest =
-        AuthenticationAPI.SimpleAuthenticationRequest.parseDelimitedFrom(inputStream);
+        message.getRequest().getSimpleAuthenticationRequest();
     if (authenticationRequest == null) {
-      throw new EOFException();
+      failAuth(outputStream);
     }
 
     Properties properties = new Properties();
     properties.putAll(authenticationRequest.getCredentialsMap());
 
     // throws AuthenticationFailedException on failure.
-    Subject subject = securityService.login(properties);
+    Subject authToken = securityService.login(properties);
 
     AuthenticationAPI.SimpleAuthenticationResponse.newBuilder().setAuthenticated(true).build()
         .writeDelimitedTo(outputStream);
 
-    return subject;
+    return authToken;
+  }
+
+  private void failAuth(OutputStream outputStream) throws IOException {
+    BasicTypes.Error.newBuilder().setErrorCode(AUTHENTICATION_FAILED.codeValue)
+        .setMessage(SHOULD_HAVE_AUTHED).build().writeDelimitedTo(outputStream);
+
+    throw new IOException(SHOULD_HAVE_AUTHED);
   }
 }
