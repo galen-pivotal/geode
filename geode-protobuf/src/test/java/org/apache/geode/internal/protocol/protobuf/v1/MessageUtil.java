@@ -19,6 +19,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.Socket;
 
 import com.google.protobuf.MessageLite;
@@ -31,7 +32,7 @@ import org.apache.geode.internal.protocol.serialization.exception.EncodingExcept
 public class MessageUtil {
 
   public static void performAndVerifyHandshake(Socket socket) throws IOException {
-    sendHandshake(socket);
+    sendHandshake(socket.getOutputStream());
     verifyHandshakeSuccess(socket);
   }
 
@@ -41,11 +42,11 @@ public class MessageUtil {
     assertTrue(handshakeResponse.getVersionAccepted());
   }
 
-  public static void sendHandshake(Socket socket) throws IOException {
+  public static void sendHandshake(OutputStream outputStream) throws IOException {
     ProtocolVersion.NewConnectionClientVersion.newBuilder()
         .setMajorVersion(ProtocolVersion.MajorVersions.CURRENT_MAJOR_VERSION_VALUE)
         .setMinorVersion(ProtocolVersion.MinorVersions.CURRENT_MINOR_VERSION_VALUE).build()
-        .writeDelimitedTo(socket.getOutputStream());
+        .writeDelimitedTo(outputStream);
   }
 
   public static RegionAPI.GetRegionRequest makeGetRegionRequest(String requestRegion) {

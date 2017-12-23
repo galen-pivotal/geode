@@ -64,10 +64,9 @@ public class ProtobufConnectionHandshakeStateProcessor implements ConnectionStat
     PushbackInputStream messageStream = new PushbackInputStream(inputStream);
     messageStream.unread(CommunicationMode.ProtobufClientServerProtocol.getModeNumber());
 
-    if (ProtocolVersionHandler.handleVersionMessage(messageStream, outputStream,
-        executionContext.getStatistics())) {
-      executionContext.setConnectionStateProcessor(nextConnectionState());
-    }
+    ProtocolVersionHandler.handleVersionMessage(messageStream, outputStream,
+        executionContext.getStatistics());
+    executionContext.setConnectionStateProcessor(nextConnectionState());
     return true;
   }
 }

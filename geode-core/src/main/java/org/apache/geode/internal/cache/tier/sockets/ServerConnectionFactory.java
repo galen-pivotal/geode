@@ -26,7 +26,6 @@ import org.apache.geode.internal.cache.client.protocol.ClientProtocolProcessor;
 import org.apache.geode.internal.cache.client.protocol.ClientProtocolService;
 import org.apache.geode.internal.cache.client.protocol.ClientProtocolServiceLoader;
 import org.apache.geode.internal.cache.client.protocol.exception.ServiceLoadingFailureException;
-import org.apache.geode.internal.cache.client.protocol.exception.ServiceVersionNotFoundException;
 import org.apache.geode.internal.cache.tier.Acceptor;
 import org.apache.geode.internal.cache.tier.CachedRegionHelper;
 import org.apache.geode.internal.security.SecurityService;
@@ -65,8 +64,6 @@ public class ServerConnectionFactory {
               socketBufferSize, communicationModeStr, communicationMode, acceptor, securityService);
         } catch (ServiceLoadingFailureException ex) {
           throw new IOException("Could not load protobuf client protocol", ex);
-        } catch (ServiceVersionNotFoundException ex) {
-          throw new IOException("No service matching provided version byte", ex);
         }
       }
     } else {

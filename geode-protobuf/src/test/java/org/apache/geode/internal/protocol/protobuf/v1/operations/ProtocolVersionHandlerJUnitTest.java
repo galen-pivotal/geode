@@ -51,8 +51,8 @@ public class ProtocolVersionHandlerJUnitTest {
         MessageUtil.writeMessageDelimitedToInputStream(versionRequest);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    assertTrue(protocolVersionHandler.handleVersionMessage(inputStream, outputStream,
-        mock(ProtocolClientStatistics.class)));
+    protocolVersionHandler.handleVersionMessage(inputStream, outputStream,
+        mock(ProtocolClientStatistics.class));
 
     ProtocolVersion.VersionAcknowledgement versionResponse = ProtocolVersion.VersionAcknowledgement
         .parseDelimitedFrom(new ByteArrayInputStream(outputStream.toByteArray()));

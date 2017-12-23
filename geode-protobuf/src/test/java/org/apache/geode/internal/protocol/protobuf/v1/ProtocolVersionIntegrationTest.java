@@ -51,9 +51,6 @@ public class ProtocolVersionIntegrationTest {
   @Rule
   public final RestoreSystemProperties restoreSystemProperties = new RestoreSystemProperties();
 
-  private OutputStream outputStream;
-  private InputStream inputStream;
-  private ProtobufProtocolSerializer protobufProtocolSerializer;
   private Socket socket;
   private SocketChannel socketChannel;
 
@@ -80,10 +77,6 @@ public class ProtocolVersionIntegrationTest {
     socket = socketChannel.socket();
 
     Awaitility.await().atMost(5, TimeUnit.SECONDS).until(socket::isConnected);
-    outputStream = socket.getOutputStream();
-    inputStream = socket.getInputStream();
-
-    protobufProtocolSerializer = new ProtobufProtocolSerializer();
   }
 
   @After

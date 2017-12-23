@@ -43,7 +43,6 @@ import org.apache.logging.log4j.Logger;
 import org.apache.geode.CancelException;
 import org.apache.geode.DataSerializer;
 import org.apache.geode.SystemFailure;
-import org.apache.geode.cache.IncompatibleVersionException;
 import org.apache.geode.cache.UnsupportedVersionException;
 import org.apache.geode.distributed.internal.ClusterConfigurationService;
 import org.apache.geode.distributed.internal.DistributionConfig;
@@ -63,7 +62,6 @@ import org.apache.geode.internal.cache.client.protocol.ClientProtocolProcessor;
 import org.apache.geode.internal.cache.client.protocol.ClientProtocolService;
 import org.apache.geode.internal.cache.client.protocol.ClientProtocolServiceLoader;
 import org.apache.geode.internal.cache.client.protocol.exception.ServiceLoadingFailureException;
-import org.apache.geode.internal.cache.client.protocol.exception.ServiceVersionNotFoundException;
 import org.apache.geode.internal.cache.tier.CommunicationMode;
 import org.apache.geode.internal.cache.tier.sockets.HandShake;
 import org.apache.geode.internal.logging.LogService;
@@ -537,18 +535,11 @@ public class TcpServer {
       try (ClientProtocolProcessor pipeline =
           clientProtocolService.createProcessorForLocator(internalLocator)) {
         pipeline.processMessage(input, socket.getOutputStream());
-      } catch (IncompatibleVersionException e) {
-        // should not happen on the locator as there is no handshake.
-        log.error("Unexpected exception in client message processing", e);
       }
     } catch (ServiceLoadingFailureException e) {
       log.error("There was an error looking up the client protocol service", e);
       socket.close();
       throw new IOException("There was an error looking up the client protocol service", e);
-    } catch (ServiceVersionNotFoundException e) {
-      log.error("Unable to find service matching the client protocol version byte", e);
-      socket.close();
-      throw new IOException("Unable to find service matching the client protocol version byte", e);
     }
   }
 

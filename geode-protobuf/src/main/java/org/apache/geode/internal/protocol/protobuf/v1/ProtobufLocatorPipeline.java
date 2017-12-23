@@ -27,6 +27,7 @@ import org.apache.geode.internal.cache.client.protocol.ClientProtocolProcessor;
 import org.apache.geode.internal.cache.tier.CommunicationMode;
 import org.apache.geode.internal.protocol.MessageExecutionContext;
 import org.apache.geode.internal.protocol.protobuf.ProtocolVersion;
+import org.apache.geode.internal.protocol.protobuf.v1.operations.ProtocolVersionHandler;
 import org.apache.geode.internal.protocol.protobuf.v1.operations.VersionValidator;
 import org.apache.geode.internal.protocol.state.ConnectionStateProcessor;
 import org.apache.geode.internal.protocol.state.NoSecurityConnectionStateProcessor;
@@ -38,7 +39,6 @@ public final class ProtobufLocatorPipeline implements ClientProtocolProcessor {
   private final InternalLocator locator;
   private final ProtobufStreamProcessor streamProcessor;
   private final ConnectionStateProcessor locatorConnectionState;
-  private final VersionValidator validator;
 
   ProtobufLocatorPipeline(ProtobufStreamProcessor protobufStreamProcessor,
       ProtocolClientStatistics statistics, InternalLocator locator) {
@@ -47,13 +47,17 @@ public final class ProtobufLocatorPipeline implements ClientProtocolProcessor {
     this.locator = locator;
     this.statistics.clientConnected();
     this.locatorConnectionState = new NoSecurityConnectionStateProcessor();
-    this.validator = new VersionValidator();
   }
 
+  /**
+   * Because the locator closes the connection after a successful response, this actually handles
+   * two messages: the version identification and the getAvailableServers message.
+   */
   @Override
   public void processMessage(InputStream inputStream, OutputStream outputStream)
-      throws IOException, IncompatibleVersionException {
-    handleHandshakeMessage(inputStream);
+      throws IOException {
+    ProtocolVersionHandler.handleVersionMessage(inputStream, outputStream, statistics);
+
     streamProcessor.receiveMessage(inputStream, outputStream,
         new MessageExecutionContext(locator, statistics, locatorConnectionState));
   }
@@ -67,21 +71,5 @@ public final class ProtobufLocatorPipeline implements ClientProtocolProcessor {
   public boolean socketProcessingIsFinished() {
     // All locator connections are closed after one message, so this is not used
     return false;
-  }
-
-  private void handleHandshakeMessage(InputStream inputStream) throws IOException {
-    // Incoming connection had the first byte removed to determine communication mode, add that
-    // back before parsing.
-    PushbackInputStream handshakeStream = new PushbackInputStream(inputStream);
-    handshakeStream.unread(CommunicationMode.ProtobufClientServerProtocol.getModeNumber());
-
-    ProtocolVersion.NewConnectionClientVersion handshakeRequest =
-        ProtocolVersion.NewConnectionClientVersion.parseDelimitedFrom(handshakeStream);
-    int majorVersion = handshakeRequest.getMajorVersion();
-    int minorVersion = handshakeRequest.getMinorVersion();
-    if (!validator.isValid(majorVersion, minorVersion)) {
-      throw new IOException(
-          "Invalid protobuf client version number: " + majorVersion + "." + minorVersion);
-    }
   }
 }

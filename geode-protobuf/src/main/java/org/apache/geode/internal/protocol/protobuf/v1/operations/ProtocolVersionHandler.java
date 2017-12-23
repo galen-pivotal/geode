@@ -28,7 +28,7 @@ public class ProtocolVersionHandler {
   private static final Logger logger = LogManager.getLogger();
   private static final VersionValidator validator = new VersionValidator();
 
-  public static boolean handleVersionMessage(InputStream inputStream, OutputStream outputStream,
+  public static void handleVersionMessage(InputStream inputStream, OutputStream outputStream,
       ProtocolClientStatistics statistics) throws IOException {
     ProtocolVersion.NewConnectionClientVersion versionMessage =
         ProtocolVersion.NewConnectionClientVersion.parseDelimitedFrom(inputStream);
@@ -50,6 +50,5 @@ public class ProtocolVersionHandler {
       throw new IOException("Incompatible protobuf version.");
     }
 
-    return versionAccepted;
   }
 }
