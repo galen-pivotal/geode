@@ -17,6 +17,8 @@ package org.apache.geode.api;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.apache.geode.pdx.PdxInstance;
+
 public interface AsyncRegion<K, V> {
   CompletableFuture<V> get(K key);
 
@@ -38,4 +40,6 @@ public interface AsyncRegion<K, V> {
   CompletableFuture<Void> putAll(Map<? extends K, ? extends V> m);
 
   CompletableFuture<Void> clear();
+
+  CompletableFuture<PdxInstance> getPdx(V testKey);
 }

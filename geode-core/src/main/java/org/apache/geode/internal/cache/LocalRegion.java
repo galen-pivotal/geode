@@ -291,7 +291,7 @@ public class LocalRegion extends AbstractRegion implements LoaderHelperFactory,
   /**
    * thread local to indicate that this thread should bypass the initialization Latch
    */
-  private static final ThreadLocal<Integer> initializationThread = new ThreadLocal();
+  private static final ThreadLocal<Integer> initializationThread = new ThreadLocal<>();
 
   /* thread local to indicate its for persist data convert tool */
   static final ThreadLocal isConversion = new ThreadLocal();

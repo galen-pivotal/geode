@@ -22,29 +22,51 @@ import java.util.concurrent.Executors;
 
 import org.apache.geode.api.AsyncRegion;
 import org.apache.geode.cache.Region;
+import org.apache.geode.internal.cache.InternalCache;
+import org.apache.geode.pdx.PdxInstance;
 
 public class AsyncRegionImpl<K, V> implements AsyncRegion<K, V> {
   private final Region<K, V> region;
+  private final InternalCache cache;
   private final ExecutorService threadPool;
 
-  public AsyncRegionImpl(Region<K, V> region) {
+  public AsyncRegionImpl(Region<K, V> region, InternalCache cache) {
     this.region = region;
+    this.cache = cache;
     threadPool = Executors.newCachedThreadPool();
   }
 
   private <T> CompletableFuture<T> asyncExecute(Callable<T> callable) {
-    CompletableFuture<T> getFuture = new CompletableFuture<>();
+    CompletableFuture<T> future = new CompletableFuture<>();
 
     threadPool.submit(() -> {
       try {
-        getFuture.complete(callable.call());
+        future.complete(callable.call());
       } catch (Exception e) {
-        getFuture.completeExceptionally(e);
+        future.completeExceptionally(e);
       }
     });
 
-    return getFuture;
+    return future;
   }
+
+  private <T> CompletableFuture<PdxInstance> asyncExecutePdx(Callable<T> callable) {
+    CompletableFuture<PdxInstance> future = new CompletableFuture<>();
+
+    threadPool.submit(() -> {
+      try {
+        cache.setReadSerializedForCurrentThread(true);
+        future.complete((PdxInstance) callable.call());
+      } catch (Exception e) {
+        future.completeExceptionally(e);
+      } finally {
+        cache.setReadSerializedForCurrentThread(false);
+      }
+    });
+
+    return future;
+  }
+
 
   @Override
   public CompletableFuture<V> get(K key) {
@@ -73,21 +95,27 @@ public class AsyncRegionImpl<K, V> implements AsyncRegion<K, V> {
 
   @Override
   public CompletableFuture<Integer> size() {
-    return asyncExecute(() -> region.size());
+    return asyncExecute(region::size);
   }
 
   @Override
   public CompletableFuture<Boolean> isEmpty() {
-    return asyncExecute(() -> region.isEmpty());
+    return asyncExecute(region::isEmpty);
   }
 
   @Override
   public CompletableFuture<Void> putAll(Map<? extends K, ? extends V> m) {
-    return asyncExecute(() -> region.putAll(m));
+    return asyncExecute( () -> {region.putAll(m); return null;});
   }
 
   @Override
   public CompletableFuture<Void> clear() {
-    return asyncExecute(() -> region.clear());
+    return asyncExecute(() -> { region.clear(); return null;});
+  }
+
+  @Override
+  public CompletableFuture<PdxInstance> getPdx(V key) {
+    return asyncExecutePdx(() -> region.get(key));
   }
 }
+

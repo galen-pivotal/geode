@@ -16,8 +16,6 @@ package org.apache.geode.pdx;
 
 import java.util.List;
 
-import org.apache.geode.cache.CacheFactory;
-import org.apache.geode.cache.client.ClientCacheFactory;
 
 /**
  * PdxInstance provides run time access to the fields of a PDX without deserializing the PDX.

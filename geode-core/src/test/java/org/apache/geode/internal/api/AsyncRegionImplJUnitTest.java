@@ -25,6 +25,7 @@ import org.junit.experimental.categories.Category;
 
 import org.apache.geode.api.AsyncRegion;
 import org.apache.geode.cache.Region;
+import org.apache.geode.internal.cache.InternalCache;
 import org.apache.geode.test.junit.categories.UnitTest;
 
 import static org.mockito.Mockito.doReturn;
@@ -41,7 +42,7 @@ public class AsyncRegionImplJUnitTest {
   @Before
   public void setUp() {
     region = mock(Region.class);
-    asyncRegion = new AsyncRegionImpl<>(region);
+    asyncRegion = new AsyncRegionImpl<>(region, mock(InternalCache.class));
   }
 
   @Test

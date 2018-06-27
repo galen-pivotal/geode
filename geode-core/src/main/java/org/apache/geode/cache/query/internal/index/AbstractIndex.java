@@ -538,7 +538,7 @@ public abstract class AbstractIndex implements IndexProtocol {
   }
 
   // package-private to avoid synthetic accessor
-  Object verifyAndGetPdxDomainObject(Object value) {
+  private Object verifyAndGetPdxDomainObject(Object value) {
     if (value instanceof StructImpl) {
       // Doing hasPdx check first, since its cheaper.
       if (((StructImpl) value).isHasPdx()

@@ -25,6 +25,7 @@ import org.apache.geode.internal.api.AsyncRegionImpl;
 import org.apache.geode.internal.cache.InternalCache;
 import org.apache.geode.internal.cache.InternalRegion;
 import org.apache.geode.internal.i18n.LocalizedStrings;
+import org.apache.geode.pdx.PdxInstance;
 
 /**
  * {@code RegionFactory} is used to create {@link Region regions} in a {@link Cache cache}.
@@ -758,11 +759,9 @@ public class RegionFactory<K, V> {
     return getCache().createRegion(name, ra);
   }
 
-  public AsyncRegion<K, V> createAsync(String name)
+  public AsyncRegion<K, V> createAsyncRegion(String name)
       throws CacheExistsException, RegionExistsException, CacheWriterException, TimeoutException {
-    @SuppressWarnings("deprecation")
-    RegionAttributes<K, V> ra = this.attrsFactory.create();
-    return new AsyncRegionImpl<>(getCache().createRegion(name, ra));
+    return new AsyncRegionImpl<>(create(name), cache);
   }
 
   /**
