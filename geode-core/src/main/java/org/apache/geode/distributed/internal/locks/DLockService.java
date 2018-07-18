@@ -2207,7 +2207,7 @@ public class DLockService extends DistributedLockService {
   public static void destroyServiceNamed(String serviceName) throws IllegalArgumentException {
     DLockService svc = null;
     synchronized (services) {
-      svc = (DLockService) services.get(serviceName);
+      svc = services.get(serviceName);
     }
     if (svc == null) {
       throw new IllegalArgumentException(
@@ -2219,12 +2219,11 @@ public class DLockService extends DistributedLockService {
 
   /** Destroys all lock services in this VM. Used in test tearDown code. */
   public static void destroyAll() {
-    Collection svcs = Collections.EMPTY_SET;
+    Collection<DLockService> svcs;
     synchronized (services) {
-      svcs = new HashSet(services.values());
+      svcs = new HashSet<>(services.values());
     }
-    for (Iterator iter = svcs.iterator(); iter.hasNext();) {
-      DLockService svc = (DLockService) iter.next();
+    for (DLockService svc : svcs) {
       try {
         svc.destroyAndRemove();
       } catch (CancelException e) {
@@ -2612,19 +2611,19 @@ public class DLockService extends DistributedLockService {
 
   private static final DummyDLockStats DUMMY_STATS = new DummyDLockStats();
 
-  public static final SuspendLockingToken SUSPEND_LOCKING_TOKEN = new SuspendLockingToken();
+  static final SuspendLockingToken SUSPEND_LOCKING_TOKEN = new SuspendLockingToken();
 
   // -------------------------------------------------------------------------
   // Static fields
   // -------------------------------------------------------------------------
 
-  /** Map of all locking services. Key:ServiceName, Value:DLockService */
-  protected static final Map<String, DLockService> services = new HashMap<String, DLockService>();
+  /** Map of all locking services. */
+  protected static final Map<String, DLockService> services = new HashMap<>();
 
-  protected static final Object creationLock = new Object();
+  private static final Object creationLock = new Object();
 
   /** All DLock threads belong to this group */
-  static ThreadGroup threadGroup;
+  private static ThreadGroup threadGroup;
 
   /** DLock statistics; static because multiple dlock instances can exist */
   private static DistributedLockStats stats = DUMMY_STATS;
@@ -2635,7 +2634,7 @@ public class DLockService extends DistributedLockService {
 
   public static final String LTLS = "LTLS";
   public static final String DTLS = "DTLS";
-  static final String[] reservedNames = new String[] {LTLS, DTLS};
+  private static final String[] reservedNames = new String[] {LTLS, DTLS};
 
   // -------------------------------------------------------------------------
   // DLS serial number (uniquely identifies local instance of DLS)
@@ -2689,10 +2688,8 @@ public class DLockService extends DistributedLockService {
    * @see org.apache.geode.distributed.DistributedLockService#getServiceNamed(String)
    */
   public static DistributedLockService getServiceNamed(String serviceName) {
-    DLockService svc = null;
     synchronized (services) {
-      svc = (DLockService) services.get(serviceName);
-      return svc;
+      return services.get(serviceName);
     }
   }
 
@@ -2750,10 +2747,7 @@ public class DLockService extends DistributedLockService {
       throw new IllegalArgumentException(LocalizedStrings.DLockService_SERVICE_NAMED_0_IS_NOT_VALID
           .toLocalizedString(serviceName));
     }
-    DLockService svc = null;
-    synchronized (services) {
-      svc = (DLockService) services.get(serviceName);
-    }
+    DLockService svc = getInternalServiceNamed(serviceName);
     if (svc == null) {
       throw new IllegalArgumentException(
           LocalizedStrings.DLockService_SERVICE_NAMED_0_NOT_CREATED.toLocalizedString(serviceName));
@@ -2769,7 +2763,7 @@ public class DLockService extends DistributedLockService {
     }
     DLockService svc = null;
     synchronized (services) {
-      svc = (DLockService) services.get(serviceName);
+      svc = services.get(serviceName);
     }
     if (svc == null) {
       throw new IllegalArgumentException(
@@ -2854,7 +2848,9 @@ public class DLockService extends DistributedLockService {
 
   /** Convenience method to get named DLockService */
   public static DLockService getInternalServiceNamed(String serviceName) {
-    return (DLockService) services.get(serviceName);
+    synchronized (services) {
+      return services.get(serviceName);
+    }
   }
 
   /** Validates service name for external creation */
@@ -2875,11 +2871,9 @@ public class DLockService extends DistributedLockService {
 
   /** Return a snapshot of all services */
   public static Map<String, DLockService> snapshotAllServices() { // used by: internal/admin/remote
-    Map snapshot = null;
     synchronized (services) {
-      snapshot = new HashMap(services);
+      return new HashMap<>(services);
     }
-    return snapshot;
   }
 
   /**
@@ -2891,9 +2885,7 @@ public class DLockService extends DistributedLockService {
     synchronized (services) {
       logger.info(LogMarker.DLS_MARKER, LocalizedMessage.create(LocalizedStrings.TESTING,
           "DLockService.dumpAllServices() - " + services.size() + " services:\n"));
-      Iterator entries = services.entrySet().iterator();
-      while (entries.hasNext()) {
-        Map.Entry entry = (Map.Entry) entries.next();
+      for (Map.Entry entry : services.entrySet()) {
         buffer.append("  " + entry.getKey() + ":\n");
         DLockService svc = (DLockService) entry.getValue();
         svc.dumpService();
@@ -2954,7 +2946,7 @@ public class DLockService extends DistributedLockService {
 
     InternalDistributedSystem system = null;
     synchronized (services) {
-      DLockService removedService = (DLockService) services.remove(service.getName());
+      DLockService removedService = services.remove(service.getName());
       if (removedService == null) {
         // another thread beat us to the removal... return
         return;
