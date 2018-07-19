@@ -71,21 +71,21 @@ public class DLockService extends DistributedLockService {
 
   private static final Logger logger = LogService.getLogger();
 
-  public static final long NOT_GRANTOR_SLEEP = Long
+  private static final long NOT_GRANTOR_SLEEP = Long
       .getLong(DistributionConfig.GEMFIRE_PREFIX + "DLockService.notGrantorSleep", 100).longValue();
 
-  public static final boolean DEBUG_NONGRANTOR_DESTROY_LOOP = Boolean
+  private static final boolean DEBUG_NONGRANTOR_DESTROY_LOOP = Boolean
       .getBoolean(DistributionConfig.GEMFIRE_PREFIX + "DLockService.debug.nonGrantorDestroyLoop");
 
-  public static final int DEBUG_NONGRANTOR_DESTROY_LOOP_COUNT = Integer
+  private static final int DEBUG_NONGRANTOR_DESTROY_LOOP_COUNT = Integer
       .getInteger(
           DistributionConfig.GEMFIRE_PREFIX + "DLockService.debug.nonGrantorDestroyLoopCount", 20)
       .intValue();
 
-  public static final boolean AUTOMATE_FREE_RESOURCES =
+  private static final boolean AUTOMATE_FREE_RESOURCES =
       Boolean.getBoolean(DistributionConfig.GEMFIRE_PREFIX + "DLockService.automateFreeResources");
 
-  public static final int INVALID_LEASE_ID = -1;
+  static final int INVALID_LEASE_ID = -1;
 
   /** Unique name for this instance of the named locking service */
   protected final String serviceName;

@@ -297,7 +297,7 @@ public class GrantorRequestProcessor extends ReplyProcessor21 {
    *         recovery
    */
   static GrantorInfo becomeGrantor(DLockService service, int dlsSerialNumber,
-                                   InternalDistributedMember oldTurk, InternalDistributedSystem sys) {
+      InternalDistributedMember oldTurk, InternalDistributedSystem sys) {
     return basicOp(-1, service, dlsSerialNumber, sys, oldTurk, BECOME_OP);
   }
 
@@ -308,7 +308,7 @@ public class GrantorRequestProcessor extends ReplyProcessor21 {
    * @param sys the distributed system
    */
   static void clearGrantor(long grantorVersion, DLockService service, int dlsSerialNumber,
-                           InternalDistributedSystem sys, boolean withLocks) {
+      InternalDistributedSystem sys, boolean withLocks) {
     basicOp(grantorVersion, service, dlsSerialNumber, sys, null,
         withLocks ? CLEAR_WITH_LOCKS_OP : CLEAR_OP);
   }

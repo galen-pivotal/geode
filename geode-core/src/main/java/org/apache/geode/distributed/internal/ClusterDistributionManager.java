@@ -252,7 +252,7 @@ public class ClusterDistributionManager implements DistributionManager {
   /** Is this node running an AdminDistributedSystem? */
   private static volatile boolean isDedicatedAdminVM = false;
 
-  private static ThreadLocal<Boolean> isStartupThread = new ThreadLocal();
+  private static ThreadLocal<Boolean> isStartupThread = new ThreadLocal<>();
 
   /**
    * Identifier for function execution threads and any of their children
@@ -321,10 +321,10 @@ public class ClusterDistributionManager implements DistributionManager {
    *
    * @since GemFire 5.7
    */
-  private final Object allMembershipListenersLock = new MembershipListenersLock();
+  private final Object allMembershipListenersLock = new Object();
 
   /** A queue of MemberEvent instances */
-  private final BlockingQueue<MemberEvent> membershipEventQueue = new LinkedBlockingQueue();
+  private final BlockingQueue<MemberEvent> membershipEventQueue = new LinkedBlockingQueue<>();
 
   /** Used to invoke registered membership listeners in the background. */
   private Thread memberEventThread;
@@ -385,7 +385,7 @@ public class ClusterDistributionManager implements DistributionManager {
    * 3) {@link #hostedLocatorsAll}<br>
    * 4) {@link #hostedLocatorsWithSharedConfiguration}<br>
    */
-  private final Object membersLock = new MembersLock();
+  private final Object membersLock = new Object();
 
   /**
    * The lock held while writing {@link #adminConsoles}.
@@ -661,9 +661,9 @@ public class ClusterDistributionManager implements DistributionManager {
     this.membershipListeners = new ConcurrentHashMap<>();
     this.distributedSystemId = system.getConfig().getDistributedSystemId();
 
-      long statId = OSProcess.getId();
-      this.stats = new DistributionStats(system, statId);
-      DistributionStats.enableClockStats = system.getConfig().getEnableTimeStatistics();
+    long statId = OSProcess.getId();
+    this.stats = new DistributionStats(system, statId);
+    DistributionStats.enableClockStats = system.getConfig().getEnableTimeStatistics();
 
     this.exceptionInThreads = false;
 
@@ -3538,7 +3538,7 @@ public class ClusterDistributionManager implements DistributionManager {
   }
 
   /** returns the serialThread's queue if throttling is being used, null if not */
-  public OverflowQueueWithDMStats getSerialQueue(InternalDistributedMember sender) {
+  public OverflowQueueWithDMStats<Runnable> getSerialQueue(InternalDistributedMember sender) {
     if (MULTI_SERIAL_EXECUTORS) {
       return this.serialQueuedExecutorPool.getSerialQueue(sender);
     } else {
@@ -3739,22 +3739,24 @@ public class ClusterDistributionManager implements DistributionManager {
    */
   private static class SerialQueuedExecutorPool {
     /** To store the serial threads */
-    ConcurrentMap serialQueuedExecutorMap = new ConcurrentHashMap(MAX_SERIAL_QUEUE_THREAD);
+    final ConcurrentMap<Integer, SerialQueuedExecutorWithDMStats> serialQueuedExecutorMap =
+        new ConcurrentHashMap<>(MAX_SERIAL_QUEUE_THREAD);
 
     /** To store the queue associated with thread */
-    Map serialQueuedMap = new HashMap(MAX_SERIAL_QUEUE_THREAD);
+    final Map<Integer, OverflowQueueWithDMStats<Runnable>> serialQueuedMap =
+        new HashMap<>(MAX_SERIAL_QUEUE_THREAD);
 
     /** Holds mapping between sender to the serial thread-id */
-    Map senderToSerialQueueIdMap = new HashMap();
+    final Map<InternalDistributedMember, Integer> senderToSerialQueueIdMap = new HashMap<>();
 
     /**
      * Holds info about unused thread, a thread is marked unused when the member associated with it
      * has left distribution system.
      */
-    ArrayList threadMarkedForUse = new ArrayList();
+    final ArrayList<Integer> threadMarkedForUse = new ArrayList<>();
 
-    DistributionStats stats;
-    ThreadGroup threadGroup;
+    final DistributionStats stats;
+    final ThreadGroup threadGroup;
 
     final boolean throttlingDisabled;
 
@@ -3782,7 +3784,7 @@ public class ClusterDistributionManager implements DistributionManager {
 
       synchronized (senderToSerialQueueIdMap) {
         // Check if there is a executor associated with this sender.
-        queueId = (Integer) senderToSerialQueueIdMap.get(sender);
+        queueId = senderToSerialQueueIdMap.get(sender);
 
         if (!createNew || queueId != null) {
           return queueId;
@@ -3806,12 +3808,12 @@ public class ClusterDistributionManager implements DistributionManager {
      * Returns the queue associated with this sender. Used in FlowControl for throttling (based on
      * queue size).
      */
-    public OverflowQueueWithDMStats getSerialQueue(InternalDistributedMember sender) {
+    OverflowQueueWithDMStats<Runnable> getSerialQueue(InternalDistributedMember sender) {
       Integer queueId = getQueueId(sender, false);
       if (queueId == null) {
         return null;
       }
-      return (OverflowQueueWithDMStats) serialQueuedMap.get(queueId);
+      return serialQueuedMap.get(queueId);
     }
 
     /*
@@ -3820,7 +3822,7 @@ public class ClusterDistributionManager implements DistributionManager {
      * applied during put event, this doesnt block the extract operation on the queue.
      *
      */
-    public SerialQueuedExecutorWithDMStats getThrottledSerialExecutor(
+    SerialQueuedExecutorWithDMStats getThrottledSerialExecutor(
         InternalDistributedMember sender) {
       SerialQueuedExecutorWithDMStats executor = getSerialExecutor(sender);
 
@@ -3859,7 +3861,7 @@ public class ClusterDistributionManager implements DistributionManager {
     /*
      * Returns the serial queue executor for the given sender.
      */
-    public SerialQueuedExecutorWithDMStats getSerialExecutor(InternalDistributedMember sender) {
+    SerialQueuedExecutorWithDMStats getSerialExecutor(InternalDistributedMember sender) {
       SerialQueuedExecutorWithDMStats executor = null;
       Integer queueId = getQueueId(sender, true);
       if ((executor =
@@ -3885,12 +3887,12 @@ public class ClusterDistributionManager implements DistributionManager {
      */
     private SerialQueuedExecutorWithDMStats createSerialExecutor(final Integer id) {
 
-      BlockingQueue poolQueue;
+      OverflowQueueWithDMStats<Runnable> poolQueue;
 
       if (SERIAL_QUEUE_BYTE_LIMIT == 0 || this.throttlingDisabled) {
-        poolQueue = new OverflowQueueWithDMStats(stats.getSerialQueueHelper());
+        poolQueue = new OverflowQueueWithDMStats<>(stats.getSerialQueueHelper());
       } else {
-        poolQueue = new ThrottlingMemLinkedQueueWithDMStats(SERIAL_QUEUE_BYTE_LIMIT,
+        poolQueue = new ThrottlingMemLinkedQueueWithDMStats<>(SERIAL_QUEUE_BYTE_LIMIT,
             SERIAL_QUEUE_THROTTLE, SERIAL_QUEUE_SIZE_LIMIT, SERIAL_QUEUE_SIZE_THROTTLE,
             this.stats.getSerialQueueHelper());
       }
@@ -3980,24 +3982,6 @@ public class ClusterDistributionManager implements DistributionManager {
         executor.shutdown();
       }
     }
-  }
-
-  /**
-   * A simple class used for locking the list of members of the distributed system. We give this
-   * lock its own class so that it shows up nicely in stack traces.
-   */
-  private static class MembersLock {
-    protected MembersLock() {
-
-    }
-  }
-
-  /**
-   * A simple class used for locking the list of membership listeners. We give this lock its own
-   * class so that it shows up nicely in stack traces.
-   */
-  private static class MembershipListenersLock {
-    protected MembershipListenersLock() {}
   }
 
   /**

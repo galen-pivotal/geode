@@ -2310,7 +2310,7 @@ public class GMSMembershipManager implements MembershipManager, Manager {
     // run a message through the member's serial execution queue to ensure that all of its
     // current messages have been processed
     boolean result = false;
-    OverflowQueueWithDMStats serialQueue = listener.getDM().getSerialQueue(idm);
+    OverflowQueueWithDMStats<Runnable> serialQueue = listener.getDM().getSerialQueue(idm);
     if (serialQueue != null) {
       final boolean done[] = new boolean[1];
       final FlushingMessage msg = new FlushingMessage(done);
