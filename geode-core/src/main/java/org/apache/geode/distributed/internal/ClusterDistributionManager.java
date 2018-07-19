@@ -446,7 +446,7 @@ public class ClusterDistributionManager implements DistributionManager {
    * If using a throttling queue for the serialThread, we cache the queue here so we can see if
    * delivery would block
    */
-  private ThrottlingMemLinkedQueueWithDMStats serialQueue;
+  private ThrottlingMemLinkedQueueWithDMStats<Runnable> serialQueue;
 
   /** a map keyed on InternalDistributedMember, to direct channels to other systems */
   // protected final Map channelMap = CFactory.createCM();
@@ -494,21 +494,19 @@ public class ClusterDistributionManager implements DistributionManager {
 
 
   private final Map<InternalDistributedMember, String> redundancyZones =
-      Collections.synchronizedMap(new HashMap<InternalDistributedMember, String>());
+      Collections.synchronizedMap(new HashMap<>());
 
   private boolean enforceUniqueZone = false;
 
   /**
    * root cause of forcibly shutting down the distribution manager
    */
-  volatile Throwable rootCause = null;
+  private volatile Throwable rootCause = null;
 
   /**
    * @see #closeInProgress
    */
   private final Object shutdownMutex = new Object();
-
-
 
   ////////////////////// Static Methods //////////////////////
 
@@ -728,9 +726,8 @@ public class ClusterDistributionManager implements DistributionManager {
             return thread;
           }
         };
-        SerialQueuedExecutorWithDMStats executor = new SerialQueuedExecutorWithDMStats(poolQueue,
+        this.serialThread = new SerialQueuedExecutorWithDMStats(poolQueue,
             this.stats.getSerialProcessorHelper(), tf);
-        this.serialThread = executor;
       }
       {
         BlockingQueue q = new LinkedBlockingQueue();
@@ -1611,7 +1608,7 @@ public class ClusterDistributionManager implements DistributionManager {
    * distribution managers.
    */
   @Override
-  public Set getDistributionManagerIdsIncludingAdmin() {
+  public Set<InternalDistributedMember> getDistributionManagerIdsIncludingAdmin() {
     // access to members synchronized under membersLock in order to
     // ensure serialization
     synchronized (this.membersLock) {
@@ -1625,10 +1622,10 @@ public class ClusterDistributionManager implements DistributionManager {
    * managers not including me.
    */
   @Override
-  public Set getOtherDistributionManagerIds() {
+  public Set<InternalDistributedMember> getOtherDistributionManagerIds() {
     // We return a modified copy of the list, so
     // collect the old list and copy under the lock.
-    Set result = new HashSet(getDistributionManagerIds());
+    Set<InternalDistributedMember> result = new HashSet<>(getDistributionManagerIds());
 
     InternalDistributedMember me = getDistributionManagerId();
     result.remove(me);
@@ -1638,10 +1635,10 @@ public class ClusterDistributionManager implements DistributionManager {
   }
 
   @Override
-  public Set getOtherNormalDistributionManagerIds() {
+  public Set<InternalDistributedMember> getOtherNormalDistributionManagerIds() {
     // We return a modified copy of the list, so
     // collect the old list and copy under the lock.
-    Set result = new HashSet(getNormalDistributionManagerIds());
+    Set<InternalDistributedMember> result = new HashSet<>(getNormalDistributionManagerIds());
 
     InternalDistributedMember me = getDistributionManagerId();
     result.remove(me);
@@ -1664,7 +1661,7 @@ public class ClusterDistributionManager implements DistributionManager {
    * Add a membership listener and return other DistributionManagerIds as an atomic operation
    */
   @Override
-  public Set addMembershipListenerAndGetDistributionManagerIds(MembershipListener l) {
+  public Set<InternalDistributedMember> addMembershipListenerAndGetDistributionManagerIds(MembershipListener l) {
     // switched sync order to fix bug 30360
     synchronized (this.membersLock) {
       // Don't let the members come and go while we are adding this
@@ -2336,7 +2333,7 @@ public class ClusterDistributionManager implements DistributionManager {
     logger.info(LocalizedMessage.create(
         LocalizedStrings.DistributionManager_NEW_ADMINISTRATION_MEMBER_DETECTED_AT_0, theId));
     synchronized (this.adminConsolesLock) {
-      HashSet tmp = new HashSet(this.adminConsoles);
+      HashSet<InternalDistributedMember> tmp = new HashSet<>(this.adminConsoles);
       tmp.add(theId);
       this.adminConsoles = Collections.unmodifiableSet(tmp);
     }
@@ -2358,8 +2355,8 @@ public class ClusterDistributionManager implements DistributionManager {
   }
 
   @Override
-  public Set getAllOtherMembers() {
-    Set result = new HashSet(getDistributionManagerIdsIncludingAdmin());
+  public Set<InternalDistributedMember> getAllOtherMembers() {
+    Set<InternalDistributedMember> result = new HashSet<>(getDistributionManagerIdsIncludingAdmin());
     result.remove(getDistributionManagerId());
     return result;
   }
@@ -2367,27 +2364,17 @@ public class ClusterDistributionManager implements DistributionManager {
   @Override
   public void retainMembersWithSameOrNewerVersion(Collection<InternalDistributedMember> members,
       Version version) {
-    for (Iterator<InternalDistributedMember> it = members.iterator(); it.hasNext();) {
-      InternalDistributedMember id = it.next();
-      if (id.getVersionObject().compareTo(version) < 0) {
-        it.remove();
-      }
-    }
+    members.removeIf(id -> id.getVersionObject().compareTo(version) < 0);
   }
 
   @Override
   public void removeMembersWithSameOrNewerVersion(Collection<InternalDistributedMember> members,
       Version version) {
-    for (Iterator<InternalDistributedMember> it = members.iterator(); it.hasNext();) {
-      InternalDistributedMember id = it.next();
-      if (id.getVersionObject().compareTo(version) >= 0) {
-        it.remove();
-      }
-    }
+    members.removeIf(id -> id.getVersionObject().compareTo(version) >= 0);
   }
 
   @Override
-  public Set addAllMembershipListenerAndGetAllIds(MembershipListener l) {
+  public Set<InternalDistributedMember> addAllMembershipListenerAndGetAllIds(MembershipListener l) {
     MembershipManager mgr = membershipManager;
     mgr.getViewLock().writeLock().lock();
     try {
@@ -3140,10 +3127,10 @@ public class ClusterDistributionManager implements DistributionManager {
    *         all received it or it was sent to {@link DistributionMessage#ALL_RECIPIENTS}.
    * @throws NotSerializableException If <code>message</code> cannot be serialized
    */
-  Set sendOutgoing(DistributionMessage message) throws NotSerializableException {
+  Set<InternalDistributedMember> sendOutgoing(DistributionMessage message) throws NotSerializableException {
     long startTime = DistributionStats.getStatTime();
 
-    Set result = sendViaMembershipManager(message.getRecipients(), message,
+    Set<InternalDistributedMember> result = sendViaMembershipManager(message.getRecipients(), message,
         ClusterDistributionManager.this, this.stats);
     long endTime = 0L;
     if (DistributionStats.enableClockStats) {
@@ -3172,8 +3159,8 @@ public class ClusterDistributionManager implements DistributionManager {
    * @return recipients who did not receive the message
    * @throws NotSerializableException If <codE>message</code> cannot be serialized
    */
-  Set sendMessage(DistributionMessage message) throws NotSerializableException {
-    Set result = null;
+  Set<InternalDistributedMember> sendMessage(DistributionMessage message) throws NotSerializableException {
+    Set<InternalDistributedMember> result = null;
     try {
       // Verify we're not too far into the shutdown
       stopper.checkCancelInProgress(null);
@@ -3202,9 +3189,6 @@ public class ClusterDistributionManager implements DistributionManager {
       for (int i = 0; i < message.getRecipients().length; i++)
         result.add(message.getRecipients()[i]);
       return result;
-      /*
-       * if (ex instanceof org.apache.geode.GemFireIpcResourceException) { return; }
-       */
     }
     return result;
   }
@@ -3214,7 +3198,7 @@ public class ClusterDistributionManager implements DistributionManager {
    *         all received it or it was sent to {@link DistributionMessage#ALL_RECIPIENTS}).
    * @throws NotSerializableException If content cannot be serialized
    */
-  private Set sendViaMembershipManager(InternalDistributedMember[] destinations,
+  private Set<InternalDistributedMember> sendViaMembershipManager(InternalDistributedMember[] destinations,
       DistributionMessage content, ClusterDistributionManager dm, DistributionStats stats)
       throws NotSerializableException {
     if (membershipManager == null) {
@@ -3222,10 +3206,8 @@ public class ClusterDistributionManager implements DistributionManager {
           LocalizedStrings.DistributionChannel_ATTEMPTING_A_SEND_TO_A_DISCONNECTED_DISTRIBUTIONMANAGER));
       if (destinations.length == 1 && destinations[0] == DistributionMessage.ALL_RECIPIENTS)
         return null;
-      HashSet result = new HashSet();
-      for (int i = 0; i < destinations.length; i++) {
-        result.add(destinations[i]);
-      }
+      HashSet<InternalDistributedMember> result = new HashSet<>();
+      Collections.addAll(result, destinations);
       return result;
     }
     return membershipManager.send(destinations, content, stats);

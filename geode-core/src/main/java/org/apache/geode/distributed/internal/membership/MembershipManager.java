@@ -135,7 +135,7 @@ public interface MembershipManager {
    *         not receive the message because they departed the distributed system.
    * @throws NotSerializableException If content cannot be serialized
    */
-  Set send(InternalDistributedMember[] destinations, DistributionMessage content, DMStats stats)
+  Set<InternalDistributedMember> send(InternalDistributedMember[] destinations, DistributionMessage content, DMStats stats)
       throws NotSerializableException;
 
   /**

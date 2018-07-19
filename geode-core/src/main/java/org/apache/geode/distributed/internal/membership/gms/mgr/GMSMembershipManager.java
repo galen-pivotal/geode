@@ -2193,7 +2193,7 @@ public class GMSMembershipManager implements MembershipManager, Manager {
   /**
    * for mock testing this allows insertion of a DirectChannel mock
    */
-  protected void setDirectChannel(DirectChannel dc) {
+  void setDirectChannel(DirectChannel dc) {
     this.directChannel = dc;
     this.tcpDisabled = false;
   }
@@ -2202,7 +2202,7 @@ public class GMSMembershipManager implements MembershipManager, Manager {
    * non-thread-owned serial channels and high priority channels are not included
    */
   public Map getMessageState(DistributedMember member, boolean includeMulticast) {
-    Map result = new HashMap();
+    Map result = new HashMap<>();
     DirectChannel dc = directChannel;
     if (dc != null) {
       dc.getChannelStates(member, result);
