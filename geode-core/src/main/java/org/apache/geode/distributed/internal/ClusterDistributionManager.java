@@ -557,7 +557,7 @@ public class ClusterDistributionManager implements DistributionManager {
       {
         InternalDistributedMember id = distributionManager.getDistributionManagerId();
         if (!"".equals(id.getName())) {
-          for (InternalDistributedMember m : (List<InternalDistributedMember>) distributionManager
+          for (InternalDistributedMember m : distributionManager
               .getViewMembers()) {
             if (m.equals(id)) {
               // I'm counting on the members returned by getViewMembers being ordered such that
@@ -696,9 +696,10 @@ public class ClusterDistributionManager implements DistributionManager {
         if (SERIAL_QUEUE_BYTE_LIMIT == 0) {
           poolQueue = new OverflowQueueWithDMStats(this.stats.getSerialQueueHelper());
         } else {
-          this.serialQueue = new ThrottlingMemLinkedQueueWithDMStats(TOTAL_SERIAL_QUEUE_BYTE_LIMIT,
-              TOTAL_SERIAL_QUEUE_THROTTLE, SERIAL_QUEUE_SIZE_LIMIT, SERIAL_QUEUE_SIZE_THROTTLE,
-              this.stats.getSerialQueueHelper());
+          this.serialQueue =
+              new ThrottlingMemLinkedQueueWithDMStats<>(TOTAL_SERIAL_QUEUE_BYTE_LIMIT,
+                  TOTAL_SERIAL_QUEUE_THROTTLE, SERIAL_QUEUE_SIZE_LIMIT, SERIAL_QUEUE_SIZE_THROTTLE,
+                  this.stats.getSerialQueueHelper());
           poolQueue = this.serialQueue;
         }
         ThreadFactory tf = new ThreadFactory() {
@@ -760,11 +761,11 @@ public class ClusterDistributionManager implements DistributionManager {
       }
 
       {
-        BlockingQueue poolQueue;
+        BlockingQueue<Runnable> poolQueue;
         if (INCOMING_QUEUE_LIMIT == 0) {
-          poolQueue = new OverflowQueueWithDMStats(this.stats.getOverflowQueueHelper());
+          poolQueue = new OverflowQueueWithDMStats<>(this.stats.getOverflowQueueHelper());
         } else {
-          poolQueue = new OverflowQueueWithDMStats(INCOMING_QUEUE_LIMIT,
+          poolQueue = new OverflowQueueWithDMStats<>(INCOMING_QUEUE_LIMIT,
               this.stats.getOverflowQueueHelper());
         }
         ThreadFactory tf = new ThreadFactory() {
@@ -794,18 +795,17 @@ public class ClusterDistributionManager implements DistributionManager {
             return thread;
           }
         };
-        ThreadPoolExecutor pool = new PooledExecutorWithDMStats(poolQueue, MAX_THREADS,
+        this.threadPool = new PooledExecutorWithDMStats(poolQueue, MAX_THREADS,
             this.stats.getNormalPoolHelper(), tf);
-        this.threadPool = pool;
       }
 
 
       {
-        BlockingQueue poolQueue;
+        BlockingQueue<Runnable> poolQueue;
         if (INCOMING_QUEUE_LIMIT == 0) {
-          poolQueue = new OverflowQueueWithDMStats(this.stats.getHighPriorityQueueHelper());
+          poolQueue = new OverflowQueueWithDMStats<>(this.stats.getHighPriorityQueueHelper());
         } else {
-          poolQueue = new OverflowQueueWithDMStats(INCOMING_QUEUE_LIMIT,
+          poolQueue = new OverflowQueueWithDMStats<>(INCOMING_QUEUE_LIMIT,
               this.stats.getHighPriorityQueueHelper());
         }
         ThreadFactory tf = new ThreadFactory() {
@@ -868,12 +868,12 @@ public class ClusterDistributionManager implements DistributionManager {
             return thread;
           }
         };
-        BlockingQueue poolQueue;
+        BlockingQueue<Runnable> poolQueue;
         if (MAX_WAITING_THREADS == Integer.MAX_VALUE) {
           // no need for a queue since we have infinite threads
-          poolQueue = new SynchronousQueue();
+          poolQueue = new SynchronousQueue<>();
         } else {
-          poolQueue = new OverflowQueueWithDMStats(this.stats.getWaitingQueueHelper());
+          poolQueue = new OverflowQueueWithDMStats<>(this.stats.getWaitingQueueHelper());
         }
         this.waitingPool = new PooledExecutorWithDMStats(poolQueue, MAX_WAITING_THREADS,
             this.stats.getWaitingPoolHelper(), tf);
@@ -907,18 +907,18 @@ public class ClusterDistributionManager implements DistributionManager {
             return thread;
           }
         };
-        BlockingQueue poolQueue;
-        poolQueue = new OverflowQueueWithDMStats(this.stats.getWaitingQueueHelper());
+        BlockingQueue<Runnable> poolQueue;
+        poolQueue = new OverflowQueueWithDMStats<>(this.stats.getWaitingQueueHelper());
         this.prMetaDataCleanupThreadPool = new PooledExecutorWithDMStats(poolQueue,
             MAX_PR_META_DATA_CLEANUP_THREADS, this.stats.getWaitingPoolHelper(), tf);
       }
 
       {
-        BlockingQueue poolQueue;
+        BlockingQueue<Runnable> poolQueue;
         if (INCOMING_QUEUE_LIMIT == 0) {
-          poolQueue = new OverflowQueueWithDMStats(this.stats.getPartitionedRegionQueueHelper());
+          poolQueue = new OverflowQueueWithDMStats<>(this.stats.getPartitionedRegionQueueHelper());
         } else {
-          poolQueue = new OverflowQueueWithDMStats(INCOMING_QUEUE_LIMIT,
+          poolQueue = new OverflowQueueWithDMStats<>(INCOMING_QUEUE_LIMIT,
               this.stats.getPartitionedRegionQueueHelper());
         }
         ThreadFactory tf = new ThreadFactory() {
@@ -950,19 +950,18 @@ public class ClusterDistributionManager implements DistributionManager {
           this.partitionedRegionPool = new PooledExecutorWithDMStats(poolQueue, MAX_PR_THREADS,
               this.stats.getPartitionedRegionPoolHelper(), tf);
         } else {
-          SerialQueuedExecutorWithDMStats executor = new SerialQueuedExecutorWithDMStats(poolQueue,
+          this.partitionedRegionThread = new SerialQueuedExecutorWithDMStats(poolQueue,
               this.stats.getPartitionedRegionPoolHelper(), tf);
-          this.partitionedRegionThread = executor;
         }
 
       }
 
       {
-        BlockingQueue poolQueue;
+        BlockingQueue<Runnable> poolQueue;
         if (INCOMING_QUEUE_LIMIT == 0) {
-          poolQueue = new OverflowQueueWithDMStats(this.stats.getFunctionExecutionQueueHelper());
+          poolQueue = new OverflowQueueWithDMStats<>(this.stats.getFunctionExecutionQueueHelper());
         } else {
-          poolQueue = new OverflowQueueWithDMStats(INCOMING_QUEUE_LIMIT,
+          poolQueue = new OverflowQueueWithDMStats<>(INCOMING_QUEUE_LIMIT,
               this.stats.getFunctionExecutionQueueHelper());
         }
         ThreadFactory tf = new ThreadFactory() {
@@ -997,9 +996,8 @@ public class ClusterDistributionManager implements DistributionManager {
               new FunctionExecutionPooledExecutor(poolQueue, MAX_FE_THREADS,
                   this.stats.getFunctionExecutionPoolHelper(), tf, true /* for fn exec */);
         } else {
-          SerialQueuedExecutorWithDMStats executor = new SerialQueuedExecutorWithDMStats(poolQueue,
+          this.functionExecutionThread = new SerialQueuedExecutorWithDMStats(poolQueue,
               this.stats.getFunctionExecutionPoolHelper(), tf);
-          this.functionExecutionThread = executor;
         }
 
       }
@@ -1249,15 +1247,13 @@ public class ClusterDistributionManager implements DistributionManager {
 
   /* implementation of DM.getOldestMember */
   @Override
-  public DistributedMember getOldestMember(Collection c) throws NoSuchElementException {
+  public DistributedMember getOldestMember(Collection<InternalDistributedMember> c)
+      throws NoSuchElementException {
     List<InternalDistributedMember> view = getViewMembers();
-    for (int i = 0; i < view.size(); i++) {
-      Object viewMbr = view.get(i);
-      Iterator it = c.iterator();
-      while (it.hasNext()) {
-        Object nextMbr = it.next();
-        if (viewMbr.equals(nextMbr)) {
-          return (DistributedMember) nextMbr;
+    for (InternalDistributedMember aView : view) {
+      for (InternalDistributedMember nextMbr : c) {
+        if (aView.equals(nextMbr)) {
+          return nextMbr;
         }
       }
     }
@@ -1336,9 +1332,7 @@ public class ClusterDistributionManager implements DistributionManager {
     if (readyForMessages)
       return;
     synchronized (this) {
-      for (;;) {
-        if (readyForMessages)
-          break;
+      while (!readyForMessages) {
         stopper.checkCancelInProgress(null);
         boolean interrupted = Thread.interrupted();
         try {
@@ -1351,7 +1345,7 @@ public class ClusterDistributionManager implements DistributionManager {
             Thread.currentThread().interrupt();
           }
         }
-      } // for
+      }
     } // synchronized
   }
 
@@ -1388,9 +1382,7 @@ public class ClusterDistributionManager implements DistributionManager {
     }
 
     synchronized (this.readyToSendMsgsLock) {
-      for (;;) {
-        if (this.readyToSendMsgs)
-          break;
+      while (!this.readyToSendMsgs) {
         stopper.checkCancelInProgress(null);
         boolean interrupted = Thread.interrupted();
         try {
@@ -1473,7 +1465,7 @@ public class ClusterDistributionManager implements DistributionManager {
    * distribution managers.
    */
   @Override
-  public Set getDistributionManagerIds() {
+  public Set<InternalDistributedMember> getDistributionManagerIds() {
     // access to members synchronized under membersLock in order to
     // ensure serialization
     synchronized (this.membersLock) {
@@ -1496,10 +1488,10 @@ public class ClusterDistributionManager implements DistributionManager {
         throw new IllegalArgumentException("Cannot use empty collection of locators");
       }
       if (this.hostedLocatorsAll.isEmpty()) {
-        this.hostedLocatorsAll = new HashMap<InternalDistributedMember, Collection<String>>();
+        this.hostedLocatorsAll = new HashMap<>();
       }
       Map<InternalDistributedMember, Collection<String>> tmp =
-          new HashMap<InternalDistributedMember, Collection<String>>(this.hostedLocatorsAll);
+          new HashMap<>(this.hostedLocatorsAll);
       tmp.remove(member);
       tmp.put(member, locators);
       tmp = Collections.unmodifiableMap(tmp);
@@ -1538,7 +1530,7 @@ public class ClusterDistributionManager implements DistributionManager {
       }
       if (this.hostedLocatorsWithSharedConfiguration.containsKey(member)) {
         Map<InternalDistributedMember, Collection<String>> tmp =
-            new HashMap<InternalDistributedMember, Collection<String>>(
+            new HashMap<>(
                 this.hostedLocatorsWithSharedConfiguration);
         tmp.remove(member);
         if (tmp.isEmpty()) {
@@ -1661,7 +1653,8 @@ public class ClusterDistributionManager implements DistributionManager {
    * Add a membership listener and return other DistributionManagerIds as an atomic operation
    */
   @Override
-  public Set<InternalDistributedMember> addMembershipListenerAndGetDistributionManagerIds(MembershipListener l) {
+  public Set<InternalDistributedMember> addMembershipListenerAndGetDistributionManagerIds(
+      MembershipListener l) {
     // switched sync order to fix bug 30360
     synchronized (this.membersLock) {
       // Don't let the members come and go while we are adding this
@@ -1705,7 +1698,7 @@ public class ClusterDistributionManager implements DistributionManager {
   }
 
   @Override
-  public Set putOutgoing(final DistributionMessage msg) {
+  public Set<InternalDistributedMember> putOutgoing(final DistributionMessage msg) {
     try {
       DistributionMessageObserver observer = DistributionMessageObserver.getInstance();
       if (observer != null) {
@@ -2142,7 +2135,8 @@ public class ClusterDistributionManager implements DistributionManager {
    */
   private void addAllMembershipListener(MembershipListener l) {
     synchronized (this.allMembershipListenersLock) {
-      Set newAllMembershipListeners = new HashSet(this.allMembershipListeners);
+      Set<MembershipListener> newAllMembershipListeners =
+          new HashSet<>(this.allMembershipListeners);
       newAllMembershipListeners.add(l);
       this.allMembershipListeners = newAllMembershipListeners;
     }
@@ -2151,7 +2145,8 @@ public class ClusterDistributionManager implements DistributionManager {
   @Override
   public void removeAllMembershipListener(MembershipListener l) {
     synchronized (this.allMembershipListenersLock) {
-      Set newAllMembershipListeners = new HashSet(this.allMembershipListeners);
+      Set<MembershipListener> newAllMembershipListeners =
+          new HashSet<>(this.allMembershipListeners);
       if (!newAllMembershipListeners.remove(l)) {
         // There seems to be a race condition in which
         // multiple departure events can be registered
@@ -2172,10 +2167,7 @@ public class ClusterDistributionManager implements DistributionManager {
       return true;
     }
     InternalDistributedSystem ds = getSystem();
-    if (ds != null && ds.isDisconnecting()) {
-      return true;
-    }
-    return false;
+    return ds != null && ds.isDisconnecting();
   }
 
   public boolean isShutdownStarted() {
@@ -2240,7 +2232,7 @@ public class ClusterDistributionManager implements DistributionManager {
         }
         try {
           MemberEvent ev =
-              (MemberEvent) ClusterDistributionManager.this.membershipEventQueue.take();
+              ClusterDistributionManager.this.membershipEventQueue.take();
           handleMemberEvent(ev);
         } catch (InterruptedException e) {
           if (isCloseInProgress()) {
@@ -2356,7 +2348,8 @@ public class ClusterDistributionManager implements DistributionManager {
 
   @Override
   public Set<InternalDistributedMember> getAllOtherMembers() {
-    Set<InternalDistributedMember> result = new HashSet<>(getDistributionManagerIdsIncludingAdmin());
+    Set<InternalDistributedMember> result =
+        new HashSet<>(getDistributionManagerIdsIncludingAdmin());
     result.remove(getDistributionManagerId());
     return result;
   }
@@ -2402,10 +2395,10 @@ public class ClusterDistributionManager implements DistributionManager {
     boolean ok = false;
 
     // Be sure to add ourself to the equivalencies list!
-    Set equivs = StartupMessage.getMyAddresses(this);
+    Set<InetAddress> equivs = StartupMessage.getMyAddresses(this);
     if (equivs == null || equivs.size() == 0) {
       // no network interface
-      equivs = new HashSet();
+      equivs = new HashSet<>();
       try {
         equivs.add(SocketCreator.getLocalHost());
       } catch (UnknownHostException e) {
@@ -2438,7 +2431,7 @@ public class ClusterDistributionManager implements DistributionManager {
     }
 
     // we need to send this to everyone else; even admin vm
-    Set allOthers = new HashSet(getViewMembers());
+    Set<InternalDistributedMember> allOthers = new HashSet<>(getViewMembers());
     allOthers.remove(getDistributionManagerId());
 
     if (allOthers.isEmpty()) {
@@ -2532,7 +2525,7 @@ public class ClusterDistributionManager implements DistributionManager {
    * <p>
    * Must be synchronized using {@link #unfinishedStartupsLock}
    */
-  private Set unfinishedStartups = null;
+  private Set<InternalDistributedMember> unfinishedStartups = null;
 
   /**
    * Synchronization for {@link #unfinishedStartups}
@@ -2540,10 +2533,10 @@ public class ClusterDistributionManager implements DistributionManager {
   private final Object unfinishedStartupsLock = new Object();
 
   @Override
-  public void setUnfinishedStartups(Collection s) {
+  public void setUnfinishedStartups(Collection<InternalDistributedMember> s) {
     synchronized (unfinishedStartupsLock) {
       Assert.assertTrue(unfinishedStartups == null, "Set unfinished startups twice");
-      unfinishedStartups = new HashSet(s);
+      unfinishedStartups = new HashSet<>(s);
 
       // OK, I don't _quite_ trust the list to be current, so let's
       // prune it here.
@@ -2757,12 +2750,12 @@ public class ClusterDistributionManager implements DistributionManager {
           logger.debug("DistributionManager: removing member <{}>; crashed {}; reason = {}", theId,
               crashed, reason);
         }
-        Map<InternalDistributedMember, InternalDistributedMember> tmp = new HashMap(this.members);
+        Map<InternalDistributedMember, InternalDistributedMember> tmp = new HashMap<>(this.members);
         if (tmp.remove(theId) != null) {
           // Note we don't modify in place. This allows reader to get snapshots
           // without locking.
           if (tmp.isEmpty()) {
-            tmp = Collections.EMPTY_MAP;
+            tmp = Collections.emptyMap();
           } else {
             tmp = Collections.unmodifiableMap(tmp);
           }
@@ -2775,10 +2768,10 @@ public class ClusterDistributionManager implements DistributionManager {
           // an explicit remove followed by an implicit one caused
           // by a JavaGroup view change
         }
-        Set tmp2 = new HashSet(this.membersAndAdmin);
+        Set<InternalDistributedMember> tmp2 = new HashSet<>(this.membersAndAdmin);
         if (tmp2.remove(theId)) {
           if (tmp2.isEmpty()) {
-            tmp2 = Collections.EMPTY_SET;
+            tmp2 = Collections.emptySet();
           } else {
             tmp2 = Collections.unmodifiableSet(tmp2);
           }
@@ -2819,11 +2812,11 @@ public class ClusterDistributionManager implements DistributionManager {
 
       // Note we don't modify in place. This allows reader to get snapshots
       // without locking.
-      tmp = new HashMap(this.members);
+      tmp = new HashMap<>(this.members);
       tmp.put(theId, theId);
       this.members = Collections.unmodifiableMap(tmp);
 
-      Set stmp = new HashSet(this.membersAndAdmin);
+      Set<InternalDistributedMember> stmp = new HashSet<>(this.membersAndAdmin);
       stmp.add(theId);
       this.membersAndAdmin = Collections.unmodifiableSet(stmp);
     } // synchronized
@@ -2854,7 +2847,7 @@ public class ClusterDistributionManager implements DistributionManager {
    */
   private void handleConsoleStartup(InternalDistributedMember theId) {
     // if we have an all listener then notify it NOW.
-    HashSet tmp = null;
+    HashSet<InternalDistributedMember> tmp = null;
     synchronized (this.membersLock) {
       // Note test is under membersLock
       if (membersAndAdmin.contains(theId))
@@ -2862,7 +2855,7 @@ public class ClusterDistributionManager implements DistributionManager {
 
       // Note we don't modify in place. This allows reader to get snapshots
       // without locking.
-      tmp = new HashSet(this.membersAndAdmin);
+      tmp = new HashSet<>(this.membersAndAdmin);
       tmp.add(theId);
       this.membersAndAdmin = Collections.unmodifiableSet(tmp);
     } // synchronized
@@ -2914,12 +2907,12 @@ public class ClusterDistributionManager implements DistributionManager {
         if (logger.isDebugEnabled())
           logger.debug("DistributionManager: removing admin member <{}>; crashed = {}; reason = {}",
               theId, crashed, reason);
-        Set tmp = new HashSet(this.membersAndAdmin);
+        Set<InternalDistributedMember> tmp = new HashSet<>(this.membersAndAdmin);
         if (tmp.remove(theId)) {
           // Note we don't modify in place. This allows reader to get snapshots
           // without locking.
           if (tmp.isEmpty()) {
-            tmp = Collections.EMPTY_SET;
+            tmp = Collections.emptySet();
           } else {
             tmp = Collections.unmodifiableSet(tmp);
           }
@@ -2936,10 +2929,10 @@ public class ClusterDistributionManager implements DistributionManager {
     synchronized (this.adminConsolesLock) {
       if (this.adminConsoles.contains(theId)) {
         removedConsole = true;
-        Set tmp = new HashSet(this.adminConsoles);
+        Set<InternalDistributedMember> tmp = new HashSet<>(this.adminConsoles);
         tmp.remove(theId);
         if (tmp.isEmpty()) {
-          tmp = Collections.EMPTY_SET;
+          tmp = Collections.emptySet();
         } else {
           tmp = Collections.unmodifiableSet(tmp);
         }
@@ -2974,8 +2967,6 @@ public class ClusterDistributionManager implements DistributionManager {
   @Override
   public void handleManagerDeparture(InternalDistributedMember theId, boolean p_crashed,
       String p_reason) {
-    boolean crashed = p_crashed;
-    String reason = p_reason;
 
     AlertAppender.getInstance().removeAlertListener(theId);
 
@@ -2993,7 +2984,7 @@ public class ClusterDistributionManager implements DistributionManager {
     int vmType = theId.getVmKind();
     if (vmType == ADMIN_ONLY_DM_TYPE) {
       removeUnfinishedStartup(theId, true);
-      handleConsoleShutdown(theId, crashed, reason);
+      handleConsoleShutdown(theId, p_crashed, p_reason);
       return;
     }
 
@@ -3003,21 +2994,21 @@ public class ClusterDistributionManager implements DistributionManager {
     }
     removeUnfinishedStartup(theId, true);
 
-    if (removeManager(theId, crashed, reason)) {
+    if (removeManager(theId, p_crashed, p_reason)) {
       if (theId.getVmKind() != ClusterDistributionManager.LOCATOR_DM_TYPE) {
         this.stats.incNodes(-1);
       }
       StringId msg;
-      if (crashed && !isCloseInProgress()) {
+      if (p_crashed && !isCloseInProgress()) {
         msg =
             LocalizedStrings.DistributionManager_MEMBER_AT_0_UNEXPECTEDLY_LEFT_THE_DISTRIBUTED_CACHE_1;
-        addMemberEvent(new MemberCrashedEvent(theId, reason));
+        addMemberEvent(new MemberCrashedEvent(theId, p_reason));
       } else {
         msg =
             LocalizedStrings.DistributionManager_MEMBER_AT_0_GRACEFULLY_LEFT_THE_DISTRIBUTED_CACHE_1;
-        addMemberEvent(new MemberDepartedEvent(theId, reason));
+        addMemberEvent(new MemberDepartedEvent(theId, p_reason));
       }
-      logger.info(LocalizedMessage.create(msg, new Object[] {theId, prettifyReason(reason)}));
+      logger.info(LocalizedMessage.create(msg, new Object[] {theId, prettifyReason(p_reason)}));
 
       // Remove this manager from the serialQueueExecutor.
       if (this.serialQueuedExecutorPool != null) {
@@ -3064,7 +3055,7 @@ public class ClusterDistributionManager implements DistributionManager {
     ShutdownMessage m = new ShutdownMessage();
     InternalDistributedMember theId = this.getDistributionManagerId();
     m.setDistributionManagerId(theId);
-    Set allOthers = new HashSet(getViewMembers());
+    Set<InternalDistributedMember> allOthers = new HashSet<>(getViewMembers());
     allOthers.remove(getDistributionManagerId());
     m.setRecipients(allOthers);
 
@@ -3127,11 +3118,13 @@ public class ClusterDistributionManager implements DistributionManager {
    *         all received it or it was sent to {@link DistributionMessage#ALL_RECIPIENTS}.
    * @throws NotSerializableException If <code>message</code> cannot be serialized
    */
-  Set<InternalDistributedMember> sendOutgoing(DistributionMessage message) throws NotSerializableException {
+  Set<InternalDistributedMember> sendOutgoing(DistributionMessage message)
+      throws NotSerializableException {
     long startTime = DistributionStats.getStatTime();
 
-    Set<InternalDistributedMember> result = sendViaMembershipManager(message.getRecipients(), message,
-        ClusterDistributionManager.this, this.stats);
+    Set<InternalDistributedMember> result =
+        sendViaMembershipManager(message.getRecipients(), message,
+            ClusterDistributionManager.this, this.stats);
     long endTime = 0L;
     if (DistributionStats.enableClockStats) {
       endTime = NanoTimer.getTime();
@@ -3159,7 +3152,8 @@ public class ClusterDistributionManager implements DistributionManager {
    * @return recipients who did not receive the message
    * @throws NotSerializableException If <codE>message</code> cannot be serialized
    */
-  Set<InternalDistributedMember> sendMessage(DistributionMessage message) throws NotSerializableException {
+  Set<InternalDistributedMember> sendMessage(DistributionMessage message)
+      throws NotSerializableException {
     Set<InternalDistributedMember> result = null;
     try {
       // Verify we're not too far into the shutdown
@@ -3185,7 +3179,7 @@ public class ClusterDistributionManager implements DistributionManager {
           ex);
       if (message == null || message.forAll())
         return null;
-      result = new HashSet();
+      result = new HashSet<>();
       for (int i = 0; i < message.getRecipients().length; i++)
         result.add(message.getRecipients()[i]);
       return result;
@@ -3198,7 +3192,8 @@ public class ClusterDistributionManager implements DistributionManager {
    *         all received it or it was sent to {@link DistributionMessage#ALL_RECIPIENTS}).
    * @throws NotSerializableException If content cannot be serialized
    */
-  private Set<InternalDistributedMember> sendViaMembershipManager(InternalDistributedMember[] destinations,
+  private Set<InternalDistributedMember> sendViaMembershipManager(
+      InternalDistributedMember[] destinations,
       DistributionMessage content, ClusterDistributionManager dm, DistributionStats stats)
       throws NotSerializableException {
     if (membershipManager == null) {
@@ -3217,7 +3212,7 @@ public class ClusterDistributionManager implements DistributionManager {
   /**
    * Schedule a given message appropriately, depending upon its executor kind.
    */
-  void scheduleIncomingMessage(DistributionMessage message) {
+  private void scheduleIncomingMessage(DistributionMessage message) {
     /*
      * Potential race condition between starting up and getting other distribution manager ids -- DM
      * will only be initialized upto the point at which it called startThreads
@@ -3392,8 +3387,6 @@ public class ClusterDistributionManager implements DistributionManager {
               public void memberSuspect(DistributionManager distributionManager,
                   InternalDistributedMember id, InternalDistributedMember whoSuspected,
                   String reason) {}
-
-              public void viewInstalled(NetView view) {}
 
               @Override
               public void quorumLost(DistributionManager distributionManager,
@@ -3575,7 +3568,8 @@ public class ClusterDistributionManager implements DistributionManager {
   }
 
   /* -----------------------------Health Monitor------------------------------ */
-  private final ConcurrentMap hmMap = new ConcurrentHashMap();
+  private final ConcurrentMap<InternalDistributedMember, HealthMonitor> hmMap =
+      new ConcurrentHashMap<>();
 
   private volatile InternalCache cache;
 
@@ -3589,7 +3583,7 @@ public class ClusterDistributionManager implements DistributionManager {
    */
   @Override
   public HealthMonitor getHealthMonitor(InternalDistributedMember owner) {
-    return (HealthMonitor) this.hmMap.get(owner);
+    return this.hmMap.get(owner);
   }
 
   /**
@@ -3650,11 +3644,10 @@ public class ClusterDistributionManager implements DistributionManager {
   @Override
   public int getRoleCount(Role role) {
     int count = 0;
-    Set mbrs = getDistributionManagerIds();
-    for (Iterator mbrIter = mbrs.iterator(); mbrIter.hasNext();) {
-      Set roles = ((InternalDistributedMember) mbrIter.next()).getRoles();
-      for (Iterator rolesIter = roles.iterator(); rolesIter.hasNext();) {
-        Role mbrRole = (Role) rolesIter.next();
+    Set<InternalDistributedMember> mbrs = getDistributionManagerIds();
+    for (InternalDistributedMember mbr : mbrs) {
+      Set<Role> roles = (mbr).getRoles();
+      for (Role mbrRole : roles) {
         if (mbrRole.equals(role)) {
           count++;
           break;
@@ -3667,12 +3660,11 @@ public class ClusterDistributionManager implements DistributionManager {
   /** Returns true if at least one member is filling the specified role */
   @Override
   public boolean isRolePresent(Role role) {
-    Set mbrs = getDistributionManagerIds();
-    for (Iterator mbrIter = mbrs.iterator(); mbrIter.hasNext();) {
-      Set roles = ((InternalDistributedMember) mbrIter.next()).getRoles();
-      for (Iterator rolesIter = roles.iterator(); rolesIter.hasNext();) {
-        Role mbrRole = (Role) rolesIter.next();
-        if (mbrRole.equals(role)) {
+    Set<InternalDistributedMember> mbrs = getDistributionManagerIds();
+    for (InternalDistributedMember mbr : mbrs) {
+      Set<Role> roles = mbr.getRoles();
+      for (Role mbrRole : roles) {
+        if ((mbrRole).equals(role)) {
           return true;
         }
       }
@@ -3682,15 +3674,11 @@ public class ClusterDistributionManager implements DistributionManager {
 
   /** Returns a set of all roles currently in the distributed system. */
   @Override
-  public Set getAllRoles() {
-    Set allRoles = new HashSet();
-    Set mbrs = getDistributionManagerIds();
-    for (Iterator mbrIter = mbrs.iterator(); mbrIter.hasNext();) {
-      Set roles = ((InternalDistributedMember) mbrIter.next()).getRoles();
-      for (Iterator rolesIter = roles.iterator(); rolesIter.hasNext();) {
-        Role mbrRole = (Role) rolesIter.next();
-        allRoles.add(mbrRole);
-      }
+  public Set<Role> getAllRoles() {
+    Set<Role> allRoles = new HashSet<>();
+    Set<InternalDistributedMember> mbrs = getDistributionManagerIds();
+    for (InternalDistributedMember mbr : mbrs) {
+      allRoles.addAll(mbr.getRoles());
     }
     return allRoles;
   }
@@ -3775,7 +3763,7 @@ public class ClusterDistributionManager implements DistributionManager {
         // Create new.
         // Check if any threads are availabe that is marked for Use.
         if (!threadMarkedForUse.isEmpty()) {
-          queueId = (Integer) threadMarkedForUse.remove(0);
+          queueId = threadMarkedForUse.remove(0);
         }
         // If Map is full, use the threads in round-robin fashion.
         if (queueId == null) {
@@ -3847,7 +3835,7 @@ public class ClusterDistributionManager implements DistributionManager {
       SerialQueuedExecutorWithDMStats executor = null;
       Integer queueId = getQueueId(sender, true);
       if ((executor =
-          (SerialQueuedExecutorWithDMStats) serialQueuedExecutorMap.get(queueId)) != null) {
+          serialQueuedExecutorMap.get(queueId)) != null) {
         return executor;
       }
       // If executor doesn't exists for this sender, create one.
@@ -4311,7 +4299,7 @@ public class ClusterDistributionManager implements DistributionManager {
   @Override
   public Set<InternalDistributedMember> getMembersInSameZone(
       InternalDistributedMember targetMember) {
-    Set<InternalDistributedMember> buddyMembers = new HashSet<InternalDistributedMember>();
+    Set<InternalDistributedMember> buddyMembers = new HashSet<>();
     if (!redundancyZones.isEmpty()) {
       synchronized (redundancyZones) {
         String targetZone = redundancyZones.get(targetMember);
@@ -4323,7 +4311,7 @@ public class ClusterDistributionManager implements DistributionManager {
       }
     } else {
       buddyMembers.add(targetMember);
-      Set targetAddrs = getEquivalents(targetMember.getInetAddress());
+      Set<InetAddress> targetAddrs = getEquivalents(targetMember.getInetAddress());
       for (Iterator i = getDistributionManagerIds().iterator(); i.hasNext();) {
         InternalDistributedMember o = (InternalDistributedMember) i.next();
         if (SetUtils.intersectsWith(targetAddrs, getEquivalents(o.getInetAddress()))) {
@@ -4375,8 +4363,8 @@ public class ClusterDistributionManager implements DistributionManager {
    * attempt to use OSProcess native code for the dumps. This goes to stdout instead of the
    * system.log files.
    */
-  public void printStacks(Collection ids, boolean useNative) {
-    Set requiresMessage = new HashSet();
+  public void printStacks(Collection<InternalDistributedMember> ids, boolean useNative) {
+    Set<InternalDistributedMember> requiresMessage = new HashSet<>();
     if (ids.contains(localAddress)) {
       OSProcess.printStacks(0, useNative);
     }
@@ -4407,10 +4395,10 @@ public class ClusterDistributionManager implements DistributionManager {
   @Override
   public Set<DistributedMember> getGroupMembers(String group) {
     HashSet<DistributedMember> result = null;
-    for (DistributedMember m : (Set<DistributedMember>) getDistributionManagerIdsIncludingAdmin()) {
+    for (DistributedMember m : getDistributionManagerIdsIncludingAdmin()) {
       if (m.getGroups().contains(group)) {
         if (result == null) {
-          result = new HashSet<DistributedMember>();
+          result = new HashSet<>();
         }
         result.add(m);
       }
@@ -4423,11 +4411,11 @@ public class ClusterDistributionManager implements DistributionManager {
   }
 
   @Override
-  public Set getNormalDistributionManagerIds() {
+  public Set<InternalDistributedMember> getNormalDistributionManagerIds() {
     // access to members synchronized under membersLock in order to
     // ensure serialization
     synchronized (this.membersLock) {
-      HashSet<InternalDistributedMember> result = new HashSet<InternalDistributedMember>();
+      HashSet<InternalDistributedMember> result = new HashSet<>();
       for (InternalDistributedMember m : this.members.keySet()) {
         if (m.getVmKind() != ClusterDistributionManager.LOCATOR_DM_TYPE) {
           result.add(m);
@@ -4442,7 +4430,7 @@ public class ClusterDistributionManager implements DistributionManager {
     // access to members synchronized under membersLock in order to
     // ensure serialization
     synchronized (this.membersLock) {
-      HashSet<InternalDistributedMember> result = new HashSet<InternalDistributedMember>();
+      HashSet<InternalDistributedMember> result = new HashSet<>();
       for (InternalDistributedMember m : this.members.keySet()) {
         if (m.getVmKind() == ClusterDistributionManager.LOCATOR_DM_TYPE) {
           result.add(m);

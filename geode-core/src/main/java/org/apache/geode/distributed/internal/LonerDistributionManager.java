@@ -82,7 +82,7 @@ public class LonerDistributionManager implements DistributionManager {
     this.logger = logger;
     this.localAddress = generateMemberId();
     this.allIds = Collections.singleton(localAddress);
-    this.viewMembers = new ArrayList<InternalDistributedMember>(allIds);
+    this.viewMembers = new ArrayList<>(allIds);
     DistributionStats.enableClockStats = this.system.getConfig().getEnableTimeStatistics();
   }
 
@@ -120,7 +120,7 @@ public class LonerDistributionManager implements DistributionManager {
   private final Set<InternalDistributedMember> allIds;// = Collections.singleton(id);
   private final List<InternalDistributedMember> viewMembers;
   private ConcurrentMap<InternalDistributedMember, InternalDistributedMember> canonicalIds =
-      new ConcurrentHashMap();
+      new ConcurrentHashMap<>();
   private static final DummyDMStats stats = new DummyDMStats();
   private final ExecutorService executor = Executors.newCachedThreadPool();
 
@@ -133,11 +133,11 @@ public class LonerDistributionManager implements DistributionManager {
     return localAddress;
   }
 
-  public Set getDistributionManagerIds() {
+  public Set<InternalDistributedMember> getDistributionManagerIds() {
     return allIds;
   }
 
-  public Set getDistributionManagerIdsIncludingAdmin() {
+  public Set<InternalDistributedMember> getDistributionManagerIdsIncludingAdmin() {
     return allIds;
   }
 
@@ -167,17 +167,17 @@ public class LonerDistributionManager implements DistributionManager {
     return null;
   }
 
-  public Set getOtherDistributionManagerIds() {
-    return Collections.EMPTY_SET;
+  public Set<InternalDistributedMember> getOtherDistributionManagerIds() {
+    return Collections.emptySet();
   }
 
   @Override
-  public Set getOtherNormalDistributionManagerIds() {
-    return Collections.EMPTY_SET;
+  public Set<InternalDistributedMember> getOtherNormalDistributionManagerIds() {
+    return Collections.emptySet();
   }
 
-  public Set getAllOtherMembers() {
-    return Collections.EMPTY_SET;
+  public Set<InternalDistributedMember> getAllOtherMembers() {
+    return Collections.emptySet();
   }
 
   @Override // DM method
@@ -203,12 +203,13 @@ public class LonerDistributionManager implements DistributionManager {
   }
 
 
-  public Set addMembershipListenerAndGetDistributionManagerIds(MembershipListener l) {
+  public Set<InternalDistributedMember> addMembershipListenerAndGetDistributionManagerIds(
+      MembershipListener l) {
     // return getOtherDistributionManagerIds();
     return allIds;
   }
 
-  public Set addAllMembershipListenerAndGetAllIds(MembershipListener l) {
+  public Set<InternalDistributedMember> addAllMembershipListenerAndGetAllIds(MembershipListener l) {
     return allIds;
   }
 
@@ -336,9 +337,10 @@ public class LonerDistributionManager implements DistributionManager {
     return viewMembers;
   }
 
-  public DistributedMember getOldestMember(Collection members) throws NoSuchElementException {
+  public DistributedMember getOldestMember(Collection<InternalDistributedMember> members)
+      throws NoSuchElementException {
     if (members.size() == 1) {
-      DistributedMember member = (DistributedMember) members.iterator().next();
+      DistributedMember member = members.iterator().next();
       if (member.equals(viewMembers.get(0))) {
         return member;
       }
@@ -348,8 +350,8 @@ public class LonerDistributionManager implements DistributionManager {
             .toLocalizedString());
   }
 
-  public Set getAdminMemberSet() {
-    return Collections.EMPTY_SET;
+  public Set<InternalDistributedMember> getAdminMemberSet() {
+    return Collections.emptySet();
   }
 
   public static class DummyDMStats implements DMStats {
@@ -1260,7 +1262,7 @@ public class LonerDistributionManager implements DistributionManager {
     return getId().equals(p_id);
   }
 
-  public Set putOutgoing(DistributionMessage msg) {
+  public Set<InternalDistributedMember> putOutgoing(DistributionMessage msg) {
     return null;
   }
 
@@ -1270,7 +1272,7 @@ public class LonerDistributionManager implements DistributionManager {
 
   public void removeUnfinishedStartup(InternalDistributedMember m, boolean departed) {}
 
-  public void setUnfinishedStartups(Collection s) {}
+  public void setUnfinishedStartups(Collection<InternalDistributedMember> s) {}
 
   protected static class Stopper extends CancelCriterion {
 
@@ -1366,7 +1368,7 @@ public class LonerDistributionManager implements DistributionManager {
 
   public Set<DistributedMember> getGroupMembers(String group) {
     if (getDistributionManagerId().getGroups().contains(group)) {
-      return Collections.singleton((DistributedMember) getDistributionManagerId());
+      return Collections.singleton(getDistributionManagerId());
     } else {
       return Collections.emptySet();
     }
@@ -1386,7 +1388,7 @@ public class LonerDistributionManager implements DistributionManager {
   }
 
   @Override
-  public Set getNormalDistributionManagerIds() {
+  public Set<InternalDistributedMember> getNormalDistributionManagerIds() {
     return getDistributionManagerIds();
   }
 
