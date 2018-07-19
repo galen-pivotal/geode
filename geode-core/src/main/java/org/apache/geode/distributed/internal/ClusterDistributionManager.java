@@ -3359,8 +3359,6 @@ public class ClusterDistributionManager implements DistributionManager {
       this.elderLock.unlock();
     }
     this.elderStateInitialized = true;
-    // if (Thread.currentThread().isInterrupted())
-    // throw new RuntimeException("Interrupted");
     return this.elderState;
   }
 

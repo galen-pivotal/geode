@@ -929,10 +929,6 @@ public class DLockService extends DistributedLockService {
     }
   }
 
-  public DLockGrantor getGrantorForElderRecovery() {
-    return getGrantor();
-  }
-
   public DLockGrantor getGrantorWithNoSync() {
     return this.grantor;
   }
@@ -940,7 +936,7 @@ public class DLockService extends DistributedLockService {
   /**
    * @param predecessor non-null if a predecessor asked us to take over for him
    */
-  void becomeLockGrantor(InternalDistributedMember predecessor) {
+  private void becomeLockGrantor(InternalDistributedMember predecessor) {
     Assert.assertTrue(predecessor == null);
     boolean ownLockGrantorFutureResult = false;
     FutureResult lockGrantorFutureResultRef = null;
@@ -974,7 +970,6 @@ public class DLockService extends DistributedLockService {
         }
         if (!ownLockGrantorFutureResult) {
           waitForLockGrantorFutureResult(lockGrantorFutureResultRef, 0, TimeUnit.MILLISECONDS);
-          continue;
         }
       }
 
@@ -2860,8 +2855,8 @@ public class DLockService extends DistributedLockService {
           LocalizedStrings.DLockService_LOCK_SERVICE_NAME_MUST_NOT_BE_NULL_OR_EMPTY
               .toLocalizedString());
     }
-    for (int i = 0; i < reservedNames.length; i++) {
-      if (serviceName.startsWith(reservedNames[i])) {
+    for (String reservedName : reservedNames) {
+      if (serviceName.startsWith(reservedName)) {
         throw new IllegalArgumentException(
             LocalizedStrings.DLockService_SERVICE_NAMED_0_IS_RESERVED_FOR_INTERNAL_USE_ONLY
                 .toLocalizedString(serviceName));
