@@ -113,7 +113,7 @@ public class ClusterDistributionManager implements DistributionManager {
   private static final int STARTUP_TIMEOUT =
       Integer.getInteger("DistributionManager.STARTUP_TIMEOUT", 15000).intValue();
 
-  public static final boolean DEBUG_NO_ACKNOWLEDGEMENTS =
+  private static final boolean DEBUG_NO_ACKNOWLEDGEMENTS =
       Boolean.getBoolean("DistributionManager.DEBUG_NO_ACKNOWLEDGEMENTS");
 
   /**
@@ -297,7 +297,7 @@ public class ClusterDistributionManager implements DistributionManager {
   protected volatile InternalDistributedMember elder = null;
 
   /** The id of this distribution manager */
-  protected final InternalDistributedMember localAddress;
+  private final InternalDistributedMember localAddress;
 
   /**
    * The distribution manager type of this dm; set in its constructor.
@@ -314,7 +314,7 @@ public class ClusterDistributionManager implements DistributionManager {
    *
    * @since GemFire 5.7
    */
-  protected volatile Set<MembershipListener> allMembershipListeners = Collections.emptySet();
+  private volatile Set<MembershipListener> allMembershipListeners = Collections.emptySet();
 
   /**
    * A lock to hold while adding and removing all membership listeners.
@@ -334,7 +334,7 @@ public class ClusterDistributionManager implements DistributionManager {
   protected final String description;
 
   /** Statistics about distribution */
-  protected DistributionStats stats;
+  protected final DistributionStats stats;
 
   /** Did an exception occur in one of the DM threads? */
   private boolean exceptionInThreads;
@@ -658,17 +658,12 @@ public class ClusterDistributionManager implements DistributionManager {
     this.elderLock = new StoppableReentrantLock(stopper);
     this.transport = transport;
 
-    this.membershipListeners = new ConcurrentHashMap();
+    this.membershipListeners = new ConcurrentHashMap<>();
     this.distributedSystemId = system.getConfig().getDistributedSystemId();
-    {
+
       long statId = OSProcess.getId();
-      /*
-       * deadcoded since we don't know the channel id yet. if (statId == 0 || statId == -1) { statId
-       * = getMembershipPort(); }
-       */
       this.stats = new DistributionStats(system, statId);
       DistributionStats.enableClockStats = system.getConfig().getEnableTimeStatistics();
-    }
 
     this.exceptionInThreads = false;
 
