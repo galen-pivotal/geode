@@ -1096,11 +1096,11 @@ public class ClusterDistributionManager implements DistributionManager {
     ClusterDistributionManager.isDedicatedAdminVM = isDedicatedAdminVM;
   }
 
-  public static Boolean getIsStartupThread() {
+  private static Boolean getIsStartupThread() {
     return isStartupThread.get();
   }
 
-  public static void setIsStartupThread(Boolean isStartup) {
+  private static void setIsStartupThread(Boolean isStartup) {
     ClusterDistributionManager.isStartupThread.set(isStartup);
   }
 
@@ -2860,8 +2860,7 @@ public class ClusterDistributionManager implements DistributionManager {
       this.membersAndAdmin = Collections.unmodifiableSet(tmp);
     } // synchronized
 
-    for (Iterator iter = allMembershipListeners.iterator(); iter.hasNext();) {
-      MembershipListener listener = (MembershipListener) iter.next();
+    for (MembershipListener listener : allMembershipListeners) {
       listener.memberJoined(this, theId);
     }
     logger.info(LocalizedMessage.create(
@@ -2940,8 +2939,7 @@ public class ClusterDistributionManager implements DistributionManager {
       }
     }
     if (removedMember) {
-      for (Iterator iter = allMembershipListeners.iterator(); iter.hasNext();) {
-        MembershipListener listener = (MembershipListener) iter.next();
+      for (MembershipListener listener : allMembershipListeners) {
         listener.memberDeparted(this, theId, crashed);
       }
     }
@@ -2958,7 +2956,7 @@ public class ClusterDistributionManager implements DistributionManager {
     redundancyZones.remove(theId);
   }
 
-  public void shutdownMessageReceived(InternalDistributedMember theId, String reason) {
+  void shutdownMessageReceived(InternalDistributedMember theId, String reason) {
     this.membershipManager.shutdownMessageReceived(theId, reason);
     handleManagerDeparture(theId, false,
         LocalizedStrings.ShutdownMessage_SHUTDOWN_MESSAGE_RECEIVED.toLocalizedString());
@@ -3152,7 +3150,7 @@ public class ClusterDistributionManager implements DistributionManager {
    * @return recipients who did not receive the message
    * @throws NotSerializableException If <codE>message</code> cannot be serialized
    */
-  Set<InternalDistributedMember> sendMessage(DistributionMessage message)
+  private Set<InternalDistributedMember> sendMessage(DistributionMessage message)
       throws NotSerializableException {
     Set<InternalDistributedMember> result = null;
     try {
@@ -3936,8 +3934,7 @@ public class ClusterDistributionManager implements DistributionManager {
       long timeNanos = unit.toNanos(time);
       long remainingNanos = timeNanos;
       long start = System.nanoTime();
-      for (Iterator iter = serialQueuedExecutorMap.values().iterator(); iter.hasNext();) {
-        ExecutorService executor = (ExecutorService) iter.next();
+      for (ExecutorService executor : serialQueuedExecutorMap.values()) {
         executor.awaitTermination(remainingNanos, TimeUnit.NANOSECONDS);
         remainingNanos = timeNanos = (System.nanoTime() - start);
         if (remainingNanos <= 0) {
@@ -3947,8 +3944,8 @@ public class ClusterDistributionManager implements DistributionManager {
     }
 
     private void shutdown() {
-      for (Iterator iter = serialQueuedExecutorMap.values().iterator(); iter.hasNext();) {
-        ExecutorService executor = (ExecutorService) iter.next();
+      for (ExecutorService executor : serialQueuedExecutorMap
+          .values()) {
         executor.shutdown();
       }
     }
