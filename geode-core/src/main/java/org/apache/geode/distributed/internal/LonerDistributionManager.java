@@ -14,7 +14,6 @@
  */
 package org.apache.geode.distributed.internal;
 
-import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -24,7 +23,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -103,20 +101,6 @@ public class LonerDistributionManager implements DistributionManager {
 
   private final InternalDistributedMember localAddress;
 
-  /*
-   * static { // Make the id a little unique String host; try { host =
-   * InetAddress.getLocalHost().getCanonicalHostName(); MemberAttributes.setDefaults(65535,
-   * org.apache.geode.internal.OSProcess.getId(), DistributionManager.LONER_DM_TYPE,
-   * MemberAttributes.parseRoles(system.getConfig().getRoles())); id = new
-   * InternalDistributedMember(host, 65535); // noise value for port number
-   *
-   * } catch (UnknownHostException ex) { throw new InternalError(LocalizedStrings.
-   * LonerDistributionManager_CANNOT_RESOLVE_LOCAL_HOST_NAME_TO_AN_IP_ADDRESS.toLocalizedString());
-   * }
-   *
-   * }
-   */
-
   private final Set<InternalDistributedMember> allIds;// = Collections.singleton(id);
   private final List<InternalDistributedMember> viewMembers;
   private ConcurrentMap<InternalDistributedMember, InternalDistributedMember> canonicalIds =
@@ -139,10 +123,6 @@ public class LonerDistributionManager implements DistributionManager {
 
   public Set<InternalDistributedMember> getDistributionManagerIdsIncludingAdmin() {
     return allIds;
-  }
-
-  public Serializable[] getDirectChannels(InternalDistributedMember[] ids) {
-    return ids;
   }
 
   public InternalDistributedMember getCanonicalId(DistributedMember dmid) {
@@ -213,10 +193,6 @@ public class LonerDistributionManager implements DistributionManager {
     return allIds;
   }
 
-  public int getDistributionManagerCount() {
-    return 0;
-  }
-
   public InternalDistributedMember getId() {
     return getDistributionManagerId();
   }
@@ -247,17 +223,6 @@ public class LonerDistributionManager implements DistributionManager {
 
   public long getMembershipPort() {
     return 0;
-  }
-
-  public Set putOutgoingUserData(final DistributionMessage message) {
-    if (message.forAll() || message.getRecipients().length == 0) {
-      // do nothing
-      return null;
-    } else {
-      throw new RuntimeException(
-          LocalizedStrings.LonerDistributionManager_LONER_TRIED_TO_SEND_MESSAGE_TO_0
-              .toLocalizedString(message.getRecipientsDescription()));
-    }
   }
 
   public InternalDistributedSystem getSystem() {
@@ -316,38 +281,13 @@ public class LonerDistributionManager implements DistributionManager {
     return executor;
   }
 
-  public Map getChannelMap() {
-    return null;
-  }
-
-  public Map getMemberMap() {
-    return null;
-  }
-
   public void close() {
     shutdown();
-  }
-
-  public void restartCommunications() {
-
   }
 
   @Override
   public List<InternalDistributedMember> getViewMembers() {
     return viewMembers;
-  }
-
-  public DistributedMember getOldestMember(Collection<InternalDistributedMember> members)
-      throws NoSuchElementException {
-    if (members.size() == 1) {
-      DistributedMember member = members.iterator().next();
-      if (member.equals(viewMembers.get(0))) {
-        return member;
-      }
-    }
-    throw new NoSuchElementException(
-        LocalizedStrings.LonerDistributionManager_MEMBER_NOT_FOUND_IN_MEMBERSHIP_SET
-            .toLocalizedString());
   }
 
   public Set<InternalDistributedMember> getAdminMemberSet() {

@@ -26,7 +26,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -1245,23 +1244,6 @@ public class ClusterDistributionManager implements DistributionManager {
     return membershipManager.getView().getMembers();
   }
 
-  /* implementation of DM.getOldestMember */
-  @Override
-  public DistributedMember getOldestMember(Collection<InternalDistributedMember> c)
-      throws NoSuchElementException {
-    List<InternalDistributedMember> view = getViewMembers();
-    for (InternalDistributedMember aView : view) {
-      for (InternalDistributedMember nextMbr : c) {
-        if (aView.equals(nextMbr)) {
-          return nextMbr;
-        }
-      }
-    }
-    throw new NoSuchElementException(
-        LocalizedStrings.DistributionManager_NONE_OF_THE_GIVEN_MANAGERS_IS_IN_THE_CURRENT_MEMBERSHIP_VIEW
-            .toLocalizedString());
-  }
-
   private boolean testMulticast() {
     return this.membershipManager.testMulticast();
   }
@@ -2450,11 +2432,6 @@ public class ClusterDistributionManager implements DistributionManager {
     if (this.rejectionMessage != null) {
       throw new IncompatibleSystemException(rejectionMessage);
     }
-
-    boolean isAdminDM = getId().getVmKind() == ClusterDistributionManager.ADMIN_ONLY_DM_TYPE
-        || getId().getVmKind() == ClusterDistributionManager.LOCATOR_DM_TYPE
-        || ClusterDistributionManager.isDedicatedAdminVM()
-        || Boolean.getBoolean(InternalLocator.FORCE_LOCATOR_DM_TYPE);
 
     boolean receivedAny = this.receivedStartupResponse;
 

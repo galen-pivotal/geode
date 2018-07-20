@@ -18,7 +18,6 @@ import java.net.InetAddress;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -266,12 +265,6 @@ public interface DistributionManager extends ReplySender {
    */
   Executor getFunctionExecutor();
 
-  /**
-   * gets this distribution manager's message-processing executor for ordered (i.e. serialized)
-   * message processing
-   */
-  // public Executor getSerialExecutor();
-
   void close();
 
   /**
@@ -279,17 +272,6 @@ public interface DistributionManager extends ReplySender {
    * DLockGrantor
    */
   List<InternalDistributedMember> getViewMembers();
-
-  /**
-   * Returns the oldest member in the given set of distribution managers. The current implementation
-   * may use n*n/2 comparisons, so use this judiciously
-   *
-   * @return the oldest member of the given collection
-   * @throws NoSuchElementException when none of the given members is actually a member of the
-   *         distributed system.
-   */
-  DistributedMember getOldestMember(Collection<InternalDistributedMember> members)
-      throws NoSuchElementException;
 
   /**
    * @return Set of Admin VM nodes
