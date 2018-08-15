@@ -446,16 +446,6 @@ public class InternalDistributedMember implements DistributedMember, Externaliza
   }
 
   /**
-   * [GemStone] Sets the process id of the VM that hosts the distribution manager with this address.
-   *
-   * @since GemFire 4.0
-   */
-  public void setVmPid(int p) {
-    netMbr.setProcessId(p);
-    cachedToString = null;
-  }
-
-  /**
    * Returns the name of this member's distributed system connection or null if no name was
    * specified.
    *
@@ -492,6 +482,7 @@ public class InternalDistributedMember implements DistributedMember, Externaliza
    * @exception java.lang.ClassCastException - if the specified object's type prevents it from being
    *            compared to this Object.
    */
+  @Override
   public int compareTo(DistributedMember o) {
     return compareTo(o, true);
   }
