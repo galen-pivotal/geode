@@ -24,7 +24,6 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import org.apache.geode.distributed.internal.membership.InternalDistributedMember;
-import org.apache.geode.test.dunit.SerializableCallableIF;
 import org.apache.geode.test.dunit.rules.ClusterStartupRule;
 import org.apache.geode.test.dunit.rules.MemberVM;
 
@@ -43,15 +42,8 @@ public class ElderMemberDistributedTest {
 
   @Test
   public void oldestMemberIsElder() {
-    final SerializableCallableIF<InternalDistributedMember> assertIsElderAndGetId =
-        () -> {
-          DistributionManager distributionManager =
-              ClusterStartupRule.getCache().getInternalDistributedSystem().getDistributionManager();
-          assertThat(distributionManager.isElder()).isTrue();
-          return distributionManager.getElderId();
-        };
     final InternalDistributedMember elderId = locators.get(0).invoke(
-        assertIsElderAndGetId);
+        ElderMemberDistributedTest::assertIsElderAndGetId);
 
     locators.get(1).invoke(() -> elderConsistencyCheck(elderId));
 
@@ -59,8 +51,16 @@ public class ElderMemberDistributedTest {
 
     clusterStartupRule.crashVM(0);
 
-    final InternalDistributedMember newElderId = locators.get(1).invoke(assertIsElderAndGetId);
+    final InternalDistributedMember newElderId = locators.get(1).invoke(
+        ElderMemberDistributedTest::assertIsElderAndGetId);
     locators.get(2).invoke(() -> elderConsistencyCheck(newElderId));
+  }
+
+  private static InternalDistributedMember assertIsElderAndGetId() {
+    DistributionManager distributionManager =
+        ClusterStartupRule.getCache().getInternalDistributedSystem().getDistributionManager();
+    assertThat(distributionManager.isElder()).isTrue();
+    return distributionManager.getElderId();
   }
 
   private static void elderConsistencyCheck(InternalDistributedMember elderId) {
