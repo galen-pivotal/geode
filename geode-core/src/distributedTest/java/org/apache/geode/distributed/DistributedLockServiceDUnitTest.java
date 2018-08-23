@@ -105,7 +105,6 @@ public final class DistributedLockServiceDUnitTest extends JUnit4DistributedTest
     if (blackboard == null) {
       blackboard = DistributedLockBlackboardImpl.getInstance();
     }
-    // FIXME get rid of the old blackboard
   }
 
   @Override
