@@ -15,27 +15,24 @@
 package org.apache.geode.distributed;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import com.sun.media.sound.DLSInfo;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
 import org.apache.geode.distributed.internal.DistributionManager;
-import org.apache.geode.distributed.internal.ElderMemberDistributedTest;
-import org.apache.geode.distributed.internal.locks.DLockService;
 import org.apache.geode.distributed.internal.membership.InternalDistributedMember;
 import org.apache.geode.test.dunit.AsyncInvocation;
+import org.apache.geode.test.dunit.SerializableRunnableIF;
 import org.apache.geode.test.dunit.rules.ClusterStartupRule;
 import org.apache.geode.test.dunit.rules.MemberVM;
 
 public class GrantorFailoverDUnitTest {
   private final List<MemberVM> locators = new ArrayList<>();
-
+  
   @Rule
   public ClusterStartupRule clusterStartupRule = new ClusterStartupRule();
 
@@ -54,28 +51,60 @@ public class GrantorFailoverDUnitTest {
   private static volatile boolean latch1 = false;
 
   @Test
+  public void surprisinglyCanUnlockALockLockedByAnotherVm() throws Exception {
+    final String serviceName = "$";
+    final String lock1 = "lock 1";
+    final String lock2 = "lock 2";
+    for (MemberVM locator : locators) {
+      // Can't return the service.
+      locator.invoke((SerializableRunnableIF) () -> DistributedLockService.create(serviceName,
+          ClusterStartupRule.getCache().getDistributedSystem()));
+      // }
+      // }));
+    }
+
+    locators.get(0).invoke(() -> DistributedLockService.getServiceNamed(serviceName).lock(
+        lock1, 20_000, -1));
+
+    locators.get(1).invoke(() -> DistributedLockService.getServiceNamed(serviceName).lock(
+        lock2, 20_000, -1));
+
+    locators.get(1).invoke(() -> DistributedLockService.getServiceNamed(serviceName).lock(
+        lock1, 20_000, -1));
+
+    locators.get(0).invoke(() -> DistributedLockService.getServiceNamed(serviceName).lock(
+        lock2, 20_000, -1));
+
+    locators.get(0).invoke(() -> DistributedLockService.getServiceNamed(serviceName).unlock(
+        lock1));
+    locators.get(0).invoke(() -> DistributedLockService.getServiceNamed(serviceName).unlock(
+        lock1));
+  }
+
+  @Test
   public void lockRecoveryAfterGrantorDies() throws Exception {
     final String serviceName = "service name";
     final String lock1 = "lock 1";
     final String lock2 = "lock 2";
 
-        locators.get(0).invoke(GrantorFailoverDUnitTest::assertIsElderAndGetId);
+    locators.get(0).invoke(GrantorFailoverDUnitTest::assertIsElderAndGetId);
 
     for (MemberVM locator : locators) {
-      locator.invoke(() ->
-          DistributedLockService.create(serviceName,
-              ClusterStartupRule.getCache().getDistributedSystem()));
+      locator.invoke(() -> DistributedLockService.create(serviceName,
+          ClusterStartupRule.getCache().getDistributedSystem()));
     }
 
     // Grantor but not the elder
     final MemberVM grantorVM = locators.get(1);
     grantorVM.invoke(() -> DistributedLockService.becomeLockGrantor(serviceName));
 
-        assertThat(locators.get(0).invoke(() -> DistributedLockService.getServiceNamed(serviceName).lock(
+    assertThat(
+        locators.get(0).invoke(() -> DistributedLockService.getServiceNamed(serviceName).lock(
             lock1, 20_000, -1))).isTrue();
 
-    assertThat(locators.get(2).invoke(() -> DistributedLockService.getServiceNamed(serviceName).lock(
-        lock2, 20_000, -1))).isTrue();
+    assertThat(
+        locators.get(2).invoke(() -> DistributedLockService.getServiceNamed(serviceName).lock(
+            lock2, 20_000, -1))).isTrue();
 
     clusterStartupRule.crashVM(1);
 
@@ -86,38 +115,38 @@ public class GrantorFailoverDUnitTest {
     // can't get the locks again
 
     for (MemberVM locator : locators) {
-      invocations.add(locator.invokeAsync(() -> DistributedLockService.getServiceNamed(serviceName).lock(lock1, 2, -1)));
-invocations.add(locator.invokeAsync(() -> DistributedLockService.getServiceNamed(serviceName).lock(lock2, 2, -1)));
+      invocations.add(locator.invokeAsync(
+          () -> DistributedLockService.getServiceNamed(serviceName).lock(lock1, 2, -1)));
+      invocations.add(locator.invokeAsync(
+          () -> DistributedLockService.getServiceNamed(serviceName).lock(lock2, 2, -1)));
     }
 
     for (AsyncInvocation<Boolean> invocation : invocations) {
       assertThat(invocation.get()).isFalse();
     }
 
-    final AsyncInvocation
-        lock1FailsRelease =
+    final AsyncInvocation lock1FailsRelease =
         locators.get(0)
             .invokeAsync(() -> DistributedLockService.getServiceNamed(serviceName).unlock(lock1));
 
-    final AsyncInvocation
-        lock2FailsRelease =
+    final AsyncInvocation lock2FailsRelease =
         locators.get(2)
             .invokeAsync(() -> DistributedLockService.getServiceNamed(serviceName).unlock(lock1));
 
 
-assertThatThrownBy(lock1FailsRelease.get()).isI;
-lock2FailsRelease.get();
+    // assertThatThrownBy(()-> lock1FailsRelease.get()).isInstanceOf();
+    lock2FailsRelease.get();
 
-    final AsyncInvocation
-        lock1SuccessfulRelease =
+    final AsyncInvocation lock1SuccessfulRelease =
         locators.get(0)
             .invokeAsync(() -> DistributedLockService.getServiceNamed(serviceName).unlock(lock1));
 
-    final AsyncInvocation
-        lock2SuccessfulRelease =
+    final AsyncInvocation lock2SuccessfulRelease =
         locators.get(2)
             .invokeAsync(() -> DistributedLockService.getServiceNamed(serviceName).unlock(lock1));
 
+    lock1SuccessfulRelease.get();
+    lock2SuccessfulRelease.get();
   }
 
   private static InternalDistributedMember assertIsElderAndGetId() {
