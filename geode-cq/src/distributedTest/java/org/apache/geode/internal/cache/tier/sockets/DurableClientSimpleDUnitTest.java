@@ -3209,12 +3209,12 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
 
     // Start a durable client connected to both servers that is kept alive when
     // it stops normally
-    final int durableClientTimeout = 60; // keep the client alive for 60 seconds
-    // final boolean durableClientKeepAlive = true; // keep the client alive when it stops normally
+
     final String durableClientId = getName() + "_client";
     this.durableClientVM.invoke(() -> CacheServerTestUtil.createCacheClient(
         getClientPool(getServerHostName(), server1Port, server2Port, true),
-        regionName, getClientDistributedSystemProperties(durableClientId, durableClientTimeout),
+        regionName,
+        getClientDistributedSystemProperties(durableClientId, VERY_LONG_DURABLE_TIMEOUT_SECONDS),
         Boolean.TRUE));
 
     // Send clientReady message
@@ -3237,7 +3237,7 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
         // Verify that it is durable and its properties are correct
         assertTrue(proxy.isDurable());
         assertEquals(durableClientId, proxy.getDurableId());
-        assertEquals(durableClientTimeout, proxy.getDurableTimeout());
+        assertEquals(VERY_LONG_DURABLE_TIMEOUT_SECONDS, proxy.getDurableTimeout());
       }
     });
 
@@ -3253,7 +3253,7 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
         // Verify that it is durable and its properties are correct
         assertTrue(proxy.isDurable());
         assertEquals(durableClientId, proxy.getDurableId());
-        assertEquals(durableClientTimeout, proxy.getDurableTimeout());
+        assertEquals(VERY_LONG_DURABLE_TIMEOUT_SECONDS, proxy.getDurableTimeout());
       }
     });
 
@@ -3362,11 +3362,11 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
 
     // Start a durable client with the ControlListener
     final String durableClientId = getName() + "_client";
-    final int durableClientTimeout = 60; // keep the client alive for 60 seconds
     restartDurableClient(new Object[] {
         getClientPool(getServerHostName(), server1Port, server2Port,
             true),
-        regionName, getClientDistributedSystemProperties(durableClientId, durableClientTimeout),
+        regionName,
+        getClientDistributedSystemProperties(durableClientId, VERY_LONG_DURABLE_TIMEOUT_SECONDS),
         true});
 
     // Use ClientSession on the server to register interest in entry key on behalf of durable client
@@ -3397,7 +3397,8 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
     restartDurableClient(new Object[] {
         getClientPool(getServerHostName(), server1Port, server2Port,
             true),
-        regionName, getClientDistributedSystemProperties(durableClientId, durableClientTimeout),
+        regionName,
+        getClientDistributedSystemProperties(durableClientId, VERY_LONG_DURABLE_TIMEOUT_SECONDS),
         true});
 
     // Verify durable client does not receive create event
@@ -3505,7 +3506,7 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
     CacheClientProxy ccp = ccn.getClientProxy(durableClientId);
     HARegionQueue harq = ccp.getHARegionQueue();
     HARegionQueueStats harqStats = harq.getStatistics();
-    Awaitility.await().atMost(10, TimeUnit.SECONDS)
+    Awaitility.await().atMost(10 * HEAVY_TEST_LOAD_DELAY_SUPPORT_MULTIPLIER, TimeUnit.SECONDS)
         .untilAsserted(
             () -> assertEquals(
                 "Expected queue removal messages: " + numEvents + " but actual messages: "
