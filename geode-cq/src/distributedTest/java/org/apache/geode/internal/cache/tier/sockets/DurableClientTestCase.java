@@ -21,7 +21,6 @@ import static org.apache.geode.distributed.ConfigurationProperties.DURABLE_CLIEN
 import static org.apache.geode.distributed.ConfigurationProperties.DURABLE_CLIENT_TIMEOUT;
 import static org.apache.geode.distributed.ConfigurationProperties.LOCATORS;
 import static org.apache.geode.distributed.ConfigurationProperties.MCAST_PORT;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertEquals;
@@ -837,14 +836,15 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
       // Get the listener and wait for the appropriate number of events
       CacheServerTestUtil.ControlListener listener =
           (CacheServerTestUtil.ControlListener) region.getAttributes().getCacheListeners()[0];
-//      Awaitility.waitAtMost(1, MINUTES).pollInterval(1, SECONDS)
-//          .until(() -> listener.events.size(), equalTo(numEntries));
+      // Awaitility.waitAtMost(1, MINUTES).pollInterval(1, SECONDS)
+      // .until(() -> listener.events.size(), equalTo(numEntries));
 
       Awaitility.waitAtMost(1, MINUTES).pollInterval(1, SECONDS)
           .until(() -> {
 
             logger.info("MLH size = " + listener.events.size() + " num entries = " + numEntries);
-            return listener.events.size() == numEntries;});
+            return listener.events.size() == numEntries;
+          });
     });
   }
 
