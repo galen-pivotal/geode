@@ -777,7 +777,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     });
 
     // Verify that disconnected client does not receive any events.
-    this.verifyListenerUpdatesDisconnected(numberOfEntries);
+    this.verifyListenerUpdatesDisconnected(1);
 
     // Re-start the durable client
     this.restartDurableClient(new Object[] {
@@ -799,7 +799,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     });
 
     // Verify the durable client received the updates held for it on the server
-    this.verifyListenerUpdatesEntries(numberOfEntries);
+    this.verifyListenerUpdatesEntries(numberOfEntries+1);
 
     // Stop the publisher client
     this.publisherClientVM.invoke((SerializableRunnableIF) CacheServerTestUtil::closeCache);
