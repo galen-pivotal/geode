@@ -799,7 +799,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     });
 
     // Verify the durable client received the updates held for it on the server
-    this.verifyListenerUpdatesEntries(numberOfEntries + 1);
+    this.verifyListenerUpdatesEntries(numberOfEntries);
 
     // Stop the publisher client
     this.publisherClientVM.invoke((SerializableRunnableIF) CacheServerTestUtil::closeCache);
