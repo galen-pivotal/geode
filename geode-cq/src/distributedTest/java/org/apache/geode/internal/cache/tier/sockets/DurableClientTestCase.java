@@ -799,7 +799,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     });
 
     // Verify the durable client received the updates held for it on the server
-    this.verifyListenerUpdatesEntries(numberOfEntries+1);
+    this.verifyListenerUpdatesEntries(numberOfEntries + 1);
 
     // Stop the publisher client
     this.publisherClientVM.invoke((SerializableRunnableIF) CacheServerTestUtil::closeCache);
@@ -815,7 +815,8 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     final CacheClientProxy proxy = getClientProxy();
     assertNotNull(proxy);
 
-    Awaitility.waitAtMost(60 * HEAVY_TEST_LOAD_DELAY_SUPPORT_MULTIPLIER, SECONDS).pollInterval(200, MILLISECONDS)
+    Awaitility.waitAtMost(60 * HEAVY_TEST_LOAD_DELAY_SUPPORT_MULTIPLIER, SECONDS)
+        .pollInterval(200, MILLISECONDS)
         .until(proxy::isPaused);
 
     assertTrue(proxy.isPaused());
@@ -833,7 +834,8 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
       // Awaitility.waitAtMost(1, MINUTES).pollInterval(1, SECONDS)
       // .until(() -> listener.events.size(), equalTo(numEntries));
 
-      Awaitility.waitAtMost(1 * HEAVY_TEST_LOAD_DELAY_SUPPORT_MULTIPLIER,  MINUTES).pollInterval(1, SECONDS)
+      Awaitility.waitAtMost(1 * HEAVY_TEST_LOAD_DELAY_SUPPORT_MULTIPLIER, MINUTES)
+          .pollInterval(1, SECONDS)
           .until(() -> {
 
             logger.info("MLH size = " + listener.events.size() + " num entries = " + numEntries);
@@ -1528,12 +1530,14 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
   }
 
   protected static void checkNumberOfClientProxies(final int expected) {
-    Awaitility.waitAtMost(50 * HEAVY_TEST_LOAD_DELAY_SUPPORT_MULTIPLIER, SECONDS).pollInterval(200, MILLISECONDS)
+    Awaitility.waitAtMost(50 * HEAVY_TEST_LOAD_DELAY_SUPPORT_MULTIPLIER, SECONDS)
+        .pollInterval(200, MILLISECONDS)
         .until(() -> expected == getNumberOfClientProxies());
   }
 
   protected static void checkProxyIsAlive(final CacheClientProxy proxy) {
-    Awaitility.waitAtMost(15 * HEAVY_TEST_LOAD_DELAY_SUPPORT_MULTIPLIER, SECONDS).pollInterval(200, MILLISECONDS)
+    Awaitility.waitAtMost(15 * HEAVY_TEST_LOAD_DELAY_SUPPORT_MULTIPLIER, SECONDS)
+        .pollInterval(200, MILLISECONDS)
         .until(proxy::isAlive);
   }
 
@@ -1572,7 +1576,8 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
   }
 
   public static void verifyReceivedMarkerAck(final CacheClientProxy proxy) {
-    Awaitility.waitAtMost(3 * HEAVY_TEST_LOAD_DELAY_SUPPORT_MULTIPLIER, MINUTES).pollInterval(200, MILLISECONDS)
+    Awaitility.waitAtMost(3 * HEAVY_TEST_LOAD_DELAY_SUPPORT_MULTIPLIER, MINUTES)
+        .pollInterval(200, MILLISECONDS)
         .until(() -> HARegionQueue.isTestMarkerMessageReceived());
   }
 
