@@ -317,41 +317,15 @@ public class CacheServerTestUtil extends JUnit4DistributedTestCase {
 
   public static Integer createCacheServer(String regionName, Boolean notifyBySubscription)
       throws Exception {
-    Properties props = new Properties();
-    props.setProperty(MCAST_PORT, "0");
-    props.setProperty(LOCATORS, "localhost[" + DistributedTestUtils.getDUnitLocatorPort() + "]");
-    new CacheServerTestUtil().createCache(props);
-    AttributesFactory factory = new AttributesFactory();
-    factory.setScope(Scope.DISTRIBUTED_ACK);
-    factory.setEnableBridgeConflation(true);
-    factory.setDataPolicy(DataPolicy.REPLICATE);
-    RegionAttributes attrs = factory.create();
-    cache.createRegion(regionName, attrs);
-    CacheServer server1 = cache.addCacheServer();
     int port = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET);
-    server1.setPort(port);
-    server1.setNotifyBySubscription(notifyBySubscription.booleanValue());
-    server1.start();
-    return new Integer(server1.getPort());
+    createCacheServer(regionName, notifyBySubscription, port);
+
+    return port;
   }
 
   public static Integer[] createCacheServerReturnPorts(String regionName,
       Boolean notifyBySubscription) throws Exception {
-    Properties props = new Properties();
-    props.setProperty(MCAST_PORT, "0");
-    props.setProperty(LOCATORS, "localhost[" + DistributedTestUtils.getDUnitLocatorPort() + "]");
-    new CacheServerTestUtil().createCache(props);
-    AttributesFactory factory = new AttributesFactory();
-    factory.setScope(Scope.DISTRIBUTED_ACK);
-    factory.setEnableBridgeConflation(true);
-    factory.setDataPolicy(DataPolicy.REPLICATE);
-    RegionAttributes attrs = factory.create();
-    cache.createRegion(regionName, attrs);
-    CacheServer server1 = cache.addCacheServer();
-    int port = AvailablePort.getRandomAvailablePort(AvailablePort.SOCKET);
-    server1.setPort(port);
-    server1.setNotifyBySubscription(notifyBySubscription.booleanValue());
-    server1.start();
+    int port = createCacheServer(regionName, notifyBySubscription);
     return new Integer[] {port, 0};
   }
 

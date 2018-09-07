@@ -16,6 +16,7 @@ package org.apache.geode.internal.cache.tier.sockets;
 
 import org.junit.experimental.categories.Category;
 
+import org.apache.geode.cache.client.Pool;
 import org.apache.geode.test.junit.categories.ClientSubscriptionTest;
 
 /**
@@ -50,8 +51,15 @@ public class DurableClientNetDownDUnitTest extends DurableClientCrashDUnitTest {
   }
 
   @Override
-  public void restartDurableClient(Object[] args) {
+  public void restartDurableClient(int durableClientTimeout, Pool clientPool) {
     this.durableClientVM.invoke(() -> CacheServerTestUtil.reconnectClient());
+
+  }
+
+  @Override
+  public void restartDurableClient(int durableClientTimeout) {
+    this.durableClientVM.invoke(() -> CacheServerTestUtil.reconnectClient());
+
   }
 
   @Override
