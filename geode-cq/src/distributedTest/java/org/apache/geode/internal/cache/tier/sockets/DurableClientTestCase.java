@@ -93,7 +93,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
   protected VM publisherClientVM;
   protected String regionName;
   private int server1Port;
-  private String durableClientId;
+  private String     durableClientId;
 
   @Override
   public final void postSetUp() throws Exception {
@@ -232,7 +232,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     verifyClientProxy(VERY_LONG_DURABLE_TIMEOUT_SECONDS, durableClientId);
 
     // Re-start the durable client
-    this.restartDurableClient(VERY_LONG_DURABLE_TIMEOUT_SECONDS);
+    this.restartDurableClient(VERY_LONG_DURABLE_TIMEOUT_SECONDS, Boolean.TRUE);
 
     // Verify durable client on server
     verifyClientProxy(VERY_LONG_DURABLE_TIMEOUT_SECONDS, durableClientId);
@@ -267,7 +267,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
 
     // Re-start the durable client (this is necessary so the
     // netDown test will set the appropriate system properties.
-    this.restartDurableClient(VERY_LONG_DURABLE_TIMEOUT_SECONDS);
+    this.restartDurableClient(VERY_LONG_DURABLE_TIMEOUT_SECONDS, Boolean.TRUE);
 
     // Stop the durable client
     this.durableClientVM.invoke((SerializableRunnableIF) CacheServerTestUtil::closeCache);
@@ -299,7 +299,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
       }
     });
 
-    this.restartDurableClient(durableClientTimeout);
+    this.restartDurableClient(durableClientTimeout, Boolean.TRUE);
 
     // Stop the durable client
     this.durableClientVM.invoke((SerializableRunnableIF) CacheServerTestUtil::closeCache);
@@ -359,7 +359,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     this.verifyListenerUpdatesDisconnected(1);
 
     // Re-start the durable client
-    this.restartDurableClient(DistributionConfig.DEFAULT_DURABLE_CLIENT_TIMEOUT);
+    this.restartDurableClient(DistributionConfig.DEFAULT_DURABLE_CLIENT_TIMEOUT, Boolean.TRUE);
 
     // Verify durable client on server
     this.server1VM.invoke(new CacheSerializableRunnable("Verify durable client") {
@@ -398,6 +398,12 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     // Have the durable client register interest in all keys
     registerInterest(this.durableClientVM, regionName, true);
 
+    // Start normal publisher client
+    this.publisherClientVM.invoke(() -> CacheServerTestUtil.createCacheClient(
+        getClientPool(NetworkUtils.getServerHostName(), server1Port,
+                      false),
+        regionName));
+
     // Publish some entries
     publishEntries(0, 1);
 
@@ -429,7 +435,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     this.verifyListenerUpdatesDisconnected(1);
 
     // Re-start the durable client
-    this.restartDurableClient(DistributionConfig.DEFAULT_DURABLE_CLIENT_TIMEOUT);
+    this.restartDurableClient(DistributionConfig.DEFAULT_DURABLE_CLIENT_TIMEOUT, Boolean.TRUE);
 
     // Verify durable client on server
     this.server1VM.invoke(new CacheSerializableRunnable("Verify durable client") {
@@ -446,7 +452,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     });
 
     // Verify the durable client received the updates held for it on the server
-    this.verifyListenerUpdatesEntries(2);
+    this.verifyListenerUpdatesEntries(1);
 
     // Stop the publisher client
     this.publisherClientVM.invoke((SerializableRunnableIF) CacheServerTestUtil::closeCache);
@@ -529,25 +535,28 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     // Start a durable client that is not kept alive on the server when it
     // stops normally
     durableClientId = getName() + "_client";
-    startupDurableClient(durableClientTimeout);
+    startupDurableClient(durableClientTimeout, Boolean.TRUE);
     verifyClientProxy(durableClientTimeout, durableClientId);
 
   }
 
-  public void restartDurableClient(int durableClientTimeout, Pool clientPool) {
-    startupDurableClient(durableClientTimeout, clientPool);
+  // This exists so child classes can override the behavior and mock out network failures
+  public void restartDurableClient(int durableClientTimeout, Pool clientPool,
+                                   Boolean addControlListener) {
+    startupDurableClient(durableClientTimeout, clientPool, addControlListener);
+  }
+
+  // This exists so child classes can override the behavior and mock out network failures
+  public void restartDurableClient(int durableClientTimeout, Boolean addControlListener) {
+    startupDurableClient(durableClientTimeout, addControlListener);
   }
 
 
-  public void restartDurableClient(int durableClientTimeout) {
-    startupDurableClient(durableClientTimeout);
-  }
-
-
-  protected void startupDurableClient(int durableClientTimeout, Pool clientPool) {
+  protected void startupDurableClient(int durableClientTimeout, Pool clientPool,
+                                      Boolean addControlListener) {
     this.durableClientVM.invoke(() -> CacheServerTestUtil.createCacheClient(
         clientPool,
-        regionName, getClientDistributedSystemProperties(durableClientId, durableClientTimeout)));
+        regionName, getClientDistributedSystemProperties(durableClientId, durableClientTimeout), addControlListener));
 
     this.durableClientVM.invoke(() -> {
       Awaitility.waitAtMost(1 * HEAVY_TEST_LOAD_DELAY_SUPPORT_MULTIPLIER, MINUTES)
@@ -563,9 +572,9 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     });
   }
 
-  protected void startupDurableClient(int durableClientTimeout) {
+  protected void startupDurableClient(int durableClientTimeout, Boolean addControlListener) {
     startupDurableClient(durableClientTimeout,
-        getClientPool(NetworkUtils.getServerHostName(), server1Port, true));
+        getClientPool(NetworkUtils.getServerHostName(), server1Port, true), addControlListener);
   }
 
   private void verifyClientProxy(int durableClientTimeout, String durableClientId) {
@@ -653,16 +662,9 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     });
   }
 
-
   protected void publishEntries(int startingValue, final int count) {
     this.publisherClientVM.invoke(new CacheSerializableRunnable("Publish entries") {
       public void run2() throws CacheException {
-        putValueToRegion(regionName, startingValue, count);
-      }
-    });
-  }
-
-  private static void putValueToRegion(String regionName, int startingValue, int count) {
     Region<String, String> region = CacheServerTestUtil.getCache().getRegion(
         regionName);
     assertNotNull(region);
@@ -673,7 +675,8 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
       region.put(keyAndValue, keyAndValue);
     }
   }
-
+    });
+  }
 
   private static void waitForCacheClientProxyPaused() {
     final CacheClientProxy proxy = getClientProxy();
@@ -765,13 +768,13 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
   }
 
   @Test
-  public void testDurableNonHAFailover() {
+  public void testDurableNonHAFailover() throws Exception {
     durableFailover(0);
     durableFailoverAfterReconnect(0);
   }
 
   @Test
-  public void testDurableHAFailover() {
+  public void testDurableHAFailover() throws Exception {
     // Clients see this when the servers disconnect
     IgnoredException.addIgnoredException("Could not find any server");
     durableFailover(1);
@@ -783,12 +786,12 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
    * with a publisher/feeder performing operations and the client verifying updates received.
    * Redundancy level is set to 1 for this test case.
    */
-  public void durableFailover(int redundancyLevel) {
+  public void durableFailover(int redundancyLevel) throws Exception {
 
     // Start server 1
-    Integer[] ports = this.server1VM.invoke(
-        () -> CacheServerTestUtil.createCacheServerReturnPorts(regionName, Boolean.TRUE));
-    final int server1Port = ports[0];
+    server1Port = this.server1VM.invoke(
+        () -> CacheServerTestUtil.createCacheServer(regionName, Boolean.TRUE));
+
 
     // Start server 2 using the same mcast port as server 1
     final int server2Port = this.server2VM
@@ -798,7 +801,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     this.server2VM.invoke((SerializableRunnableIF) CacheServerTestUtil::closeCache);
 
     // Start a durable client
-    final String durableClientId = getName() + "_client";
+    durableClientId = getName() + "_client";
 
     Pool clientPool;
     if (redundancyLevel == 1) {
@@ -811,10 +814,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
 
     this.durableClientVM.invoke(CacheServerTestUtil::disableShufflingOfEndpoints);
     this.durableClientVM.invoke(() -> CacheServerTestUtil.createCacheClient(clientPool, regionName,
-        getClientDistributedSystemProperties(
-            durableClientId,
-            VERY_LONG_DURABLE_TIMEOUT_SECONDS),
-        Boolean.TRUE));
+        getClientDistributedSystemProperties(durableClientId, VERY_LONG_DURABLE_TIMEOUT_SECONDS), Boolean.TRUE));
 
     // Send clientReady message
     this.durableClientVM.invoke(new CacheSerializableRunnable("Send clientReady") {
@@ -841,24 +841,30 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     // Verify the durable client received the updates
     this.verifyListenerUpdatesEntries(1);
 
-    // Stop the durable client
+    // Stop the durable client, which discards the known entry
     this.disconnectDurableClient(true);
-
+    logger.info("MLH 1");
     // Publish updates during client downtime
     publishEntries(1, 1);
+    logger.info("MLH 2");
 
     // Re-start the durable client that is kept alive on the server
-    this.restartDurableClient(VERY_LONG_DURABLE_TIMEOUT_SECONDS);
+    this.restartDurableClient(VERY_LONG_DURABLE_TIMEOUT_SECONDS, clientPool, Boolean.TRUE);
+    logger.info("MLH 3");
 
     registerInterest(this.durableClientVM, regionName, true);
+    logger.info("MLH 4");
 
     publishEntries(2, 1);
+    logger.info("MLH 5");
 
     // Verify the durable client received the updates before failover
-    this.verifyListenerUpdatesEntries(3);
+    this.verifyListenerUpdatesEntries(2);
+    logger.info("MLH 6");
 
     // Stop server 1 - publisher will put 10 entries during shutdown/primary identification
     this.server1VM.invoke((SerializableRunnableIF) CacheServerTestUtil::closeCache);
+    logger.info("MLH 7");
 
     this.durableClientVM.invoke(new CacheSerializableRunnable("Get") {
       public void run2() throws CacheException {
@@ -867,15 +873,22 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
         assertNotNull(region);
 
         assertNull(region.getEntry("0"));
+        assertNotNull(region.getEntry("2"));
       }
     });
+    logger.info("MLH 8");
 
     publishEntries(3, 1);
+    logger.info("MLH 9");
 
     if (redundancyLevel == 1) {
+      logger.info("MLH 10");
+
       // Verify the durable client received the updates after failover
       this.verifyListenerUpdatesEntries(3);
     } else {
+      logger.info("MLH 11");
+
       this.verifyListenerUpdatesEntries(2);
     }
 
@@ -890,16 +903,16 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
   }
 
 
-  public void durableFailoverAfterReconnect(int redundancyLevel) {
+  public void durableFailoverAfterReconnect(int redundancyLevel) throws InterruptedException {
     // Start server 1
-    Integer server1Port = this.server1VM
+    server1Port = this.server1VM
         .invoke(() -> CacheServerTestUtil.createCacheServer(regionName, true));
 
     int server2Port = this.server2VM
         .invoke(() -> CacheServerTestUtil.createCacheServer(regionName, true));
 
     // Start a durable client
-    final String durableClientId = getName() + "_client";
+    durableClientId = getName() + "_client";
 
     Pool clientPool;
     if (redundancyLevel == 1) {
@@ -950,17 +963,19 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     publishEntries(1, 1);
 
     // Re-start the durable client that is kept alive on the server
-    this.restartDurableClient(VERY_LONG_DURABLE_TIMEOUT_SECONDS);
+    this.restartDurableClient(VERY_LONG_DURABLE_TIMEOUT_SECONDS, clientPool, Boolean.TRUE);
 
     registerInterest(this.durableClientVM, regionName, true);
 
-    publishEntries(1, 2);
+    publishEntries(2, 2);
 
     // Verify the durable client received the updates before failover
     if (redundancyLevel == 1) {
+      logger.info("MLH 2");
       this.verifyListenerUpdatesEntries(2);
     } else {
-      this.verifyListenerUpdatesEntries(1);
+      logger.info("MLH 3");
+      this.verifyListenerUpdatesEntries(2);
     }
 
     this.durableClientVM.invoke(new CacheSerializableRunnable("Get") {
@@ -973,14 +988,14 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
         assertNull(region.getEntry("0"));
       }
     });
-
-    publishEntries(2, 1);
-
+    logger.info("MLH 4");
+    publishEntries(4, 1);
+    logger.info("MLH 5");
     // Verify the durable client received the updates after failover
     if (redundancyLevel == 1) {
       this.verifyListenerUpdatesEntries(3);
     } else {
-      this.verifyListenerUpdatesEntries(2);
+      this.verifyListenerUpdatesEntries(3);
     }
 
     // Stop the durable client
@@ -1378,12 +1393,6 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     vm.invoke(() -> CacheServerTestUtil.createCacheClient(
         getClientPool(NetworkUtils.getServerHostName(), serverPort1, false),
         regionName));
-  }
-
-  protected void startClient(VM vm, int serverPort1, int serverPort2, String regionName) {
-    vm.invoke(() -> CacheServerTestUtil
-        .createCacheClient(getClientPool(NetworkUtils.getServerHostName(), serverPort1,
-            serverPort2, false), regionName));
   }
 
   protected void verifyDurableClientOnServer(VM server, final String durableClientId) {

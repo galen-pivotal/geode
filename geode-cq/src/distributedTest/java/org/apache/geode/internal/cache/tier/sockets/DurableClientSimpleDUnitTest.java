@@ -3362,7 +3362,7 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
     final String durableClientId = getName() + "_client";
     startupDurableClient(VERY_LONG_DURABLE_TIMEOUT_SECONDS,
         getClientPool(getServerHostName(), server1Port, server2Port,
-            true));
+            true), Boolean.TRUE);
 
     // Use ClientSession on the server to register interest in entry key on behalf of durable client
     boolean server1IsPrimary = false;
@@ -3390,7 +3390,7 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
 
     // restart durable client
     restartDurableClient(VERY_LONG_DURABLE_TIMEOUT_SECONDS,
-        getClientPool(getServerHostName(), server1Port, server2Port, true));
+        getClientPool(getServerHostName(), server1Port, server2Port, true), Boolean.FALSE);
 
     // Verify durable client does not receive create event
     verifyNoDurableClientEvents(this.durableClientVM, 1, TYPE_CREATE);
