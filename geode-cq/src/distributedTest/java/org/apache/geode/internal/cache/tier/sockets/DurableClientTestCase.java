@@ -58,6 +58,7 @@ import org.apache.geode.cache.query.CqListener;
 import org.apache.geode.cache.query.CqQuery;
 import org.apache.geode.cache.query.QueryService;
 import org.apache.geode.cache.query.RegionNotFoundException;
+import org.apache.geode.cache.query.data.Portfolio;
 import org.apache.geode.cache.query.internal.cq.CqQueryImpl;
 import org.apache.geode.cache.query.internal.cq.CqService;
 import org.apache.geode.cache30.CacheSerializableRunnable;
@@ -665,16 +666,18 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
   protected void publishEntries(int startingValue, final int count) {
     this.publisherClientVM.invoke(new CacheSerializableRunnable("Publish entries") {
       public void run2() throws CacheException {
-    Region<String, String> region = CacheServerTestUtil.getCache().getRegion(
-        regionName);
-    assertNotNull(region);
+        Region<String, String> region = CacheServerTestUtil.getCache().getRegion(
+            regionName);
+        assertNotNull(region);
 
-    // Publish some entries
-    for (int i = startingValue; i < startingValue + count; i++) {
-      String keyAndValue = String.valueOf(i);
-      region.put(keyAndValue, keyAndValue);
-    }
-  }
+        // Publish some entries
+        for (int i = startingValue; i < startingValue + count; i++) {
+          String keyAndValue = String.valueOf(i);
+          region.put(keyAndValue, keyAndValue);
+        }
+
+        assertNotNull(region.get(String.valueOf(startingValue)));
+      }
     });
   }
 
@@ -1247,6 +1250,21 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     });
   }
 
+  protected void publishEntries(VM vm, final String regionName, final int numEntries) {
+    vm.invoke(new CacheSerializableRunnable("publish " + numEntries + " entries") {
+      public void run2() throws CacheException {
+        // Get the region
+        Region region = CacheServerTestUtil.getCache().getRegion(regionName);
+        assertNotNull(region);
+
+        // Publish some entries
+        for (int i = 0; i < numEntries; i++) {
+          String keyAndValue = String.valueOf(i);
+          region.put(keyAndValue, new Portfolio(i));
+        }
+      }
+    });
+  }
 
   protected void checkCqStatOnServer(VM server, final String durableClientId, final String cqName,
       final int expectedNumber) {
@@ -1359,9 +1377,12 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
 
   protected void startDurableClient(VM vm, String durableClientId, int serverPort1,
       String regionName) {
-    vm.invoke(() -> CacheServerTestUtil.createCacheClient(
-        getClientPool(NetworkUtils.getServerHostName(), serverPort1, true),
-        regionName, getClientDistributedSystemProperties(durableClientId), Boolean.TRUE));
+    vm.invoke(() -> {
+      CacheServerTestUtil.createCacheClient(
+          getClientPool(NetworkUtils.getServerHostName(), serverPort1, true),
+          regionName, getClientDistributedSystemProperties(durableClientId), Boolean.TRUE);
+             assertThat(CacheServerTestUtil.getClientCache()).isNotNull();
+    });
   }
 
   protected void startDurableClient(VM vm, String durableClientId, int serverPort1, int serverPort2,
@@ -1372,9 +1393,12 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
   }
 
   protected void startClient(VM vm, int serverPort1, String regionName) {
-    vm.invoke(() -> CacheServerTestUtil.createCacheClient(
-        getClientPool(NetworkUtils.getServerHostName(), serverPort1, false),
-        regionName));
+    vm.invoke(() -> {
+      CacheServerTestUtil.createCacheClient(
+          getClientPool(NetworkUtils.getServerHostName(), serverPort1, false),
+          regionName);
+      assertThat(CacheServerTestUtil.getClientCache()).isNotNull();
+    });
   }
 
   protected void verifyDurableClientOnServer(VM server, final String durableClientId) {
