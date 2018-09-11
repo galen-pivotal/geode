@@ -52,7 +52,7 @@ public class DurableClientNetDownDUnitTest extends DurableClientCrashDUnitTest {
 
   @Override
   public void restartDurableClient(int durableClientTimeout, Pool clientPool,
-                                   Boolean addControlListener) {
+      Boolean addControlListener) {
     this.durableClientVM.invoke(() -> CacheServerTestUtil.reconnectClient());
 
   }

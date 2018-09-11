@@ -2100,7 +2100,7 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
     String lessThan5Query = "select * from /" + regionName + " p where p.ID < 5";
 
     // Start server 1
-      server1Port = this.server1VM.invoke(
+    server1Port = this.server1VM.invoke(
         () -> CacheServerTestUtil.createCacheServer(regionName, Boolean.TRUE));
 
     // Start server 2
@@ -2295,7 +2295,7 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
     // Start server 1
     server1Port = this.server1VM.invoke(
         () -> CacheServerTestUtil.createCacheServer(regionName, Boolean.TRUE));
-    
+
 
     final String durableClientId = getName() + "_client";
 
@@ -2468,7 +2468,7 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
     // Start server 1
     server1Port = this.server1VM.invoke(
         () -> CacheServerTestUtil.createCacheServer(regionName, Boolean.TRUE));
-    
+
 
     final String durableClientId = getName() + "_client";
 
@@ -2667,7 +2667,7 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
     // Start server 1
     server1Port = this.server1VM.invoke(
         () -> CacheServerTestUtil.createCacheServer(regionName, Boolean.TRUE));
-    
+
 
     final String durableClientId = getName() + "_client";
     final String durableClientId2 = getName() + "_client2";
@@ -2798,7 +2798,7 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
       // Start server 1
       server1Port = this.server1VM.invoke(
           () -> CacheServerTestUtil.createCacheServer(regionName, Boolean.TRUE));
-      
+
 
       final String durableClientId = getName() + "_client";
       this.durableClientVM.invoke(CacheServerTestUtil::disableShufflingOfEndpoints);
@@ -3074,7 +3074,7 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
 
     // verify cq events for all 3 cqs
     checkCqListenerEvents(durableClientVM, "GreaterThan5", 4 /* numEventsExpected */,
-        4/* numEventsToWaitFor */, 15*4/* secondsToWait */);
+        4/* numEventsToWaitFor */, 15 * 4/* secondsToWait */);
     checkCqListenerEvents(durableClientVM, "LessThan5", 5 /* numEventsExpected */,
         5/* numEventsToWaitFor */, 15/* secondsToWait */);
     checkCqListenerEvents(durableClientVM, "All", 10 /* numEventsExpected */,
@@ -3352,10 +3352,11 @@ public class DurableClientSimpleDUnitTest extends DurableClientTestCase {
     publishEntries(0, 1);
 
     // Start a durable client with the ControlListener
-     durableClientId = getName() + "_client";
+    durableClientId = getName() + "_client";
     startupDurableClient(VERY_LONG_DURABLE_TIMEOUT_SECONDS,
         getClientPool(getServerHostName(), server1Port, server2Port,
-            true), Boolean.TRUE);
+            true),
+        Boolean.TRUE);
 
     // Use ClientSession on the server to register interest in entry key on behalf of durable client
     boolean server1IsPrimary = false;

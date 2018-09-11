@@ -2123,7 +2123,7 @@ public class GemFireCacheImpl implements InternalCache, InternalClientCache, Has
   private final boolean DISABLE_DISCONNECT_DS_ON_CACHE_CLOSE = Boolean
       .getBoolean(DistributionConfig.GEMFIRE_PREFIX + "DISABLE_DISCONNECT_DS_ON_CACHE_CLOSE");
 
-  public void   close(String reason, Throwable systemFailureCause, boolean keepAlive,
+  public void close(String reason, Throwable systemFailureCause, boolean keepAlive,
       boolean keepDS) {
     securityService.close();
 

@@ -402,7 +402,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
     // Start normal publisher client
     this.publisherClientVM.invoke(() -> CacheServerTestUtil.createCacheClient(
         getClientPool(NetworkUtils.getServerHostName(), server1Port,
-                      false),
+            false),
         regionName));
 
     // Publish some entries
@@ -543,7 +543,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
 
   // This exists so child classes can override the behavior and mock out network failures
   public void restartDurableClient(int durableClientTimeout, Pool clientPool,
-                                   Boolean addControlListener) {
+      Boolean addControlListener) {
     startupDurableClient(durableClientTimeout, clientPool, addControlListener);
   }
 
@@ -554,10 +554,11 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
 
 
   protected void startupDurableClient(int durableClientTimeout, Pool clientPool,
-                                      Boolean addControlListener) {
+      Boolean addControlListener) {
     this.durableClientVM.invoke(() -> CacheServerTestUtil.createCacheClient(
         clientPool,
-        regionName, getClientDistributedSystemProperties(durableClientId, durableClientTimeout), addControlListener));
+        regionName, getClientDistributedSystemProperties(durableClientId, durableClientTimeout),
+        addControlListener));
 
     this.durableClientVM.invoke(() -> {
       Awaitility.waitAtMost(1 * HEAVY_TEST_LOAD_DELAY_SUPPORT_MULTIPLIER, MINUTES)
@@ -817,7 +818,8 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
 
     this.durableClientVM.invoke(CacheServerTestUtil::disableShufflingOfEndpoints);
     this.durableClientVM.invoke(() -> CacheServerTestUtil.createCacheClient(clientPool, regionName,
-        getClientDistributedSystemProperties(durableClientId, VERY_LONG_DURABLE_TIMEOUT_SECONDS), Boolean.TRUE));
+        getClientDistributedSystemProperties(durableClientId, VERY_LONG_DURABLE_TIMEOUT_SECONDS),
+        Boolean.TRUE));
 
     // Send clientReady message
     this.durableClientVM.invoke(new CacheSerializableRunnable("Send clientReady") {
@@ -916,7 +918,8 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
 
     this.durableClientVM.invoke(CacheServerTestUtil::disableShufflingOfEndpoints);
     this.durableClientVM.invoke(() -> CacheServerTestUtil.createCacheClient(clientPool, regionName,
-        getClientDistributedSystemProperties(durableClientId, VERY_LONG_DURABLE_TIMEOUT_SECONDS), Boolean.TRUE));
+        getClientDistributedSystemProperties(durableClientId, VERY_LONG_DURABLE_TIMEOUT_SECONDS),
+        Boolean.TRUE));
 
     // Send clientReady message
     this.durableClientVM.invoke(new CacheSerializableRunnable("Send clientReady") {
@@ -1381,7 +1384,7 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
       CacheServerTestUtil.createCacheClient(
           getClientPool(NetworkUtils.getServerHostName(), serverPort1, true),
           regionName, getClientDistributedSystemProperties(durableClientId), Boolean.TRUE);
-             assertThat(CacheServerTestUtil.getClientCache()).isNotNull();
+      assertThat(CacheServerTestUtil.getClientCache()).isNotNull();
     });
   }
 
