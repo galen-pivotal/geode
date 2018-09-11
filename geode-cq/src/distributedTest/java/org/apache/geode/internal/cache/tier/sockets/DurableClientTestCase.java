@@ -92,8 +92,8 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
   protected VM durableClientVM;
   protected VM publisherClientVM;
   protected String regionName;
-  private int server1Port;
-  private String     durableClientId;
+  protected int server1Port;
+  protected String durableClientId;
 
   @Override
   public final void postSetUp() throws Exception {
@@ -843,28 +843,22 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
 
     // Stop the durable client, which discards the known entry
     this.disconnectDurableClient(true);
-    logger.info("MLH 1");
+
     // Publish updates during client downtime
     publishEntries(1, 1);
-    logger.info("MLH 2");
 
     // Re-start the durable client that is kept alive on the server
     this.restartDurableClient(VERY_LONG_DURABLE_TIMEOUT_SECONDS, clientPool, Boolean.TRUE);
-    logger.info("MLH 3");
 
     registerInterest(this.durableClientVM, regionName, true);
-    logger.info("MLH 4");
 
     publishEntries(2, 1);
-    logger.info("MLH 5");
 
     // Verify the durable client received the updates before failover
     this.verifyListenerUpdatesEntries(2);
-    logger.info("MLH 6");
 
     // Stop server 1 - publisher will put 10 entries during shutdown/primary identification
     this.server1VM.invoke((SerializableRunnableIF) CacheServerTestUtil::closeCache);
-    logger.info("MLH 7");
 
     this.durableClientVM.invoke(new CacheSerializableRunnable("Get") {
       public void run2() throws CacheException {
@@ -876,19 +870,13 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
         assertNotNull(region.getEntry("2"));
       }
     });
-    logger.info("MLH 8");
 
     publishEntries(3, 1);
-    logger.info("MLH 9");
 
     if (redundancyLevel == 1) {
-      logger.info("MLH 10");
-
       // Verify the durable client received the updates after failover
       this.verifyListenerUpdatesEntries(3);
     } else {
-      logger.info("MLH 11");
-
       this.verifyListenerUpdatesEntries(2);
     }
 
@@ -925,15 +913,12 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
 
     this.durableClientVM.invoke(CacheServerTestUtil::disableShufflingOfEndpoints);
     this.durableClientVM.invoke(() -> CacheServerTestUtil.createCacheClient(clientPool, regionName,
-        getClientDistributedSystemProperties(
-            durableClientId,
-            VERY_LONG_DURABLE_TIMEOUT_SECONDS),
-        Boolean.TRUE));
+        getClientDistributedSystemProperties(durableClientId, VERY_LONG_DURABLE_TIMEOUT_SECONDS), Boolean.TRUE));
 
     // Send clientReady message
     this.durableClientVM.invoke(new CacheSerializableRunnable("Send clientReady") {
       public void run2() throws CacheException {
-        CacheServerTestUtil.getClientCache().readyForEvents();
+        CacheServerTestUtil.getCache().readyForEvents();
       }
     });
 
@@ -971,16 +956,13 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
 
     // Verify the durable client received the updates before failover
     if (redundancyLevel == 1) {
-      logger.info("MLH 2");
-      this.verifyListenerUpdatesEntries(2);
+      this.verifyListenerUpdatesEntries(4);
     } else {
-      logger.info("MLH 3");
       this.verifyListenerUpdatesEntries(2);
     }
 
     this.durableClientVM.invoke(new CacheSerializableRunnable("Get") {
       public void run2() throws CacheException {
-
         Region region = CacheServerTestUtil.getCache().getRegion(regionName);
         assertNotNull(region);
 
@@ -988,12 +970,12 @@ public class DurableClientTestCase extends JUnit4DistributedTestCase {
         assertNull(region.getEntry("0"));
       }
     });
-    logger.info("MLH 4");
+
     publishEntries(4, 1);
-    logger.info("MLH 5");
+
     // Verify the durable client received the updates after failover
     if (redundancyLevel == 1) {
-      this.verifyListenerUpdatesEntries(3);
+      this.verifyListenerUpdatesEntries(5);
     } else {
       this.verifyListenerUpdatesEntries(3);
     }
