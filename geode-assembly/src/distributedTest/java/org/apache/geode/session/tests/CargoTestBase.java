@@ -49,7 +49,7 @@ public abstract class CargoTestBase extends JUnit4CacheTestCase {
   /**
    * Sets up the {@link #client} and {@link #manager} variables by creating new instances of each.
    *
-   * Adds two new containers to the {@link #manager} based on the super class' {@link #getInstall()}
+   * Adds two new containers to the {@link #manager} based on the subclass' {@link #getInstall()}
    * method. Also sets {@link ContainerManager#testName} for {@link #manager} to the name of the
    * current test.
    */
