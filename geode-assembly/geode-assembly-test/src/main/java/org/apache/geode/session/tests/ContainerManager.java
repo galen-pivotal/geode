@@ -16,8 +16,10 @@ package org.apache.geode.session.tests;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.Logger;
+import org.awaitility.Awaitility;
 import org.codehaus.cargo.container.State;
 
 import org.apache.geode.internal.logging.LogService;
@@ -128,6 +130,28 @@ public class ContainerManager {
     }
   }
 
+  public void stopAllContainers() {
+    for (ServerContainer container : containers) {
+      stopContainerFromAnyState(container);
+    }
+  }
+
+  private void stopContainerFromAnyState(ServerContainer container) {
+    final State state = container.getState();
+    if (state.isStarted()) {
+      container.stop();
+    } else if (state.isStarting()) {
+      Awaitility.await("container started").atMost(2, TimeUnit.MINUTES)
+          .until(() -> !container.getState().isStarting());
+      stopContainerFromAnyState(container);
+    } else if (state.isStopping()) {
+      Awaitility.await("container done stopping").atMost(2, TimeUnit.MINUTES)
+          .until(() -> container.getState().isStopped());
+    } else if (!state.isStopped()) {
+      throw new AssertionError("Container in unknown state" + state);
+    }
+  }
+
   /**
    * Set the name of the current test
    *
@@ -144,18 +168,18 @@ public class ContainerManager {
    *        be found in as static variables in the {@link State} class.
    */
   public ArrayList<Integer> getContainerIndexesWithState(String state) {
+    if (!(state.equals(State.STARTED.toString()) || state.equals(State.STOPPED.toString())
+        || state.equals(State.STARTING.toString()) || state.equals(State.STOPPING.toString())
+        || state.equals(State.UNKNOWN.toString()))) {
+      throw new IllegalArgumentException(
+          "State must be one of the 5 specified cargo state strings (stopped, started, starting, stopping, or unknown). State given was: "
+              + state);
+    }
+
     ArrayList<Integer> indexes = new ArrayList<>();
     for (int i = 0; i < numContainers(); i++) {
-      // Checks that the state passed in is one of the 5 supported by Cargo
-      if (state.equals(State.STARTED.toString()) || state.equals(State.STOPPED.toString())
-          || state.equals(State.STARTED.toString()) || state.equals(State.STOPPING.toString())
-          || state.equals(State.UNKNOWN.toString())) {
-        if (getContainer(i).getState().toString().equals(state))
-          indexes.add(i);
-      } else
-        throw new IllegalArgumentException(
-            "State must be one of the 5 specified cargo state strings (stopped, started, starting, stopping, or unknown). State given was: "
-                + state);
+      if (getContainer(i).getState().toString().equals(state))
+        indexes.add(i);
     }
     return indexes;
   }
@@ -197,6 +221,7 @@ public class ContainerManager {
    */
   private ServerContainer addContainer(ContainerInstall install, int index) throws IOException {
     ServerContainer container = install.generateContainer(testName + "_" + index);
+    container.getContainer().setTimeout(300_000);
 
     containers.add(index, container);
 
