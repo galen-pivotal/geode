@@ -172,7 +172,41 @@ subprojects {
     }
   }
 
-  task repeatTest(type: RepeatTest) {
+  task repeatDistributedTest(type: RepeatTest) {
+    classpath = project.sourceSets.distributedTest.runtimeClasspath
+    testClassesDirs = project.sourceSets.distributedTest.output.classesDirs
+  }
+
+  task repeatIntegrationTest(type: RepeatTest) {
+    classpath = project.sourceSets.integrationTest.runtimeClasspath
+    testClassesDirs = project.sourceSets.integrationTest.output.classesDirs
+  }
+
+  task repeatUpgradeTest(type: RepeatTest) {
+    classpath = project.sourceSets.upgradeTest.runtimeClasspath
+    testClassesDirs = project.sourceSets.upgradeTest.output.classesDirs
+  }
+
+  task repeatUnitTest(type: RepeatTest) {
+    // default classpath works for this one.
+  }
+
+  configure([repeatDistributedTest, repeatIntegrationTest, repeatUpgradeTest, repeatUnitTest]) {
+    times = Integer.parseInt(repeat)
+
+    useJUnit {}
+
+    outputs.upToDateWhen { false }
+
+
+    if (project.hasProperty("failOnNoMatchingTests")) {
+      filter {
+        setFailOnNoMatchingTests(Boolean.valueOf(project.failOnNoMatchingTests))
+      }
+    }
+  }
+
+    task repeatTest(type: RepeatTest) {
     times = Integer.parseInt(repeat)
 
     useJUnit {}

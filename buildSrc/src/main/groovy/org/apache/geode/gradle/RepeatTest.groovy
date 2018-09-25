@@ -33,7 +33,8 @@ class RepeatTest extends Test {
   @Override
   FileTree getCandidateClassFiles() {
     FileTree candidates = super.getCandidateClassFiles();
-    for (int i = 0; i < times; i++) {
+    int additionalRuns = times - 1;
+    for (int i = 0; i < additionalRuns; i++) {
       candidates = candidates.plus(super.getCandidateClassFiles());
     }
 
