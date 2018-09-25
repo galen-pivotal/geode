@@ -182,6 +182,11 @@ subprojects {
     testClassesDirs = project.sourceSets.integrationTest.output.classesDirs
   }
 
+  task repeatAcceptanceTest(type: RepeatTest) {
+      classpath = project.sourceSets.acceptanceTest.runtimeClasspath
+      testClassesDirs = project.sourceSets.acceptanceTest.output.classesDirs
+  }
+
   task repeatUpgradeTest(type: RepeatTest) {
     classpath = project.sourceSets.upgradeTest.runtimeClasspath
     testClassesDirs = project.sourceSets.upgradeTest.output.classesDirs
@@ -191,7 +196,7 @@ subprojects {
     // default classpath works for this one.
   }
 
-  configure([repeatDistributedTest, repeatIntegrationTest, repeatUpgradeTest, repeatUnitTest]) {
+  configure([repeatDistributedTest, repeatIntegrationTest, repeatUpgradeTest, repeatUnitTest, repeatAcceptanceTest]) {
     times = Integer.parseInt(repeat)
 
     useJUnit {}
@@ -318,8 +323,8 @@ subprojects {
     description 'Run this task before checking in code to validate changes. It runs tests beyond unitTest'
   }
 
-  combineReports.mustRunAfter check, test, integrationTest, distributedTest, acceptanceTest, repeatTest, upgradeTest
-  [build, check, test, integrationTest, distributedTest, acceptanceTest, repeatTest, upgradeTest].each {
+  combineReports.mustRunAfter check, test, integrationTest, distributedTest, acceptanceTest, repeatTest, upgradeTest, repeatDistributedTest, repeatIntegrationTest, repeatUpgradeTest, repeatAcceptanceTest, repeatUnitTest
+  [build, check, test, integrationTest, distributedTest, acceptanceTest, repeatTest, upgradeTest, repeatDistributedTest, repeatIntegrationTest, repeatUpgradeTest, repeatAcceptanceTest, repeatUnitTest].each {
     it.finalizedBy combineReports
   }
 }
