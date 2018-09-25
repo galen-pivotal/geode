@@ -197,6 +197,7 @@ public class ContainerManager {
    */
   private ServerContainer addContainer(ContainerInstall install, int index) throws IOException {
     ServerContainer container = install.generateContainer(testName + "_" + index);
+    container.getContainer().setTimeout(300_000);
 
     containers.add(index, container);
 
