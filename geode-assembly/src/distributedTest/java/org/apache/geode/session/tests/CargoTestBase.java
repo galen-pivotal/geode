@@ -58,6 +58,8 @@ public abstract class CargoTestBase extends JUnit4CacheTestCase {
     client = new Client();
     manager = new ContainerManager();
 
+    System.out.println("System.getProperty(\"java.class.path\") = " + System.getProperty("java.class.path"));
+
     manager.setTestName(testName.getMethodName());
     manager.addContainers(2, getInstall());
   }
