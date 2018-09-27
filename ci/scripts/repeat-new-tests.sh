@@ -27,9 +27,20 @@ while [[ -h "$SOURCE" ]]; do # resolve $SOURCE until the file is no longer a sym
 done
 SCRIPTDIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-CHANGED_FILES=$(cd geode && git diff --name-only HEAD $(git merge-base HEAD origin/develop)  -- */src/test/java */src/integrationTest/java */src/distributedTest/java */src/upgradeTest/java */src/acceptanceTest/java )
+function changes_for_path() {
+  pushd geode
+  local path="$1" # only expand once in the line below
+  git git diff --name-only HEAD $(git merge-base HEAD origin/develop) -- $path
+  popd
+}
 
-CHANGED_FILES_ARRAY=( $CHANGED_FILES )
+UNIT_TEST_CHANGES=$(changes_for_path('*/src/test/java'))
+INTEGRATION_TEST_CHANGES=$(changes_for_path('*/src/integrationTest/java'))
+DISTRIBUTED_TEST_CHANGES=$(changes_for_path('*/src/distributedTest/java'))
+ACCEPTANCE_TEST_CHANGES=$(changes_for_path('*/src/acceptanceTest/java'))
+UPGRADE_TEST_CHANGES=$(changes_for_path('*/src/upgradeTest/java'))
+
+CHANGED_FILES_ARRAY=( $UNIT_TEST_CHANGES $INTEGRATION_TEST_CHANGES $DISTRIBUTED_TEST_CHANGES $ACCEPTANCE_TEST_CHANGES $UPGRADE_TEST_CHANGES )
 NUM_CHANGED_FILES=${#CHANGED_FILES_ARRAY[@]}
 
 TESTS_FLAG=""
@@ -44,10 +55,36 @@ fi
 
 if [[ "${NUM_CHANGED_FILES}" -gt 25 ]]
   then
-    echo "${NUM_CHANGED_FILES} is many changed tests to stress test. Allowing this job to pass without stress testing."
+    echo "${NUM_CHANGED_FILES} is too many changed tests to stress test. Allowing this job to pass without stress testing."
     exit 0
 fi
 
+TEST_TARGETS=""
+
+if [[ "$UNIT_TEST_CHANGES" == "" ]]
+  then
+    TEST_TARGETS="$TEST_TARGETS test"
+fi
+
+if [[ "$DISTRIBUTED_TEST_CHANGES" == "" ]]
+  then
+    TEST_TARGETS="$TEST_TARGETS repeatDistributedTest"
+fi
+
+if [[ "$INTEGRATION_TEST_CHANGES" == "" ]]
+  then
+    TEST_TARGETS="$TEST_TARGETS repeatIntegrationTest"
+fi
+
+if [[ "$ACCEPTANCE_TEST_CHANGES" == "" ]]
+  then
+    TEST_TARGETS="$TEST_TARGETS repeatAcceptanceTest"
+fi
+
+if [[ "$UPGRADE_TEST_CHANGES" == "" ]]
+  then
+    TEST_TARGETS="$TEST_TARGETS repeatUpgradeTest"
+fi
 
 for FILENAME in $CHANGED_FILES ; do
   SHORT_NAME=$(basename $FILENAME)
@@ -55,8 +92,8 @@ for FILENAME in $CHANGED_FILES ; do
   TESTS_FLAG="$TESTS_FLAG --tests $SHORT_NAME"
 done
 
-export GRADLE_TASK='compileTestJava compileIntegrationTestJava compileDistributedTestJava repeatTest'
-export GRADLE_TASK_OPTIONS="--no-parallel -Prepeat=50 -PfailOnNoMatchingTests=false $TESTS_FLAG"
+export GRADLE_TASK='compileTestJava compileIntegrationTestJava compileDistributedTestJava $TEST_TARGETS'
+export GRADLE_TASK_OPTIONS="--no-parallel -Prepeat=50 $TESTS_FLAG"
 
 echo "GRADLE_TASK_OPTIONS=${GRADLE_TASK_OPTIONS}"
 
