@@ -15,6 +15,8 @@
 package org.apache.geode.session.tests;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -26,6 +28,7 @@ import org.junit.Test;
 
 import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.Region;
+import org.apache.geode.internal.cache.InternalCache;
 import org.apache.geode.test.dunit.DUnitEnv;
 
 /**
@@ -69,12 +72,17 @@ public class Jetty9CachingClientServerTest extends GenericAppServerClientServerT
     // Modify the values on the server
     serverVM.invoke(() -> {
       Cache cache = getCache();
+      assertFalse("cache should not be closed", cache.isClosed());
+
       Region<String, HttpSession> region = cache.getRegion("gemfire_modules_sessions");
+      assertNotNull(region);
       region.values().forEach(session -> session.setAttribute(key, "bogus"));
     });
 
     // Make sure the client still sees it's original cached value
     resp = client.get(key);
+
     assertEquals(value, resp.getResponse());
+    assertEquals(cookie, resp.getSessionCookie());
   }
 }

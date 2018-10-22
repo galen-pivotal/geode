@@ -84,6 +84,8 @@ public abstract class CargoTestBase extends JUnit4CacheTestCase {
       // Get the response to a get on the specified key from this server
       Client.Response resp = client.get(key);
 
+      System.out.println("resp = " + resp);
+
       // Null would mean we don't expect the same cookie as before
       if (expectedCookie != null)
         assertEquals("Sessions are not replicating properly", expectedCookie,
