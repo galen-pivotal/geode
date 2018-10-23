@@ -16,6 +16,7 @@ package org.apache.geode.session.tests;
 
 import static org.apache.geode.test.awaitility.GeodeAwaitility.await;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -94,6 +95,7 @@ public abstract class GenericAppServerClientServerTest extends CargoTestBase {
     serverVM.invoke(() -> {
       Cache cache = getCache();
       Region region = cache.getRegion("gemfire_modules_sessions");
+      assertNotNull(region);
       await()
           .untilAsserted(() -> assertEquals(0, region.size()));
     });

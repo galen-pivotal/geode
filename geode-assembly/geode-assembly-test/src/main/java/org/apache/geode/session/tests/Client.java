@@ -92,7 +92,9 @@ public class Client {
     reqURIBuild.setParameter("cmd", QueryCommand.GET.name());
     reqURIBuild.setParameter("param", key);
 
-    return doRequest(new HttpGet(reqURIBuild.build()), storeRespCookie);
+    final HttpGet req = new HttpGet(reqURIBuild.build());
+    System.out.println("req = " + req);
+    return doRequest(req, storeRespCookie);
   }
 
   /**
