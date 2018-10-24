@@ -203,6 +203,10 @@ subprojects {
     }
   }
 
+  configure([repeatDistributedTest,distributedTest]) {
+    systemProperties project.properties.subMap(["dunit.debug.basePort", "dunit.debug.suspendVM"])
+  }
+
   // apply common test configuration
   gradle.taskGraph.whenReady({ graph ->
     tasks.withType(Test).each { test ->
