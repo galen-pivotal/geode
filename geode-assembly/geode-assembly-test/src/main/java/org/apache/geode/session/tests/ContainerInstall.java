@@ -65,7 +65,7 @@ public abstract class ContainerInstall {
   private final String MODULE_PATH;
   private final String WAR_FILE_PATH;
 
-  public static final String TMP_DIR = System.getProperty("java.io.tmpdir", "/tmp");
+  public static final String TMP_DIR = System.getProperty("java.io.tmpdir");
   public static final String GEODE_BUILD_HOME = System.getenv("GEODE_HOME");
   public static final String DEFAULT_INSTALL_DIR = TMP_DIR + "/cargo_containers/";
   protected static final String DEFAULT_MODULE_LOCATION = GEODE_BUILD_HOME + "/tools/Modules/";
