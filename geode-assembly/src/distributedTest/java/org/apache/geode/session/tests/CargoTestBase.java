@@ -55,7 +55,7 @@ public abstract class CargoTestBase extends JUnit4CacheTestCase {
    */
   @Before
   public void setup() throws IOException {
-    System.out.println("System.getProperties() = " + System.getProperties()); 
+    System.out.println("System.getProperties() = " + System.getProperties());
 
     client = new Client();
     manager = new ContainerManager();
