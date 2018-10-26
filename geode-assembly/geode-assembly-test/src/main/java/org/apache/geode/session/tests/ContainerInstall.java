@@ -20,7 +20,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Properties;
@@ -68,18 +67,11 @@ public abstract class ContainerInstall {
   private final String WAR_FILE_PATH;
 
   static {
-    String tmp = System.getProperty("java.io.tmpdir");
     try {
-      if (tmp == null) {
-        TMP_DIR = Files.createTempDirectory("geode_container_install")
-            .toAbsolutePath()
-            .toString();
-      } else {
-        TMP_DIR =
-            Files.createTempDirectory(Paths.get(tmp), "geode_container_install")
-                .toAbsolutePath()
-                .toString();
-      }
+      TMP_DIR =
+          Files.createTempDirectory("geode_container_install")
+              .toAbsolutePath()
+              .toString();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

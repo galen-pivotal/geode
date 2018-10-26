@@ -18,6 +18,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.stream.Collectors;
 
 import org.junit.After;
 import org.junit.Before;
@@ -56,6 +57,14 @@ public abstract class CargoTestBase extends JUnit4CacheTestCase {
   @Before
   public void setup() throws IOException {
     System.out.println("System.getProperties() = " + System.getProperties());
+    final String envString =
+        System.getenv().entrySet().stream()
+            .map(entry -> String.format("{ %s => %s }", entry.getKey(), entry.getValue()))
+            .collect(
+                Collectors.joining(","));
+
+    System.out.println("System.getenv() = " + envString);
+
 
     client = new Client();
     manager = new ContainerManager();

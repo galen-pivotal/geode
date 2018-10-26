@@ -16,6 +16,7 @@ package org.apache.geode.session.tests;
 
 import static org.apache.geode.session.tests.ContainerInstall.GEODE_BUILD_HOME;
 import static org.apache.geode.session.tests.ContainerInstall.TMP_DIR;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -69,7 +70,7 @@ public class GenericAppServerContainer extends ServerContainer {
 
     // Create temp war file to use
     File warDir = new File(DEFAULT_GENERIC_APPSERVER_WAR_DIR);
-    warDir.mkdirs();
+    assertTrue(warDir.mkdirs());
     setWarFile(File.createTempFile(description, ".war", warDir));
 
     // Deploy war file to container configuration
@@ -101,6 +102,7 @@ public class GenericAppServerContainer extends ServerContainer {
     List<String> command = new ArrayList<>();
     // Path to the modify war script to run
     command.add(modifyWarScript.getAbsolutePath());
+    command.add("-v");
     // Path to the WAR file to modify
     command.add("-w");
     command.add(install.getWarFilePath());
