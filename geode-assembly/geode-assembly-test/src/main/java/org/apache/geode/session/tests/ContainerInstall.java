@@ -19,6 +19,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Properties;
@@ -65,7 +66,18 @@ public abstract class ContainerInstall {
   private final String MODULE_PATH;
   private final String WAR_FILE_PATH;
 
-  public static final String TMP_DIR = System.getProperty("java.io.tmpdir", "/tmp");
+  static {
+    try {
+      TMP_DIR =
+          Files.createTempDirectory("geode_container_install")
+              .toAbsolutePath()
+              .toString();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static final String TMP_DIR;
   public static final String GEODE_BUILD_HOME = System.getenv("GEODE_HOME");
   public static final String DEFAULT_INSTALL_DIR = TMP_DIR + "/cargo_containers/";
   protected static final String DEFAULT_MODULE_LOCATION = GEODE_BUILD_HOME + "/tools/Modules/";
