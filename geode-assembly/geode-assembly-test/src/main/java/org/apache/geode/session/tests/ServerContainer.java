@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.SystemUtils;
@@ -151,7 +152,7 @@ public abstract class ServerContainer {
    */
   public String generateUniqueContainerDescription(String extraIdentifiers) {
     return String.join("_", Arrays.asList(install.getInstallDescription(), extraIdentifiers,
-        Long.toString(System.nanoTime())));
+        UUID.randomUUID().toString()));
   }
 
   /**
