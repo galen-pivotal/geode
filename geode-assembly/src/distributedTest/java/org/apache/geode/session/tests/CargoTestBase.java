@@ -17,7 +17,11 @@ package org.apache.geode.session.tests;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.net.URISyntaxException;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
 import org.junit.Before;
@@ -26,7 +30,9 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 
+import org.apache.geode.distributed.internal.InternalDistributedSystem;
 import org.apache.geode.modules.session.functions.GetMaxInactiveInterval;
+import org.apache.geode.test.dunit.Host;
 import org.apache.geode.test.dunit.cache.internal.JUnit4CacheTestCase;
 import org.apache.geode.test.junit.categories.SessionTest;
 
@@ -62,11 +68,26 @@ public abstract class CargoTestBase extends JUnit4CacheTestCase {
     manager.addContainers(2, getInstall());
   }
 
+  private static String textFrom(InputStream stream) throws IOException {
+    Reader reader = new InputStreamReader(stream);
+    StringBuilder text = new StringBuilder();
+    while (reader.ready()) {
+      int character = reader.read();
+      if (character == -1) {
+        break;
+      }
+      text.append((char) character);
+    }
+    return text.toString();
+  }
+
   /**
    * Stops all containers that were previously started and cleans up their configurations
    */
   @After
-  public void stop() throws IOException {
+  public void stop() throws IOException, InterruptedException {
+    printJps("before jps:\n------------------\n");
+
     try {
       manager.stopAllActiveContainers();
     } finally {
@@ -76,6 +97,32 @@ public abstract class CargoTestBase extends JUnit4CacheTestCase {
         manager.cleanUp();
       }
     }
+
+    System.out.println("locator view after stopping containers: " + getLocatorView());
+
+    printJps("after jps:\n------------------\n");
+  }
+
+  private String getLocatorView() {
+    return Host.getLocator().invoke(
+        () -> InternalDistributedSystem.getAnyInstance()
+            .getDistributionManager()
+            .getMembershipManager()
+            .getView()
+            .toString());
+  }
+
+  @Override
+  public void postTearDown() throws Exception {
+    System.out.println("Locator view in postTearDown: " + getLocatorView());
+  }
+
+  private void printJps(String s) throws IOException, InterruptedException {
+    final ProcessBuilder processBuilder = new ProcessBuilder("jps", "-l", "-m", "-v");
+    final Process process = processBuilder.start();
+    process.waitFor(2, TimeUnit.MINUTES);
+
+    System.out.println(s + textFrom(process.getInputStream()));
   }
 
   /**

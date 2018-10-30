@@ -141,6 +141,7 @@ public class GenericAppServerContainer extends ServerContainer {
     // Setup the environment builder with the command
     builder.command(buildCommand());
     // Redirect the command line logging to a file
+
     builder.redirectError(modifyWarScriptLog);
     builder.redirectOutput(modifyWarScriptLog);
     logger.info("Running command: " + String.join(" ", builder.command()));
@@ -152,7 +153,8 @@ public class GenericAppServerContainer extends ServerContainer {
     int exitCode = process.waitFor();
     // Throw error if bad exit
     if (exitCode != 0) {
-      throw new IOException("Unable to run modify_war script: " + builder.command());
+      throw new IOException("Unable to run modify_war script, command: " + builder.command()
+          + "\ncheck log file: " + modifyWarScriptLog.getAbsolutePath());
     }
   }
 
