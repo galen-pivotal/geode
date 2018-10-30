@@ -67,9 +67,15 @@ public abstract class CargoTestBase extends JUnit4CacheTestCase {
    */
   @After
   public void stop() throws IOException {
-    manager.dumpLogs();
-    manager.stopAllActiveContainers();
-    manager.cleanUp();
+    try {
+      manager.stopAllContainers();
+    } finally {
+      try {
+        manager.dumpLogs();
+      } finally {
+        manager.cleanUp();
+      }
+    }
   }
 
   /**
