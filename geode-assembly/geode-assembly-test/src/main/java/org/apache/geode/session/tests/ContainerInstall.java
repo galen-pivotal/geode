@@ -14,6 +14,8 @@
  */
 package org.apache.geode.session.tests;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -55,20 +57,8 @@ import org.apache.geode.util.test.TestUtil;
  * Subclasses provide installation of specific containers.
  */
 public abstract class ContainerInstall {
-  public static final String TMP_DIR;
-
-  static {
-    try {
-      TMP_DIR =
-          Files.createTempDirectory("geode_container_install")
-              .toAbsolutePath()
-              .toString();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   public static final Logger logger = LogService.getLogger();
+  public static final String TMP_DIR = createTempDir();
   public static final String GEODE_BUILD_HOME = System.getenv("GEODE_HOME");
   public static final String GEODE_BUILD_HOME_LIB = GEODE_BUILD_HOME + "/lib/";
   public static final String DEFAULT_INSTALL_DIR = TMP_DIR + "/cargo_containers/";
@@ -80,7 +70,7 @@ public abstract class ContainerInstall {
   private final String modulePath;
   private final String warFilePath;
 
-  private String defaultLocatorAddress;
+  private final String defaultLocatorAddress;
   private int defaultLocatorPort;
 
   /**
@@ -95,7 +85,9 @@ public abstract class ContainerInstall {
     CACHING_CLIENT_SERVER("client-server", "cache-client.xml", true, true);
 
     private final String name;
+
     private final String cacheXMLFileName;
+
     private final boolean enableLocalCache;
     private final boolean isClientServer;
 
@@ -122,27 +114,16 @@ public abstract class ContainerInstall {
     public boolean isClientServer() {
       return isClientServer;
     }
+
+
   }
 
   public ContainerInstall(String name, String downloadURL, ConnectionType connectionType,
-                          String moduleName) throws IOException {
-    this(name, downloadURL, connectionType, moduleName, GEODE_BUILD_HOME_LIB);
-  }
-
-  public ContainerInstall(Class klass, String downloadURL, ConnectionType connType,
-      String moduleName, String geodeModuleLocation) throws IOException {
-    this(klass.getSimpleName(), downloadURL, connType, moduleName, geodeModuleLocation);
+      String moduleName) throws IOException {
+    this(name, downloadURL, connectionType, moduleName, DEFAULT_MODULE_LOCATION);
   }
 
   /**
-   * Base class for handling downloading and configuring J2EE installations
-   *
-   * This class contains common logic for downloading and configuring J2EE installations with cargo,
-   * and some common methods for applying geode session replication configuration to those
-   * installations.
-   *
-   * Subclasses provide installation of specific containers.
-   *
    * @param name used to name install directory
    *
    * @param connType Enum representing the connection type of this installation (either client
@@ -198,11 +179,7 @@ public abstract class ContainerInstall {
     }
   }
 
-  /**
-   * Sets the default locator address and port
-   */
-  public void setDefaultLocator(String address, int port) {
-    defaultLocatorAddress = address;
+  public void setDefaultLocatorPort(int port) {
     defaultLocatorPort = port;
   }
 
@@ -359,6 +336,8 @@ public abstract class ContainerInstall {
         }
       }
     }
+
+    assertThat(modulePath).describedAs("module path").isNotNull();
 
     String extractedModulePath =
         modulePath.getName().substring(0, modulePath.getName().length() - 4);
@@ -616,5 +595,15 @@ public abstract class ContainerInstall {
     }
 
     return true;
+  }
+
+  private static String createTempDir() {
+    try {
+      return Files.createTempDirectory("geode_container_install")
+          .toAbsolutePath()
+          .toString();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

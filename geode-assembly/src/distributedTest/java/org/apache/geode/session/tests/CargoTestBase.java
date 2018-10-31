@@ -65,8 +65,7 @@ public abstract class CargoTestBase {
    * Sets up the {@link #client} and {@link #manager} variables by creating new instances of each.
    *
    * Adds two new containers to the {@link #manager} based on the subclass' {@link #getInstall()}
-   * method. Also sets {@link ContainerManager#testName} for {@link #manager} to the name of the
-   * current test.
+   * method. Also sets the test name in the {@link #manager} to the name of the current test.
    */
   @Before
   public void setup() throws Exception {
@@ -76,7 +75,7 @@ public abstract class CargoTestBase {
     manager.setTestName(testName.getMethodName());
 
     install = getInstall();
-    install.setDefaultLocator(Host.getHost(0).getHostName(), locatorStarterRule.getPort());
+    install.setDefaultLocatorPort(locatorStarterRule.getPort());
 
     manager.addContainers(2, install);
   }

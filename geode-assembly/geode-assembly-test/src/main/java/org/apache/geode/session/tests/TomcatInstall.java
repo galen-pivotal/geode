@@ -61,6 +61,7 @@ public class TomcatInstall extends ContainerInstall {
     public int toInteger() {
       return getVersion();
     }
+
     public int getVersion() {
       return version;
     }
@@ -90,6 +91,7 @@ public class TomcatInstall extends ContainerInstall {
 
 
   }
+
   private static final String[] tomcatRequiredJars =
       {"antlr", "commons-lang", "fastutil", "geode-core", "javax.transaction-api", "jgroups",
           "log4j-api", "log4j-core", "log4j-jul", "shiro-core", "commons-validator"};
