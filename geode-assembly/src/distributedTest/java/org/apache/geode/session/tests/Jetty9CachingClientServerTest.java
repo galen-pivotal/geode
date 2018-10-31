@@ -48,8 +48,7 @@ public class Jetty9CachingClientServerTest extends GenericAppServerClientServerT
     String value = "Foo";
 
     client.setPort(Integer.parseInt(manager.getContainerPort(0)));
-    Client.Response resp = client.set(key, value);
-    String cookie = resp.getSessionCookie();
+    client.set(key, value);
 
     serverVM.invoke("set bogus session key", () -> {
       final InternalCache cache = ClusterStartupRule.memberStarter.getCache();
@@ -57,8 +56,7 @@ public class Jetty9CachingClientServerTest extends GenericAppServerClientServerT
       region.values().forEach(session -> session.setAttribute(key, "bogus"));
     });
 
-    // Make sure the client still sees its original cached value
-    resp = client.get(key);
+    Client.Response resp = client.get(key);
     assertEquals(value, resp.getResponse());
   }
 }

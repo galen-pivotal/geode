@@ -38,14 +38,11 @@ import org.apache.geode.test.dunit.rules.MemberVM;
  * Currently being used to test Jetty 9 containers in client server mode.
  */
 public abstract class GenericAppServerClientServerTest extends CargoTestBase {
-
-  @Rule
-  public ClusterStartupRule clusterStartupRule = new ClusterStartupRule();
   protected MemberVM serverVM;
 
   @Before
   public void startServer() {
-    serverVM = clusterStartupRule.startServerVM(0, locatorVM.getPort());
+    serverVM = clusterStartupRule.startServerVM(1, locatorVM.getPort());
   }
 
   /**

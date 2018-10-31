@@ -45,7 +45,7 @@ import org.apache.geode.test.junit.categories.SessionTest;
 @Category({SessionTest.class})
 public abstract class CargoTestBase {
   @Rule
-  public ClusterStartupRule clusterStartupRule = new ClusterStartupRule();
+  public ClusterStartupRule clusterStartupRule = new ClusterStartupRule(2);
 
   @Rule
   public TestName testName = new TestName();
