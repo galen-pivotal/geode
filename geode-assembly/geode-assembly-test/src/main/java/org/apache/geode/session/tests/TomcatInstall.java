@@ -87,9 +87,6 @@ public class TomcatInstall extends ContainerInstall {
           throw new IllegalArgumentException("Illegal tomcat version option");
       }
     }
-
-
-
   }
 
   private static final String[] tomcatRequiredJars =
