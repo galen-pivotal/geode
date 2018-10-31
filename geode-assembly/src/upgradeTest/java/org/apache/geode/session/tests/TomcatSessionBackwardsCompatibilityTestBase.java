@@ -141,11 +141,11 @@ public abstract class TomcatSessionBackwardsCompatibilityTestBase {
     // Get available port for the locator
     locatorPort = AvailablePortHelper.getRandomAvailableTCPPort();
 
-    tomcat7079AndOldModules.setDefaultLocator("localhost", locatorPort);
-    tomcat7079AndCurrentModules.setDefaultLocator("localhost", locatorPort);
+    tomcat7079AndOldModules.setDefaultLocatorPort(locatorPort);
+    tomcat7079AndCurrentModules.setDefaultLocatorPort(locatorPort);
 
-    tomcat8AndOldModules.setDefaultLocator("localhost", locatorPort);
-    tomcat8AndCurrentModules.setDefaultLocator("localhost", locatorPort);
+    tomcat8AndOldModules.setDefaultLocatorPort(locatorPort);
+    tomcat8AndCurrentModules.setDefaultLocatorPort(locatorPort);
 
     client = new Client();
     manager = new ContainerManager();
