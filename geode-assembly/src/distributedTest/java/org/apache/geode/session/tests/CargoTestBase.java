@@ -32,9 +32,9 @@ import org.junit.rules.TestName;
 
 import org.apache.geode.distributed.internal.InternalDistributedSystem;
 import org.apache.geode.modules.session.functions.GetMaxInactiveInterval;
-import org.apache.geode.test.dunit.Host;
+import org.apache.geode.test.dunit.rules.ClusterStartupRule;
+import org.apache.geode.test.dunit.rules.MemberVM;
 import org.apache.geode.test.junit.categories.SessionTest;
-import org.apache.geode.test.junit.rules.LocatorStarterRule;
 
 /**
  * Base class for test of session replication.
@@ -45,7 +45,7 @@ import org.apache.geode.test.junit.rules.LocatorStarterRule;
 @Category({SessionTest.class})
 public abstract class CargoTestBase {
   @Rule
-  public LocatorStarterRule locatorStarterRule = new LocatorStarterRule().withAutoStart();
+  public ClusterStartupRule clusterStartupRule = new ClusterStartupRule();
 
   @Rule
   public TestName testName = new TestName();
@@ -53,6 +53,7 @@ public abstract class CargoTestBase {
   protected Client client;
   protected ContainerManager manager;
   protected ContainerInstall install;
+  protected MemberVM locatorVM;
 
   /**
    * Should only be called once per test.
@@ -69,13 +70,15 @@ public abstract class CargoTestBase {
    */
   @Before
   public void setup() throws Exception {
+    locatorVM = clusterStartupRule.startLocatorVM(0, 0);
+
     client = new Client();
     manager = new ContainerManager();
 
     manager.setTestName(testName.getMethodName());
 
     install = getInstall();
-    install.setDefaultLocatorPort(locatorStarterRule.getPort());
+    install.setDefaultLocatorPort(locatorVM.getPort());
 
     manager.addContainers(2, install);
   }
@@ -116,7 +119,7 @@ public abstract class CargoTestBase {
   }
 
   private String getLocatorView() {
-    return Host.getLocator().invoke(
+    return locatorVM.invoke(
         () -> InternalDistributedSystem.getAnyInstance()
             .getDistributionManager()
             .getMembershipManager()

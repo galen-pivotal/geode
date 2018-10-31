@@ -45,7 +45,7 @@ public abstract class GenericAppServerClientServerTest extends CargoTestBase {
 
   @Before
   public void startServer() {
-    serverVM = clusterStartupRule.startServerVM(0, locatorStarterRule.getPort());
+    serverVM = clusterStartupRule.startServerVM(0, locatorVM.getPort());
   }
 
   /**
