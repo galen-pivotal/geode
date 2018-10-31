@@ -33,8 +33,6 @@ import java.util.regex.Pattern;
  */
 public class TomcatInstall extends ContainerInstall {
 
-  public static final String GEODE_BUILD_HOME_LIB = GEODE_BUILD_HOME + "/lib/";
-
   /**
    * Version of tomcat that this class will install
    *
@@ -48,6 +46,7 @@ public class TomcatInstall extends ContainerInstall {
     TOMCAT9(9, "tomcat-9.0.12.zip");
 
     private final int version;
+
     private final String downloadURL;
 
     TomcatVersion(int version, String downloadURL) {
@@ -62,7 +61,6 @@ public class TomcatInstall extends ContainerInstall {
     public int toInteger() {
       return getVersion();
     }
-
     public int getVersion() {
       return version;
     }
@@ -88,12 +86,13 @@ public class TomcatInstall extends ContainerInstall {
           throw new IllegalArgumentException("Illegal tomcat version option");
       }
     }
-  }
 
+
+
+  }
   private static final String[] tomcatRequiredJars =
       {"antlr", "commons-lang", "fastutil", "geode-core", "javax.transaction-api", "jgroups",
           "log4j-api", "log4j-core", "log4j-jul", "shiro-core", "commons-validator"};
-
   private final TomcatVersion version;
 
   public TomcatInstall(TomcatVersion version, Class klass) throws Exception {
@@ -102,7 +101,12 @@ public class TomcatInstall extends ContainerInstall {
 
   public TomcatInstall(TomcatVersion version, ConnectionType connType, Class klass)
       throws Exception {
-    this(version, connType, klass, DEFAULT_MODULE_LOCATION, GEODE_BUILD_HOME_LIB);
+    this(version, connType, klass.getSimpleName());
+  }
+
+  public TomcatInstall(TomcatVersion version, ConnectionType connectionType, String name)
+      throws Exception {
+    this(version, connectionType, name, DEFAULT_MODULE_LOCATION, GEODE_BUILD_HOME_LIB);
   }
 
   /**
@@ -114,10 +118,10 @@ public class TomcatInstall extends ContainerInstall {
    * files within the installation's 'conf' folder, and {@link #updateProperties()} to set the jar
    * skipping properties needed to speedup container startup.
    */
-  public TomcatInstall(TomcatVersion version, ConnectionType connType, Class klass,
+  public TomcatInstall(TomcatVersion version, ConnectionType connType, String name,
       String modulesJarLocation, String extraJarsPath) throws Exception {
     // Does download and install from URL
-    super(klass, version.getDownloadURL(), connType, "tomcat", modulesJarLocation);
+    super(name, version.getDownloadURL(), connType, "tomcat", modulesJarLocation);
 
     this.version = version;
     modulesJarLocation = getModulePath() + "/lib/";

@@ -116,21 +116,22 @@ public abstract class TomcatSessionBackwardsCompatibilityTestBase {
   public void setup() throws Exception {
     tomcat7079AndOldModules = new TomcatInstall(TomcatInstall.TomcatVersion.TOMCAT7,
         ContainerInstall.ConnectionType.CLIENT_SERVER,
-        ContainerInstall.DEFAULT_INSTALL_DIR + "Tomcat7079AndOldModules",
+        "Tomcat7079AndOldModules",
         oldModules.getAbsolutePath(), oldBuild.getAbsolutePath() + "/lib");
 
     tomcat7079AndCurrentModules = new TomcatInstall(TomcatInstall.TomcatVersion.TOMCAT7,
         ContainerInstall.ConnectionType.CLIENT_SERVER,
-        ContainerInstall.DEFAULT_INSTALL_DIR + "Tomcat7079AndCurrentModules");
+        "Tomcat7079AndCurrentModules");
 
     tomcat8AndOldModules = new TomcatInstall(TomcatInstall.TomcatVersion.TOMCAT8,
         ContainerInstall.ConnectionType.CLIENT_SERVER,
-        ContainerInstall.DEFAULT_INSTALL_DIR + "Tomcat8AndOldModules", oldModules.getAbsolutePath(),
+        "Tomcat8AndOldModules",
+        oldModules.getAbsolutePath(),
         oldBuild.getAbsolutePath() + "/lib");
 
     tomcat8AndCurrentModules = new TomcatInstall(TomcatInstall.TomcatVersion.TOMCAT8,
         ContainerInstall.ConnectionType.CLIENT_SERVER,
-        ContainerInstall.DEFAULT_INSTALL_DIR + "Tomcat8AndCurrentModules");
+        "Tomcat8AndCurrentModules");
 
     classPathTomcat7079 = tomcat7079AndCurrentModules.getHome() + "/lib/*" + File.pathSeparator
         + tomcat7079AndCurrentModules.getHome() + "/bin/*";

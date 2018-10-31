@@ -74,7 +74,7 @@ public class GenericAppServerInstall extends ContainerInstall {
    */
   public GenericAppServerInstall(GenericAppServerVersion version, ConnectionType connType,
       Class klass) throws IOException, InterruptedException {
-    super(klass, version.getDownloadURL(), connType, "appserver");
+    super(klass.getSimpleName(), version.getDownloadURL(), connType, "appserver");
 
     this.version = version;
   }

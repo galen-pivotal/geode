@@ -79,13 +79,13 @@ public abstract class GenericAppServerClientServerTest extends CargoTestBase {
   }
 
   @Override
-  protected void verifySessionIsRemoved(String key) {
+  protected void verifySessionIsRemoved(String key) throws IOException, URISyntaxException {
     serverVM.invoke("verify session is removed", () -> {
       final InternalCache cache = ClusterStartupRule.getCache();
       Region region = cache.getRegion("gemfire_modules_sessions");
       await("for region to be empty").untilAsserted(() -> assertEquals(0, region.size()));
-      super.verifySessionIsRemoved(key);
     });
+    super.verifySessionIsRemoved(key);
   }
 
   @Override
