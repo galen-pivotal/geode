@@ -124,9 +124,9 @@ public abstract class ContainerInstall {
     }
   }
 
-  public ContainerInstall(String installDir, String downloadURL, ConnectionType connType,
+  public ContainerInstall(Class klass, String downloadURL, ConnectionType connType,
       String moduleName) throws IOException {
-    this(installDir, downloadURL, connType, moduleName, DEFAULT_MODULE_LOCATION);
+    this(klass, downloadURL, connType, moduleName, DEFAULT_MODULE_LOCATION);
   }
 
   /**
@@ -138,14 +138,18 @@ public abstract class ContainerInstall {
    *
    * Subclasses provide installation of specific containers.
    *
+   * @param klass used to name install directory
+   *
    * @param connType Enum representing the connection type of this installation (either client
    *        server or peer to peer)
    * @param moduleName The module name of the installation being setup (i.e. tomcat, appserver,
    *        etc.)
    */
-  public ContainerInstall(String installDir, String downloadURL, ConnectionType connType,
+  public ContainerInstall(Class klass, String downloadURL, ConnectionType connType,
       String moduleName, String geodeModuleLocation) throws IOException {
     this.connType = connType;
+
+    String installDir = DEFAULT_INSTALL_DIR + klass.getSimpleName();
 
     clearPreviousInstall(installDir);
 
@@ -171,10 +175,6 @@ public abstract class ContainerInstall {
     defaultLocatorAddress = "localhost";
 
     logger.info("Installed container into " + getHome());
-  }
-
-  public ServerContainer generateContainer(File containerConfigHome) throws IOException {
-    return generateContainer(containerConfigHome, "");
   }
 
   public ServerContainer generateContainer(String containerDescriptors) throws IOException {

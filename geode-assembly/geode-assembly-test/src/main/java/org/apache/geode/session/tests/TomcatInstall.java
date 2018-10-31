@@ -96,14 +96,13 @@ public class TomcatInstall extends ContainerInstall {
 
   private final TomcatVersion version;
 
-  public TomcatInstall(TomcatVersion version, String installDir) throws Exception {
-    this(version, ConnectionType.PEER_TO_PEER, installDir, DEFAULT_MODULE_LOCATION,
-        GEODE_BUILD_HOME_LIB);
+  public TomcatInstall(TomcatVersion version, Class klass) throws Exception {
+    this(version, ConnectionType.PEER_TO_PEER, klass);
   }
 
-  public TomcatInstall(TomcatVersion version, ConnectionType connType, String installDir)
+  public TomcatInstall(TomcatVersion version, ConnectionType connType, Class klass)
       throws Exception {
-    this(version, connType, installDir, DEFAULT_MODULE_LOCATION, GEODE_BUILD_HOME_LIB);
+    this(version, connType, klass, DEFAULT_MODULE_LOCATION, GEODE_BUILD_HOME_LIB);
   }
 
   /**
@@ -115,10 +114,10 @@ public class TomcatInstall extends ContainerInstall {
    * files within the installation's 'conf' folder, and {@link #updateProperties()} to set the jar
    * skipping properties needed to speedup container startup.
    */
-  public TomcatInstall(TomcatVersion version, ConnectionType connType, String installDir,
+  public TomcatInstall(TomcatVersion version, ConnectionType connType, Class klass,
       String modulesJarLocation, String extraJarsPath) throws Exception {
     // Does download and install from URL
-    super(installDir, version.getDownloadURL(), connType, "tomcat", modulesJarLocation);
+    super(klass, version.getDownloadURL(), connType, "tomcat", modulesJarLocation);
 
     this.version = version;
     modulesJarLocation = getModulePath() + "/lib/";

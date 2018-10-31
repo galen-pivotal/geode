@@ -68,28 +68,13 @@ public class GenericAppServerInstall extends ContainerInstall {
 
   private GenericAppServerVersion version;
 
-  public GenericAppServerInstall(GenericAppServerVersion version)
-      throws IOException, InterruptedException {
-    this(version, ConnectionType.PEER_TO_PEER, DEFAULT_INSTALL_DIR);
-  }
-
-  public GenericAppServerInstall(GenericAppServerVersion version, String installDir)
-      throws IOException, InterruptedException {
-    this(version, ConnectionType.PEER_TO_PEER, installDir);
-  }
-
-  public GenericAppServerInstall(GenericAppServerVersion version, ConnectionType cacheType)
-      throws IOException, InterruptedException {
-    this(version, cacheType, DEFAULT_INSTALL_DIR);
-  }
-
   /**
    * Download and setup container installation of a generic appserver using the
    * {@link ContainerInstall} constructor and some hardcoded module values
    */
   public GenericAppServerInstall(GenericAppServerVersion version, ConnectionType connType,
-      String installDir) throws IOException, InterruptedException {
-    super(installDir, version.getDownloadURL(), connType, "appserver");
+      Class klass) throws IOException, InterruptedException {
+    super(klass, version.getDownloadURL(), connType, "appserver");
 
     this.version = version;
   }

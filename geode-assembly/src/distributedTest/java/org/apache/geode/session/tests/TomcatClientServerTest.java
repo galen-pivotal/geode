@@ -23,7 +23,6 @@ import org.junit.rules.TemporaryFolder;
 
 import org.apache.geode.management.internal.cli.i18n.CliStrings;
 import org.apache.geode.management.internal.cli.util.CommandStringBuilder;
-import org.apache.geode.test.dunit.DUnitEnv;
 import org.apache.geode.test.dunit.rules.ClusterStartupRule;
 import org.apache.geode.test.junit.rules.GfshCommandRule;
 
@@ -50,13 +49,12 @@ public abstract class TomcatClientServerTest extends CargoTestBase {
    */
   @Before
   public void startServer() throws Exception {
-    TomcatInstall install = (TomcatInstall) getInstall();
     // List of all the jars for tomcat to put on the server classpath
     String libDirJars = install.getHome() + "/lib/*";
     String binDirJars = install.getHome() + "/bin/*";
 
     // Set server name based on the test about to be run
-    serverName = getClass().getSimpleName().concat("_").concat(getTestMethodName());
+    serverName = getClass().getSimpleName().concat("_").concat(testName.getMethodName());
 
     // Create command string for starting server
     CommandStringBuilder command = new CommandStringBuilder(CliStrings.START_SERVER);
@@ -65,7 +63,8 @@ public abstract class TomcatClientServerTest extends CargoTestBase {
     // Add Tomcat jars to server classpath
     command.addOption(CliStrings.START_SERVER__CLASSPATH,
         binDirJars + File.pathSeparator + libDirJars);
-    command.addOption(CliStrings.START_SERVER__LOCATORS, DUnitEnv.get().getLocatorString());
+    command.addOption(CliStrings.START_SERVER__LOCATORS,
+        locatorStarterRule.getLocator().asString());
     command.addOption(CliStrings.START_SERVER__J, "-Dgemfire.member-timeout=60000");
 
     // Start server

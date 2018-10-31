@@ -33,8 +33,8 @@ import org.junit.rules.TestName;
 import org.apache.geode.distributed.internal.InternalDistributedSystem;
 import org.apache.geode.modules.session.functions.GetMaxInactiveInterval;
 import org.apache.geode.test.dunit.Host;
-import org.apache.geode.test.dunit.cache.internal.JUnit4CacheTestCase;
 import org.apache.geode.test.junit.categories.SessionTest;
+import org.apache.geode.test.junit.rules.LocatorStarterRule;
 
 /**
  * Base class for test of session replication.
@@ -43,14 +43,23 @@ import org.apache.geode.test.junit.categories.SessionTest;
  * class configure different containers in order to run these tests against specific containers.
  */
 @Category({SessionTest.class})
-public abstract class CargoTestBase extends JUnit4CacheTestCase {
+public abstract class CargoTestBase {
   @Rule
-  public transient TestName testName = new TestName();
+  public LocatorStarterRule locatorStarterRule = new LocatorStarterRule().withAutoStart();
 
-  public transient Client client;
-  public transient ContainerManager manager;
+  @Rule
+  public TestName testName = new TestName();
 
-  public abstract ContainerInstall getInstall();
+  protected Client client;
+  protected ContainerManager manager;
+  protected ContainerInstall install;
+
+  /**
+   * Should only be called once per test.
+   *
+   * @return a newly initialized ContainerInstall
+   */
+  public abstract ContainerInstall getInstall() throws Exception;
 
   /**
    * Sets up the {@link #client} and {@link #manager} variables by creating new instances of each.
@@ -60,12 +69,16 @@ public abstract class CargoTestBase extends JUnit4CacheTestCase {
    * current test.
    */
   @Before
-  public void setup() throws IOException {
+  public void setup() throws Exception {
     client = new Client();
     manager = new ContainerManager();
 
     manager.setTestName(testName.getMethodName());
-    manager.addContainers(2, getInstall());
+
+    install = getInstall();
+    install.setDefaultLocator(Host.getHost(0).getHostName(), locatorStarterRule.getPort());
+
+    manager.addContainers(2, install);
   }
 
   private static String textFrom(InputStream stream) throws IOException {
@@ -110,11 +123,6 @@ public abstract class CargoTestBase extends JUnit4CacheTestCase {
             .getMembershipManager()
             .getView()
             .toString());
-  }
-
-  @Override
-  public void postTearDown() throws Exception {
-    System.out.println("Locator view in postTearDown: " + getLocatorView());
   }
 
   private void printJps(String s) throws IOException, InterruptedException {
@@ -248,7 +256,7 @@ public abstract class CargoTestBase extends JUnit4CacheTestCase {
   }
 
   private boolean localCacheEnabled() {
-    return getInstall().getConnectionType().enableLocalCache();
+    return install.getConnectionType().enableLocalCache();
   }
 
   /**
@@ -364,7 +372,7 @@ public abstract class CargoTestBase extends JUnit4CacheTestCase {
 
     int numContainers = manager.numContainers();
     // Add and start new container
-    manager.addContainer(getInstall());
+    manager.addContainer(install);
     manager.startAllInactiveContainers();
     // Check that a container was added
     assertEquals(numContainers + 1, manager.numContainers());
