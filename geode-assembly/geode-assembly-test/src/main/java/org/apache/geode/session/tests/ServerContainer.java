@@ -104,7 +104,7 @@ public abstract class ServerContainer {
     logDir = new File(DEFAULT_LOG_DIR + description);
     logDir.mkdirs();
 
-    logger.info("Creating new container " + description);
+    logger.info("Creating new container {}", description);
 
     DEFAULT_CONF_DIR = install.getHome() + "/conf/";
     // Use the default configuration home path if not passed a config home
@@ -132,7 +132,7 @@ public abstract class ServerContainer {
     gemfireLogFile.getParentFile().mkdirs();
     setSystemProperty("log-file", gemfireLogFile.getAbsolutePath());
 
-    logger.info("Gemfire logs can be found in " + gemfireLogFile.getAbsolutePath());
+    logger.info("Gemfire logs can be found in {}", gemfireLogFile.getAbsolutePath());
 
     // Create the container
     container = (InstalledLocalContainer) (new DefaultContainerFactory())
@@ -170,7 +170,7 @@ public abstract class ServerContainer {
     // Deploy the war the container's configuration
     getConfiguration().addDeployable(war);
 
-    logger.info("Deployed WAR file at " + war.getFile());
+    logger.info("Deployed WAR file at {}", war.getFile());
   }
 
   /**
@@ -206,7 +206,7 @@ public abstract class ServerContainer {
 
 
     try {
-      logger.info("Starting container " + description + "RMI Port: " + jvmJmxPort);
+      logger.info("Starting container {} RMI Port: {}", description, jvmJmxPort);
       // Writes settings to the expected form (either XML or WAR file)
       writeSettings();
       // Start the container through cargo
@@ -273,7 +273,7 @@ public abstract class ServerContainer {
     File configDir = new File(getConfiguration().getHome());
 
     if (configDir.exists()) {
-      logger.info("Deleting configuration folder " + configDir.getAbsolutePath());
+      logger.info("Deleting configuration folder {}", configDir.getAbsolutePath());
       FileUtils.deleteDirectory(configDir);
     }
   }
