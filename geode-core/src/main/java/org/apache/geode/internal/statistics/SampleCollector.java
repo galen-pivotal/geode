@@ -34,6 +34,7 @@ import org.apache.geode.StatisticsType;
 import org.apache.geode.internal.io.RollingFileHandler;
 import org.apache.geode.internal.logging.LogService;
 import org.apache.geode.internal.logging.log4j.LogMarker;
+import org.apache.geode.internal.statistics.micrometer.MicrometerSampleHandler;
 
 /**
  * Captures sample of statistics. The SampleCollector contains maps of StatisticsTypes to
@@ -90,6 +91,8 @@ public class SampleCollector {
 
   /** The StatArchiveHandler which is created on demand */
   private StatMonitorHandler statMonitorHandler;
+
+  private MicrometerSampleHandler micrometerSampleHandler;
 
   /**
    * Constructs a new instance.
@@ -150,6 +153,9 @@ public class SampleCollector {
         this.statArchiveHandler = newStatArchiveHandler;
         addSampleHandler(newStatArchiveHandler);
         newStatArchiveHandler.initialize(nanosTimeStamp);
+
+        micrometerSampleHandler = new MicrometerSampleHandler();
+        addSampleHandler(micrometerSampleHandler);
       }
     }
   }
@@ -319,6 +325,13 @@ public class SampleCollector {
   StatArchiveHandler getStatArchiveHandler() {
     synchronized (this.sampleHandlers) {
       return this.statArchiveHandler;
+    }
+  }
+
+  /** For testing only */
+  MicrometerSampleHandler getMicrometerSampleHandler() {
+    synchronized (sampleHandlers) {
+      return micrometerSampleHandler;
     }
   }
 

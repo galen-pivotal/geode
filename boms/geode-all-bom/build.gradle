@@ -21,7 +21,6 @@ apply plugin: "maven-publish"
 jar.enabled = false
 apply from: "${rootDir}/${scriptDir}/geode-dependency-management.gradle"
 
-
 publishing {
   publications {
     maven(MavenPublication) {
