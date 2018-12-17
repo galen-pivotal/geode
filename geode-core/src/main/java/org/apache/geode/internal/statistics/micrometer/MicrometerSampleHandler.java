@@ -26,7 +26,6 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.apache.logging.log4j.Logger;
 
 import org.apache.geode.StatisticDescriptor;
-import org.apache.geode.Statistics;
 import org.apache.geode.internal.logging.LogService;
 import org.apache.geode.internal.statistics.ResourceInstance;
 import org.apache.geode.internal.statistics.ResourceType;
