@@ -98,8 +98,10 @@ public class MicrometerRegionIntegrationTest {
           .append(" ").append("tags=").append(id.getTags())
           .append(" ").append("type=").append(id.getType())
           .append(" ").append("unit=").append(id.getBaseUnit())
-          .append(" ").append("description=").append(id.getDescription())
+          .append(" ").append("measure=").append(meter.measure())
+          // .append(" ").append("description=").append(id.getDescription())
           // .append(" ").append("class=").append(meter.getClass().getName())
+
           .append(" }").append(System.lineSeparator());
     }
 
