@@ -53,16 +53,20 @@ public class MicrometerRegistrar {
   private void registerGauge(String name, Statistics source,
       ToDoubleFunction<Statistics> extractor,
       String unit) {
+    String nameTag = source.getTextId();
     Gauge.builder(name, source, extractor)
         .baseUnit(unit)
+        .tag("name", nameTag)
         .register(registry);
   }
 
   private void registerCounter(String name, Statistics source,
       ToDoubleFunction<Statistics> extractor,
       String unit) {
+    String nameTag = source.getTextId();
     FunctionCounter.builder(name, source, extractor)
         .baseUnit(unit)
+        .tag("name", nameTag)
         .register(registry);
   }
 

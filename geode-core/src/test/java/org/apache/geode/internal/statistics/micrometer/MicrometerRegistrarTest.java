@@ -14,7 +14,7 @@
  */
 package org.apache.geode.internal.statistics.micrometer;
 
-import static java.util.Collections.sort;
+import static java.util.Collections.shuffle;
 import static java.util.stream.Collectors.toList;
 import static org.apache.geode.internal.statistics.micrometer.MicrometerRegistrar.meterName;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,6 +54,7 @@ public class MicrometerRegistrarTest {
     type = mock(StatisticsType.class);
     when(type.getName()).thenReturn("test.statistics.type");
     when(statistics.getType()).thenReturn(type);
+    when(statistics.getTextId()).thenReturn("StatisticsTextId");
   }
 
   @Test
@@ -108,11 +109,11 @@ public class MicrometerRegistrarTest {
   }
 
   @Test
-  public void registersCounterAndGaugeMeters() {
+  public void assignsMeterTypeBasedOnWhetherStatisticDescriptorIsCounter() {
     int counterCount = 5;
     int gaugeCount = 9;
     List<StatisticDescriptor> descriptors = mixedMeters(counterCount, gaugeCount);
-    sort(descriptors);
+    shuffle(descriptors);
     when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
 
     registrar.registerStatistics(statistics);
@@ -173,7 +174,26 @@ public class MicrometerRegistrarTest {
   }
 
   @Test
-  public void assignsStatisticsUnitsToMeters() {
+  public void assignsStatisticsTextIDToMeterNameTag() {
+    int statisticsCount = 5;
+    List<StatisticDescriptor> descriptors = mixedMeters(4, 9);
+    when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
+    when(statistics.getTextId()).thenReturn("StatisticsTextId");
+
+    registrar.registerStatistics(statistics);
+
+    for (int i = 0; i < statisticsCount; i++) {
+      String name = meterName(type, descriptors.get(i));
+      Meter meter = registry.find(name).meter();
+      assertThat(meter).as(name).isNotNull();
+      assertThat(meter.getId().getTag("name"))
+          .as("name tag for meter %s", meter.getId())
+          .isEqualTo(statistics.getTextId());
+    }
+  }
+
+  @Test
+  public void assignsStatisticsUnitToMeterBaseUnit() {
     int statisticsCount = 5;
     List<StatisticDescriptor> descriptors = mixedMeters(4, 9);
     when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
