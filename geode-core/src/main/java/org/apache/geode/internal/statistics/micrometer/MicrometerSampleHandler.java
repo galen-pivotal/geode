@@ -14,10 +14,12 @@
  */
 package org.apache.geode.internal.statistics.micrometer;
 
+
 import java.util.List;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.prometheus.PrometheusConfig;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.apache.logging.log4j.Logger;
 
 import org.apache.geode.internal.logging.LogService;
@@ -29,12 +31,15 @@ public class MicrometerSampleHandler implements SampleHandler {
 
   private static final Logger logger = LogService.getLogger();
 
-  private final MeterRegistry registry = new SimpleMeterRegistry();
+  private final PrometheusMeterRegistry registry;
   private final MicrometerRegistrar registrar;
 
   public MicrometerSampleHandler() {
     logger.info("MicrometerSampleHandler ctor");
+    registry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
     registrar = new MicrometerRegistrar(registry);
+    MicrometerToPrometheusServer micrometerToPrometheusServer = new MicrometerToPrometheusServer();
+    micrometerToPrometheusServer.startServer(registry);
   }
 
   @Override
