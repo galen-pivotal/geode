@@ -1,6 +1,6 @@
 package org.apache.geode.internal.statistics.micrometer;
 
-import static java.util.Collections.shuffle;
+import static java.util.Collections.sort;
 import static java.util.stream.Collectors.toList;
 import static org.apache.geode.internal.statistics.micrometer.MicrometerRegistrar.meterName;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,51 +44,51 @@ public class MicrometerRegistrarTest {
 
   @Test
   public void registersOneCounter() {
-    StatisticDescriptor[] descriptors = counters(1);
-    when(statistics.getType().getStatistics()).thenReturn(descriptors);
-    when(descriptors[0].isCounter()).thenReturn(true);
+    List<StatisticDescriptor> descriptors = counters(1);
+    when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
+    when(descriptors.get(0).isCounter()).thenReturn(true);
 
     registrar.registerStatistics(statistics);
 
-    String name = meterName(type, descriptors[0]);
+    String name = meterName(type, descriptors.get(0));
     assertThat(registry.find(name).functionCounter()).isNotNull();
   }
 
   @Test
   public void registersManyCounters() {
     int statisticsCount = 5;
-    StatisticDescriptor[] descriptors = counters(statisticsCount);
-    when(statistics.getType().getStatistics()).thenReturn(descriptors);
+    List<StatisticDescriptor> descriptors = counters(statisticsCount);
+    when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
 
     registrar.registerStatistics(statistics);
 
     for (int i = 0; i < statisticsCount; i++) {
-      String name = meterName(type, descriptors[i]);
+      String name = meterName(type, descriptors.get(i));
       assertThat(registry.find(name).functionCounter()).isNotNull();
     }
   }
 
   @Test
   public void registersOneGauge() {
-    StatisticDescriptor[] descriptors = gauges(1);
-    when(statistics.getType().getStatistics()).thenReturn(descriptors);
+    List<StatisticDescriptor> descriptors = gauges(1);
+    when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
 
     registrar.registerStatistics(statistics);
 
-    String name = meterName(type, descriptors[0]);
+    String name = meterName(type, descriptors.get(0));
     assertThat(registry.find(name).gauge()).isNotNull();
   }
 
   @Test
   public void registersManyGauges() {
     int statisticsCount = 5;
-    StatisticDescriptor[] descriptors = counters(statisticsCount);
-    when(statistics.getType().getStatistics()).thenReturn(descriptors);
+    List<StatisticDescriptor> descriptors = counters(statisticsCount);
+    when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
 
     registrar.registerStatistics(statistics);
 
     for (int i = 0; i < statisticsCount; i++) {
-      String name = meterName(type, descriptors[i]);
+      String name = meterName(type, descriptors.get(i));
       assertThat(registry.find(name).gauges()).isNotNull();
     }
   }
@@ -97,8 +97,9 @@ public class MicrometerRegistrarTest {
   public void registersCounterAndGaugeMeters() {
     int counterCount = 5;
     int gaugeCount = 9;
-    StatisticDescriptor[] descriptors = mixedMeters(counterCount, gaugeCount);
-    when(statistics.getType().getStatistics()).thenReturn(descriptors);
+    List<StatisticDescriptor> descriptors = mixedMeters(counterCount, gaugeCount);
+    sort(descriptors);
+    when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
 
     registrar.registerStatistics(statistics);
 
@@ -118,17 +119,17 @@ public class MicrometerRegistrarTest {
   @Test
   public void connectsCountersToStatisticsValues() {
     int statisticsCount = 5;
-    StatisticDescriptor[] descriptors = counters(statisticsCount);
-    when(statistics.getType().getStatistics()).thenReturn(descriptors);
+    List<StatisticDescriptor> descriptors = counters(statisticsCount);
+    when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
 
     for (int i = 0; i < statisticsCount; i++) {
-      when(statistics.get(descriptors[i])).thenReturn(i);
+      when(statistics.get(descriptors.get(i))).thenReturn(i);
     }
 
     registrar.registerStatistics(statistics);
 
     for (int i = 0; i < statisticsCount; i++) {
-      String name = meterName(type, descriptors[i]);
+      String name = meterName(type, descriptors.get(i));
       Meter meter = registry.find(name).meter();
       assertThat(meter).as(name).isNotNull();
       assertThat(valueOf(meter)).as("value of %s", name)
@@ -139,21 +140,43 @@ public class MicrometerRegistrarTest {
   @Test
   public void connectsGaugesToStatisticsValues() {
     int statisticsCount = 5;
-    StatisticDescriptor[] descriptors = gauges(statisticsCount);
-    when(statistics.getType().getStatistics()).thenReturn(descriptors);
+    List<StatisticDescriptor> descriptors = gauges(statisticsCount);
+    when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
 
     for (int i = 0; i < statisticsCount; i++) {
-      when(statistics.get(descriptors[i])).thenReturn(i);
+      when(statistics.get(descriptors.get(i))).thenReturn(i);
     }
 
     registrar.registerStatistics(statistics);
 
     for (int i = 0; i < statisticsCount; i++) {
-      String name = meterName(type, descriptors[i]);
+      String name = meterName(type, descriptors.get(i));
       Meter meter = registry.find(name).meter();
       assertThat(meter).as(name).isNotNull();
-      assertThat(valueOf(meter)).as("value of %s", name)
+      assertThat(valueOf(meter)).as("value of %s", meter.getId())
           .isEqualTo(i);
+    }
+  }
+
+  @Test
+  public void assignsStatisticsUnitsToMeters() {
+    int statisticsCount = 5;
+    List<StatisticDescriptor> descriptors = mixedMeters(4, 9);
+    when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
+
+    for (int i = 0; i < statisticsCount; i++) {
+      when(descriptors.get(i).getUnit()).thenReturn("units-" + i);
+    }
+
+    registrar.registerStatistics(statistics);
+
+    for (int i = 0; i < statisticsCount; i++) {
+      String name = meterName(type, descriptors.get(i));
+      Meter meter = registry.find(name).meter();
+      assertThat(meter).as(name).isNotNull();
+      assertThat(meter.getId().getBaseUnit())
+          .as("units for meter %s", meter.getId())
+          .isEqualTo("units-" + i);
     }
   }
 
@@ -165,24 +188,21 @@ public class MicrometerRegistrarTest {
     return iterator.next().getValue();
   }
 
-  private static StatisticDescriptor[] mixedMeters(int counterCount, int gaugeCount) {
+  private static List<StatisticDescriptor> mixedMeters(int counterCount, int gaugeCount) {
     List<StatisticDescriptor> counters = descriptors(counterCount, true);
     List<StatisticDescriptor> gauges = descriptors(gaugeCount, false);
     List<StatisticDescriptor> meters = new ArrayList<>();
     meters.addAll(counters);
     meters.addAll(gauges);
-    shuffle(meters);
-    return meters.toArray(new StatisticDescriptor[0]);
+    return meters;
   }
 
-  private static StatisticDescriptor[] counters(int count) {
-    return descriptors(count, true)
-        .toArray(new StatisticDescriptor[0]);
+  private static List<StatisticDescriptor> counters(int count) {
+    return descriptors(count, true);
   }
 
-  private static StatisticDescriptor[] gauges(int count) {
-    return descriptors(count, false)
-        .toArray(new StatisticDescriptor[0]);
+  private static List<StatisticDescriptor> gauges(int count) {
+    return descriptors(count, false);
   }
 
   private static List<StatisticDescriptor> descriptors(int count, boolean isCounter) {
@@ -197,5 +217,9 @@ public class MicrometerRegistrarTest {
     when(descriptor.getName()).thenReturn(name + id);
     when(descriptor.isCounter()).thenReturn(isCounter);
     return descriptor;
+  }
+
+  private static StatisticDescriptor[] arrayOf(List<StatisticDescriptor> descriptors) {
+    return descriptors.toArray(new StatisticDescriptor[0]);
   }
 }

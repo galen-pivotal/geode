@@ -16,6 +16,7 @@
  */
 package org.apache.geode.internal.statistics;
 
+import static java.util.Comparator.comparing;
 import static org.apache.geode.cache.RegionShortcut.REPLICATE;
 import static org.apache.geode.distributed.ConfigurationProperties.ENABLE_TIME_STATISTICS;
 import static org.apache.geode.distributed.ConfigurationProperties.LOG_LEVEL;
@@ -25,7 +26,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
 
@@ -57,8 +57,7 @@ public class MicrometerRegionIntegrationTest {
 
   @Before
   public void setUp() {
-    // file = new File(temporaryFolder.getRoot(), "my.gfs");
-    file = new File("/Users/klund/dev/gemfire1/open", "my.gfs");
+    file = new File(temporaryFolder.getRoot(), "my.gfs");
 
     Properties config = new Properties();
     config.setProperty(ENABLE_TIME_STATISTICS, "true");
@@ -89,7 +88,7 @@ public class MicrometerRegionIntegrationTest {
     StringBuilder stringBuilder = new StringBuilder();
 
     List<Meter> meters = new ArrayList<>(findMeterRegistry().getMeters());
-    meters.sort(new MeterComparator());
+    meters.sort(comparing(meter -> meter.getId().getName()));
 
     for (Meter meter : meters) {
       Meter.Id id = meter.getId();
@@ -118,13 +117,5 @@ public class MicrometerRegionIntegrationTest {
     assertThat(registry).isNotNull();
 
     return registry;
-  }
-
-  private static class MeterComparator implements Comparator<Meter> {
-
-    @Override
-    public int compare(Meter o1, Meter o2) {
-      return o1.getId().getName().compareTo(o2.getId().getName());
-    }
   }
 }
