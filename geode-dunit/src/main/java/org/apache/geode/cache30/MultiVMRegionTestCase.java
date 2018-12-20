@@ -4877,7 +4877,7 @@ public abstract class MultiVMRegionTestCase extends RegionTestCase {
             // before falling into the update loop
             /*
              * pause(50); ((org.apache.geode.distributed.internal.InternalDistributedSystem)
-             * region.getCache().getDistributedSystem()).flushUnicastMessages();
+             * region.getCache().getStatisticsRegistry()).flushUnicastMessages();
              */
 
             // operate on every odd entry with different value, alternating between

@@ -247,7 +247,6 @@ public class ValueMonitorIntegrationTest {
     // validate notification only contains stats added to monitor
     st1_1.incInt("int_counter_2", 100);
     st1_2.incInt("int_counter_2", 200);
-    assertThat(sampleCollector.currentHandlersForTesting().size()).isEqualTo(2);
     timeStamp += NanoTimer.millisToNanos(1000);
     sampleCollector.sample(timeStamp);
     await()

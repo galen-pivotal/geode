@@ -230,12 +230,12 @@ public class GemFireStatSampler extends HostStatSampler {
 
   @Override
   protected StatisticsManager getStatisticsManager() {
-    return this.con;
+    return this.con.getStatisticsRegistry();
   }
 
   @Override
   protected OsStatisticsFactory getOsStatisticsFactory() {
-    return this.con;
+    return this.con.getStatisticsRegistry();
   }
 
   @Override

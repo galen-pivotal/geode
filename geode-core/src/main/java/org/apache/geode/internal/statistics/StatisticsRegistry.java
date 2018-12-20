@@ -1,105 +1,87 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
- * agreements. See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership. The ASF licenses this file to You under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License. You may obtain a
- * copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
- */
 package org.apache.geode.internal.statistics;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.geode.StatisticDescriptor;
 import org.apache.geode.Statistics;
-import org.apache.geode.StatisticsFactory;
 import org.apache.geode.StatisticsType;
 import org.apache.geode.StatisticsTypeFactory;
+import org.apache.geode.distributed.internal.DistributionConfig;
 
-/**
- * An abstract standalone implementation of {@link StatisticsFactory}. It can be used in contexts
- * that do not have the GemFire product or in vm's that do not have a distributed system nor a
- * gemfire connection.
- *
- * @since GemFire 7.0
- */
-public abstract class AbstractStatisticsFactory implements StatisticsFactory, StatisticsManager {
-
-  private final long id;
-  private final String name;
-  private final CopyOnWriteArrayList<Statistics> statsList;
-  private int statsListModCount = 0;
-  private long statsListUniqueId = 1;
-  private final Object statsListUniqueIdLock;
-  private final StatisticsTypeFactory tf;
+public class StatisticsRegistry implements StatisticsManager {
+  private static final StatisticsTypeFactory tf = StatisticsTypeFactoryImpl.singleton();
+  private final List<Statistics> statsList = new CopyOnWriteArrayList<>();
+  private final long systemId;
+  private final String systemName;
   private final long startTime;
+  private final AtomicLong statsListUniqueId = new AtomicLong(1);
+  private final boolean statsDisabled =
+      Boolean.getBoolean(DistributionConfig.GEMFIRE_PREFIX + "statsDisabled");
+  private int statsListModCount = 0;
 
-  public AbstractStatisticsFactory(long id, String name, long startTime) {
-    this.id = id;
-    this.name = name;
+  public StatisticsRegistry(long systemId, String systemName, long startTime) {
+    this.systemId = systemId;
+    this.systemName = systemName;
     this.startTime = startTime;
-
-    this.statsList = new CopyOnWriteArrayList<Statistics>();
-    this.statsListUniqueIdLock = new Object();
-    this.tf = StatisticsTypeFactoryImpl.singleton();
   }
 
-  public void close() {}
+  /**
+   * Returns the id of this connection to the distributed system. This is actually the port of the
+   * distribution manager's distribution channel.
+   *
+   */
+  @Override
+  public long getId() {
+    return systemId;
+  }
 
   @Override
   public String getName() {
-    return this.name;
+    return systemName;
   }
 
-  @Override
-  public long getId() {
-    return this.id;
+  public Statistics findStatisticsByUniqueId(final long uniqueId) {
+    for (Statistics s : this.statsList) {
+      if (uniqueId == s.getUniqueId()) {
+        return s;
+      }
+    }
+    return null;
   }
 
-  @Override
-  public long getStartTime() {
-    return this.startTime;
+  /**
+   * For every registered statistic instance call the specified visitor. This method was added to
+   * fix bug 40358
+   */
+  public void visitStatistics(StatisticsVisitor visitor) {
+    for (Statistics s : statsList) {
+      visitor.visit(s);
+    }
   }
 
-  @Override
   public int getStatListModCount() {
-    return this.statsListModCount;
+    return statsListModCount;
   }
 
-  @Override
   public List<Statistics> getStatsList() {
-    return this.statsList;
+    return statsList;
   }
 
   @Override
   public int getStatisticsCount() {
-    int result = 0;
-    List<Statistics> statsList = this.statsList;
-    if (statsList != null) {
-      result = statsList.size();
-    }
-    return result;
+    return statsList.size();
   }
 
   @Override
   public Statistics findStatistics(long id) {
-    List<Statistics> statsList = this.statsList;
-    synchronized (statsList) {
-      for (Statistics s : statsList) {
-        if (s.getUniqueId() == id) {
-          return s;
-        }
+    for (Statistics s : statsList) {
+      if (s.getUniqueId() == id) {
+        return s;
       }
     }
     throw new RuntimeException(
@@ -108,7 +90,6 @@ public abstract class AbstractStatisticsFactory implements StatisticsFactory, St
 
   @Override
   public boolean statisticsExists(long id) {
-    List<Statistics> statsList = this.statsList;
     for (Statistics s : statsList) {
       if (s.getUniqueId() == id) {
         return true;
@@ -119,34 +100,27 @@ public abstract class AbstractStatisticsFactory implements StatisticsFactory, St
 
   @Override
   public Statistics[] getStatistics() {
-    List<Statistics> statsList = this.statsList;
-    return (Statistics[]) statsList.toArray(new Statistics[statsList.size()]);
+    return statsList.toArray(new Statistics[0]);
   }
 
-  // StatisticsFactory methods
-
-  @Override
   public Statistics createStatistics(StatisticsType type) {
     return createOsStatistics(type, null, 0, 0);
   }
 
-  @Override
   public Statistics createStatistics(StatisticsType type, String textId) {
     return createOsStatistics(type, textId, 0, 0);
   }
 
-  @Override
   public Statistics createStatistics(StatisticsType type, String textId, long numericId) {
-    return createOsStatistics(type, textId, 0, 0);
+    return createOsStatistics(type, textId, numericId, 0);
   }
 
-  @Override
   public Statistics createOsStatistics(StatisticsType type, String textId, long numericId,
-      int osStatFlags) {
-    long myUniqueId;
-    synchronized (statsListUniqueIdLock) {
-      myUniqueId = statsListUniqueId++; // fix for bug 30597
+                                         int osStatFlags) {
+    if (statsDisabled) {
+      return new DummyStatisticsImpl(type, textId, numericId);
     }
+    long myUniqueId = statsListUniqueId.getAndIncrement();
     Statistics result =
         new LocalStatisticsImpl(type, textId, numericId, myUniqueId, false, osStatFlags, this);
     synchronized (statsList) {
@@ -156,61 +130,48 @@ public abstract class AbstractStatisticsFactory implements StatisticsFactory, St
     return result;
   }
 
-  @Override
-  public Statistics[] findStatisticsByType(StatisticsType type) {
-    List<Statistics> hits = new ArrayList<Statistics>();
-    Iterator<Statistics> it = statsList.iterator();
-    while (it.hasNext()) {
-      Statistics s = (Statistics) it.next();
-      if (type == s.getType()) {
-        hits.add(s);
+  public Statistics[] findStatisticsByType(final StatisticsType type) {
+    final ArrayList hits = new ArrayList();
+    visitStatistics(new StatisticsVisitor() {
+      public void visit(Statistics s) {
+        if (type == s.getType()) {
+          hits.add(s);
+        }
       }
-    }
+    });
     Statistics[] result = new Statistics[hits.size()];
     return (Statistics[]) hits.toArray(result);
   }
 
-  @Override
-  public Statistics[] findStatisticsByTextId(String textId) {
-    List<Statistics> hits = new ArrayList<Statistics>();
-    Iterator<Statistics> it = statsList.iterator();
-    while (it.hasNext()) {
-      Statistics s = (Statistics) it.next();
-      if (s.getTextId().equals(textId)) {
-        hits.add(s);
+  public Statistics[] findStatisticsByTextId(final String textId) {
+    final ArrayList hits = new ArrayList();
+    visitStatistics(new StatisticsVisitor() {
+      public void visit(Statistics s) {
+        if (s.getTextId().equals(textId)) {
+          hits.add(s);
+        }
       }
-    }
+    });
     Statistics[] result = new Statistics[hits.size()];
     return (Statistics[]) hits.toArray(result);
   }
 
-  @Override
-  public Statistics[] findStatisticsByNumericId(long numericId) {
-    List<Statistics> hits = new ArrayList<Statistics>();
-    Iterator<Statistics> it = statsList.iterator();
-    while (it.hasNext()) {
-      Statistics s = (Statistics) it.next();
-      if (numericId == s.getNumericId()) {
-        hits.add(s);
+  public Statistics[] findStatisticsByNumericId(final long numericId) {
+    final ArrayList hits = new ArrayList();
+    visitStatistics(new StatisticsVisitor() {
+      public void visit(Statistics s) {
+        if (numericId == s.getNumericId()) {
+          hits.add(s);
+        }
       }
-    }
+    });
     Statistics[] result = new Statistics[hits.size()];
     return (Statistics[]) hits.toArray(result);
   }
 
-  public Statistics findStatisticsByUniqueId(long uniqueId) {
-    Iterator<Statistics> it = statsList.iterator();
-    while (it.hasNext()) {
-      Statistics s = (Statistics) it.next();
-      if (uniqueId == s.getUniqueId()) {
-        return s;
-      }
-    }
-    return null;
-  }
-
-  /** for internal use only. Its called by {@link LocalStatisticsImpl#close}. */
-  @Override
+  /**
+   * for internal use only. Its called by {@link LocalStatisticsImpl#close}.
+   */
   public void destroyStatistics(Statistics stats) {
     synchronized (statsList) {
       if (statsList.remove(stats)) {
@@ -219,22 +180,20 @@ public abstract class AbstractStatisticsFactory implements StatisticsFactory, St
     }
   }
 
-  @Override
   public Statistics createAtomicStatistics(StatisticsType type) {
     return createAtomicStatistics(type, null, 0);
   }
 
-  @Override
   public Statistics createAtomicStatistics(StatisticsType type, String textId) {
     return createAtomicStatistics(type, textId, 0);
   }
 
-  @Override
   public Statistics createAtomicStatistics(StatisticsType type, String textId, long numericId) {
-    long myUniqueId;
-    synchronized (statsListUniqueIdLock) {
-      myUniqueId = statsListUniqueId++; // fix for bug 30597
+    if (statsDisabled) {
+      return new DummyStatisticsImpl(type, textId, numericId);
     }
+
+    long myUniqueId = statsListUniqueId.getAndIncrement();
     Statistics result = StatisticsImpl.createAtomicNoOS(type, textId, numericId, myUniqueId, this);
     synchronized (statsList) {
       statsList.add(result);
@@ -243,89 +202,80 @@ public abstract class AbstractStatisticsFactory implements StatisticsFactory, St
     return result;
   }
 
-  // StatisticsTypeFactory methods
-
   /**
    * Creates or finds a StatisticType for the given shared class.
    */
-  @Override
   public StatisticsType createType(String name, String description, StatisticDescriptor[] stats) {
     return tf.createType(name, description, stats);
   }
 
-  @Override
   public StatisticsType findType(String name) {
     return tf.findType(name);
   }
 
-  @Override
   public StatisticsType[] createTypesFromXml(Reader reader) throws IOException {
     return tf.createTypesFromXml(reader);
   }
 
-  @Override
   public StatisticDescriptor createIntCounter(String name, String description, String units) {
     return tf.createIntCounter(name, description, units);
   }
 
-  @Override
   public StatisticDescriptor createLongCounter(String name, String description, String units) {
     return tf.createLongCounter(name, description, units);
   }
 
-  @Override
   public StatisticDescriptor createDoubleCounter(String name, String description, String units) {
     return tf.createDoubleCounter(name, description, units);
   }
 
-  @Override
   public StatisticDescriptor createIntGauge(String name, String description, String units) {
     return tf.createIntGauge(name, description, units);
   }
 
-  @Override
   public StatisticDescriptor createLongGauge(String name, String description, String units) {
     return tf.createLongGauge(name, description, units);
   }
 
-  @Override
   public StatisticDescriptor createDoubleGauge(String name, String description, String units) {
     return tf.createDoubleGauge(name, description, units);
   }
 
-  @Override
   public StatisticDescriptor createIntCounter(String name, String description, String units,
-      boolean largerBetter) {
+                                                boolean largerBetter) {
     return tf.createIntCounter(name, description, units, largerBetter);
   }
 
-  @Override
   public StatisticDescriptor createLongCounter(String name, String description, String units,
-      boolean largerBetter) {
+                                                 boolean largerBetter) {
     return tf.createLongCounter(name, description, units, largerBetter);
   }
 
-  @Override
   public StatisticDescriptor createDoubleCounter(String name, String description, String units,
-      boolean largerBetter) {
+                                                   boolean largerBetter) {
     return tf.createDoubleCounter(name, description, units, largerBetter);
   }
 
-  @Override
   public StatisticDescriptor createIntGauge(String name, String description, String units,
-      boolean largerBetter) {
+                                              boolean largerBetter) {
     return tf.createIntGauge(name, description, units, largerBetter);
   }
 
-  @Override
   public StatisticDescriptor createLongGauge(String name, String description, String units,
-      boolean largerBetter) {
+                                               boolean largerBetter) {
     return tf.createLongGauge(name, description, units, largerBetter);
   }
 
-  @Override
   public StatisticDescriptor createDoubleGauge(String name, String description, String units,
-      boolean largerBetter) {
+                                                 boolean largerBetter) {
     return tf.createDoubleGauge(name, description, units, largerBetter);
+  }
+
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public boolean statsDisabled() {
+    return statsDisabled;
   }
 }

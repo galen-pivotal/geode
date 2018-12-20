@@ -375,7 +375,7 @@ public class PutAllCSDUnitTest extends ClientServerTestCase {
      * server2.invoke(new CacheSerializableRunnable("server2 execute putAll") { public void run2()
      * throws CacheException { try { DistributedSystemConfig config =
      * AdminDistributedSystemFactory.defineDistributedSystem(system, null); AdminDistributedSystem
-     * ads = AdminDistributedSystemFactory.getDistributedSystem(config); ads.connect();
+     * ads = AdminDistributedSystemFactory.getStatisticsRegistry(config); ads.connect();
      * DistributedMember distributedMember = system.getDistributedMember(); SystemMember member =
      * ads.lookupSystemMember(distributedMember);
      *

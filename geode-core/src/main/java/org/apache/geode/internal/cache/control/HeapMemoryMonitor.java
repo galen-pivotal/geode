@@ -319,7 +319,8 @@ public class HeapMemoryMonitor implements NotificationListener, MemoryMonitor {
 
     try {
       sampler.waitForInitialization();
-      Statistics si = getTenuredPoolStatistics(this.cache.getInternalDistributedSystem());
+      Statistics si = getTenuredPoolStatistics(
+          this.cache.getInternalDistributedSystem().getStatisticsRegistry());
       if (si != null) {
         sampler.addLocalStatListener(this.statListener, si, "currentUsedMemory");
         if (logger.isDebugEnabled()) {

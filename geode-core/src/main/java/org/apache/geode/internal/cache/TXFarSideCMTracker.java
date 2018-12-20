@@ -74,7 +74,7 @@ public class TXFarSideCMTracker {
    */
   public TXFarSideCMTracker(int historySize) {
     // InternalDistributedSystem sys = (InternalDistributedSystem)
-    // CacheFactory.getAnyInstance().getDistributedSystem();
+    // CacheFactory.getAnyInstance().getStatisticsRegistry();
     // this.dm = sys.getDistributionManager();
     this.txInProgress = new HashMap();
     this.txHistory = new Object[historySize];

@@ -23,7 +23,7 @@ import java.util.List;
 import org.apache.geode.DataSerializer;
 import org.apache.geode.Statistics;
 import org.apache.geode.distributed.internal.DistributionManager;
-import org.apache.geode.distributed.internal.InternalDistributedSystem.StatisticsVisitor;
+import org.apache.geode.internal.statistics.StatisticsVisitor;
 import org.apache.geode.distributed.internal.membership.InternalDistributedMember;
 
 /**
@@ -48,13 +48,13 @@ public class FetchStatsResponse extends AdminResponse {
     // get vm-local stats
     // call visitStatistics to fix for bug 40358
     if (statisticsTypeName == null) {
-      dm.getSystem().visitStatistics(new StatisticsVisitor() {
+      dm.getSystem().getStatisticsRegistry().visitStatistics(new StatisticsVisitor() {
         public void visit(Statistics s) {
           statList.add(new RemoteStatResource(s));
         }
       });
     } else {
-      dm.getSystem().visitStatistics(new StatisticsVisitor() {
+      dm.getSystem().getStatisticsRegistry().visitStatistics(new StatisticsVisitor() {
         public void visit(Statistics s) {
           if (s.getType().getName().equals(statisticsTypeName)) {
             statList.add(new RemoteStatResource(s));

@@ -75,7 +75,7 @@ public class GemFireStatSamplerIntegrationTest extends StatSamplerTestCase {
 
   private static final int STAT_SAMPLE_RATE = 1000;
 
-  private DistributedSystem system;
+  private InternalDistributedSystem system;
   private File testDir;
 
   @Rule
@@ -482,7 +482,7 @@ public class GemFireStatSamplerIntegrationTest extends StatSamplerTestCase {
       for (StopWatch time = new StopWatch(true); !done && time.elapsedTimeMillis() < 5000;) {
         Thread.sleep(10);
         Statistics si =
-            HeapMemoryMonitor.getTenuredPoolStatistics((StatisticsManager) this.system);
+            HeapMemoryMonitor.getTenuredPoolStatistics(((InternalDistributedSystem)this.system).getStatisticsRegistry());
         if (si != null) {
           statSampler.addLocalStatListener(listener, si, "currentUsedMemory");
           done = true;
@@ -518,11 +518,11 @@ public class GemFireStatSamplerIntegrationTest extends StatSamplerTestCase {
 
   @Override
   protected StatisticsManager getStatisticsManager() {
-    return (InternalDistributedSystem) this.system;
+    return ((InternalDistributedSystem) this.system).getStatisticsRegistry();
   }
 
   protected OsStatisticsFactory getOsStatisticsFactory() {
-    return (InternalDistributedSystem) this.system;
+    return ((InternalDistributedSystem) this.system).getStatisticsRegistry();
   }
 
   private GemFireStatSampler getGemFireStatSampler() {
@@ -551,7 +551,7 @@ public class GemFireStatSamplerIntegrationTest extends StatSamplerTestCase {
    */
   @SuppressWarnings("deprecation")
   private void connect(Properties props) {
-    this.system = DistributedSystem.connect(props);
+    this.system = (InternalDistributedSystem) DistributedSystem.connect(props);
   }
 
   @SuppressWarnings("deprecation")

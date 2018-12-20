@@ -799,7 +799,7 @@ public abstract class LuceneSearchWithRollingUpgradeDUnit extends JUnit4Distribu
   private static void assertVersion(Object cache, short ordinal) throws Exception {
     Class idmClass = Thread.currentThread().getContextClassLoader()
         .loadClass("org.apache.geode.distributed.internal.membership.InternalDistributedMember");
-    Method getDSMethod = cache.getClass().getMethod("getDistributedSystem");
+    Method getDSMethod = cache.getClass().getMethod("getStatisticsRegistry");
     getDSMethod.setAccessible(true);
     Object ds = getDSMethod.invoke(cache);
 

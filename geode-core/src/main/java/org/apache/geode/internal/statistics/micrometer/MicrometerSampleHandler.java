@@ -38,8 +38,8 @@ public class MicrometerSampleHandler implements SampleHandler {
     logger.info("MicrometerSampleHandler ctor");
     registry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
     registrar = new MicrometerRegistrar(registry);
-    MicrometerToPrometheusServer micrometerToPrometheusServer = new MicrometerToPrometheusServer();
-    micrometerToPrometheusServer.startServer(registry);
+//    MicrometerToPrometheusServer micrometerToPrometheusServer = new MicrometerToPrometheusServer();
+//    micrometerToPrometheusServer.startServer(registry);
   }
 
   @Override

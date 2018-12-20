@@ -204,7 +204,7 @@ public class SimpleDiskRegionJUnitTest extends DiskRegionTestingBase {
   // assertIndexDetailsEquals(new Integer(1), region.get(new Integer(1)));
   // Oplog oplog = dr.getChild();
   // int id = oplog.getOplogId();
-  // StatisticsFactory factory = dr.getOwner().getCache().getDistributedSystem();
+  // StatisticsFactory factory = dr.getOwner().getCache().getStatisticsRegistry();
   // Oplog newOplog = new Oplog(id + 1, dr.getDiskStore(), new DirectoryHolder(factory,
   // dirs[0], 1000000, 0));
   // dr.setChild(newOplog);
