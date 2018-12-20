@@ -106,7 +106,7 @@ public class StatisticsRegistry implements StatisticsManager {
 
   @Override
   public Statistics createOsStatistics(StatisticsType type, String textId, long numericId,
-                                       int osStatFlags) {
+      int osStatFlags) {
     long myUniqueId = statsListUniqueId.getAndIncrement();
     Statistics result =
         new LocalStatisticsImpl(type, textId, numericId, myUniqueId, false, osStatFlags, this);
@@ -215,37 +215,37 @@ public class StatisticsRegistry implements StatisticsManager {
 
   @Override
   public StatisticDescriptor createIntCounter(String name, String description, String units,
-                                              boolean largerBetter) {
+      boolean largerBetter) {
     return tf.createIntCounter(name, description, units, largerBetter);
   }
 
   @Override
   public StatisticDescriptor createLongCounter(String name, String description, String units,
-                                               boolean largerBetter) {
+      boolean largerBetter) {
     return tf.createLongCounter(name, description, units, largerBetter);
   }
 
   @Override
   public StatisticDescriptor createDoubleCounter(String name, String description, String units,
-                                                 boolean largerBetter) {
+      boolean largerBetter) {
     return tf.createDoubleCounter(name, description, units, largerBetter);
   }
 
   @Override
   public StatisticDescriptor createIntGauge(String name, String description, String units,
-                                            boolean largerBetter) {
+      boolean largerBetter) {
     return tf.createIntGauge(name, description, units, largerBetter);
   }
 
   @Override
   public StatisticDescriptor createLongGauge(String name, String description, String units,
-                                             boolean largerBetter) {
+      boolean largerBetter) {
     return tf.createLongGauge(name, description, units, largerBetter);
   }
 
   @Override
   public StatisticDescriptor createDoubleGauge(String name, String description, String units,
-                                               boolean largerBetter) {
+      boolean largerBetter) {
     return tf.createDoubleGauge(name, description, units, largerBetter);
   }
 

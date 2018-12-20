@@ -10,7 +10,7 @@ public class DummyStatisticsRegistry extends StatisticsRegistry {
 
   @Override
   public Statistics createOsStatistics(StatisticsType type, String textId, long numericId,
-                                       int osStatFlags) {
+      int osStatFlags) {
     return new DummyStatisticsImpl(type, textId, numericId);
   }
 

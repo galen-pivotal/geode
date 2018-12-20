@@ -29,7 +29,6 @@ import org.apache.geode.Statistics;
 import org.apache.geode.distributed.internal.InternalDistributedSystem;
 import org.apache.geode.distributed.internal.membership.InternalDistributedMember;
 import org.apache.geode.internal.GemFireVersion;
-import org.apache.geode.internal.OSProcess;
 import org.apache.geode.internal.PureJavaMode;
 import org.apache.geode.internal.admin.ListenerIdMap;
 import org.apache.geode.internal.admin.remote.StatListenerMessage;

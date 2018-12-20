@@ -480,7 +480,8 @@ public class GemFireStatSamplerIntegrationTest extends StatSamplerTestCase {
       for (StopWatch time = new StopWatch(true); !done && time.elapsedTimeMillis() < 5000;) {
         Thread.sleep(10);
         Statistics si =
-            HeapMemoryMonitor.getTenuredPoolStatistics(((InternalDistributedSystem)this.system).getStatisticsRegistry());
+            HeapMemoryMonitor.getTenuredPoolStatistics(
+                ((InternalDistributedSystem) this.system).getStatisticsRegistry());
         if (si != null) {
           statSampler.addLocalStatListener(listener, si, "currentUsedMemory");
           done = true;

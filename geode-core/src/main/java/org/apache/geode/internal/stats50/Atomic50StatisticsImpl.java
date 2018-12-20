@@ -22,7 +22,6 @@ import java.util.concurrent.atomic.AtomicLongArray;
 
 import org.apache.geode.Statistics;
 import org.apache.geode.StatisticsType;
-import org.apache.geode.internal.OSProcess;
 import org.apache.geode.internal.statistics.StatisticsImpl;
 import org.apache.geode.internal.statistics.StatisticsManager;
 import org.apache.geode.internal.statistics.StatisticsTypeImpl;

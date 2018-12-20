@@ -23,8 +23,8 @@ import java.util.List;
 import org.apache.geode.DataSerializer;
 import org.apache.geode.Statistics;
 import org.apache.geode.distributed.internal.DistributionManager;
-import org.apache.geode.internal.statistics.StatisticsVisitor;
 import org.apache.geode.distributed.internal.membership.InternalDistributedMember;
+import org.apache.geode.internal.statistics.StatisticsVisitor;
 
 /**
  * Provides a response of remote statistic resources for a {@code FetchStatsRequest}

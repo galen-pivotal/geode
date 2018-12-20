@@ -16,8 +16,6 @@ package org.apache.geode.internal.statistics;
 
 import org.apache.geode.Statistics;
 import org.apache.geode.StatisticsType;
-import org.apache.geode.internal.process.PidUnavailableException;
-import org.apache.geode.internal.process.ProcessUtils;
 
 /**
  * An implementation of {@link Statistics} that stores its statistics in local java memory.
@@ -70,7 +68,8 @@ public class LocalStatisticsImpl extends StatisticsImpl {
    *        increments a statistic, then a <code>false</code> value may yield better performance.
    * @param osStatFlags Non-zero if stats require system calls to collect them; for internal use
    *        only
-   * @param statisticsManager The distributed system that determines whether or not these statistics are stored
+   * @param statisticsManager The distributed system that determines whether or not these statistics
+   *        are stored
    *        (and collected) in GemFire shared memory or in the local VM
    */
   public LocalStatisticsImpl(StatisticsType type, String textId, long numericId, long uniqueId,
