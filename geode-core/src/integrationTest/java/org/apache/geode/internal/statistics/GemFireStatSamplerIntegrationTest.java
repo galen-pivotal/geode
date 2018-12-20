@@ -119,7 +119,6 @@ public class GemFireStatSamplerIntegrationTest extends StatSamplerTestCase {
 
     int statsCount = statSampler.getStatisticsManager().getStatisticsCount();
 
-    assertEquals(statsCount, statSampler.getStatisticsModCount());
     assertEquals(statsCount, statSampler.getStatisticsManager().getStatisticsCount());
     assertEquals(statsCount, statSampler.getStatistics().length);
 

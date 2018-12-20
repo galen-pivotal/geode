@@ -106,6 +106,7 @@ import org.apache.geode.internal.offheap.MemoryAllocator;
 import org.apache.geode.internal.offheap.OffHeapStorage;
 import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.internal.security.SecurityServiceFactory;
+import org.apache.geode.internal.statistics.DummyStatisticsRegistry;
 import org.apache.geode.internal.statistics.GemFireStatSampler;
 import org.apache.geode.internal.statistics.StatisticsConfig;
 import org.apache.geode.internal.statistics.StatisticsRegistry;
@@ -287,6 +288,9 @@ public class InternalDistributedSystem extends DistributedSystem
    * The config object used to create this distributed system
    */
   private final DistributionConfig originalConfig;
+
+  private final boolean statsDisabled =
+      Boolean.getBoolean(DistributionConfig.GEMFIRE_PREFIX + "statsDisabled");
 
   /**
    * The config object to which most configuration work is delegated
@@ -798,17 +802,7 @@ public class InternalDistributedSystem extends DistributedSystem
         throw new GemFireIOException("Problem finishing a locator service start", e);
       }
 
-      statisticsRegistry = new StatisticsRegistry(id, originalConfig.getName(), startTime);
-
-      if (!statisticsRegistry.statsDisabled()) {
-        Optional<LogFile> logFile = loggingSession.getLogFile();
-        if (logFile.isPresent()) {
-          sampler = new GemFireStatSampler(this, logFile.get());
-        } else {
-          sampler = new GemFireStatSampler(this);
-        }
-        this.sampler.start();
-      }
+      initializeStatistics();
 
       alertingSession.createSession(new AlertMessaging(this));
       alertingSession.startSession();
@@ -824,6 +818,22 @@ public class InternalDistributedSystem extends DistributedSystem
     resourceListeners = new CopyOnWriteArrayList<>();
     this.reconnected = this.attemptingToReconnect;
     this.attemptingToReconnect = false;
+  }
+
+  private void initializeStatistics() {
+
+    if (statsDisabled) {
+      statisticsRegistry = new DummyStatisticsRegistry(id, originalConfig.getName(), startTime);
+    } else {
+      statisticsRegistry = new StatisticsRegistry(id, originalConfig.getName(), startTime);
+      Optional<LogFile> logFile = loggingSession.getLogFile();
+      if (logFile.isPresent()) {
+        sampler = new GemFireStatSampler(this, logFile.get());
+      } else {
+        sampler = new GemFireStatSampler(this);
+      }
+      this.sampler.start();
+    }
   }
 
   /**
