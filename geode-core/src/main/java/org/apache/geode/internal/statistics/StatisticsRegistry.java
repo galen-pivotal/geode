@@ -52,16 +52,6 @@ public class StatisticsRegistry implements StatisticsManager {
     return null;
   }
 
-  /**
-   * For every registered statistic instance call the specified visitor. This method was added to
-   * fix bug 40358
-   */
-  public void visitStatistics(StatisticsVisitor visitor) {
-    for (Statistics s : statsList) {
-      visitor.visit(s);
-    }
-  }
-
   @Override
   public int getStatListModCount() {
     return statsListModCount;
