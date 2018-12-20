@@ -122,7 +122,6 @@ public class GemFireStatSamplerIntegrationTest extends StatSamplerTestCase {
     assertEquals(statsCount, statSampler.getStatisticsManager().getStatisticsCount());
     assertEquals(statsCount, statSampler.getStatistics().length);
 
-    Assert.assertEquals(getStatisticsManager().getId(), statSampler.getSystemId());
     assertTrue(statSampler.getSystemStartTime() < System.currentTimeMillis());
     Assert.assertEquals(SocketCreator.getHostName(SocketCreator.getLocalHost()),
         statSampler.getSystemDirectoryPath());

@@ -37,11 +37,6 @@ public interface StatisticsManager extends StatisticsFactory, OsStatisticsFactor
   String getName();
 
   /**
-   * Returns a numeric id that can be used to identify the manager
-   */
-  long getId();
-
-  /**
    * Returns the start time of this manager.
    */
   long getStartTime();

@@ -171,7 +171,7 @@ public class InternalDistributedSystem extends DistributedSystem
     }
   };
 
-  private volatile StatisticsRegistry statisticsRegistry;
+  private final StatisticsRegistry statisticsRegistry;
 
   /**
    * The distribution manager that is used to communicate with the distributed system.
@@ -549,6 +549,12 @@ public class InternalDistributedSystem extends DistributedSystem
 
     this.creationStack =
         TEST_CREATION_STACK_GENERATOR.get().generateCreationStack(this.originalConfig);
+
+    if (statsDisabled) {
+      statisticsRegistry = new DummyStatisticsRegistry(originalConfig.getName(), startTime);
+    } else {
+      statisticsRegistry = new StatisticsRegistry(originalConfig.getName(), startTime);
+    }
   }
 
   //////////////////// Instance Methods ////////////////////
@@ -802,7 +808,7 @@ public class InternalDistributedSystem extends DistributedSystem
         throw new GemFireIOException("Problem finishing a locator service start", e);
       }
 
-      initializeStatistics();
+      startSampler();
 
       alertingSession.createSession(new AlertMessaging(this));
       alertingSession.startSession();
@@ -820,12 +826,8 @@ public class InternalDistributedSystem extends DistributedSystem
     this.attemptingToReconnect = false;
   }
 
-  private void initializeStatistics() {
-
-    if (statsDisabled) {
-      statisticsRegistry = new DummyStatisticsRegistry(id, originalConfig.getName(), startTime);
-    } else {
-      statisticsRegistry = new StatisticsRegistry(id, originalConfig.getName(), startTime);
+  private void startSampler() {
+    if (!statsDisabled) {
       Optional<LogFile> logFile = loggingSession.getLogFile();
       if (logFile.isPresent()) {
         sampler = new GemFireStatSampler(this, logFile.get());

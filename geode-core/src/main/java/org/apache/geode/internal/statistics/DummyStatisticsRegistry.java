@@ -4,8 +4,8 @@ import org.apache.geode.Statistics;
 import org.apache.geode.StatisticsType;
 
 public class DummyStatisticsRegistry extends StatisticsRegistry {
-  public DummyStatisticsRegistry(long systemId, String systemName, long startTime) {
-    super(systemId, systemName, startTime);
+  public DummyStatisticsRegistry(String systemName, long startTime) {
+    super(systemName, startTime);
   }
 
   @Override

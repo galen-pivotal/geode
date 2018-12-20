@@ -35,8 +35,6 @@ import org.apache.geode.StatisticsTypeFactory;
  * @since GemFire 7.0
  */
 public abstract class AbstractStatisticsFactory implements StatisticsFactory, StatisticsManager {
-
-  private final long id;
   private final String name;
   private final CopyOnWriteArrayList<Statistics> statsList;
   private int statsListModCount = 0;
@@ -46,7 +44,6 @@ public abstract class AbstractStatisticsFactory implements StatisticsFactory, St
   private final long startTime;
 
   public AbstractStatisticsFactory(long id, String name, long startTime) {
-    this.id = id;
     this.name = name;
     this.startTime = startTime;
 
@@ -60,11 +57,6 @@ public abstract class AbstractStatisticsFactory implements StatisticsFactory, St
   @Override
   public String getName() {
     return this.name;
-  }
-
-  @Override
-  public long getId() {
-    return this.id;
   }
 
   @Override

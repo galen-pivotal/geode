@@ -185,6 +185,11 @@ public class GemFireStatSampler extends HostStatSampler {
   }
 
   @Override
+  public long getSystemId() {
+    return con.getId();
+  }
+
+  @Override
   protected void checkListeners() {
     checkLocalListeners();
     synchronized (listeners) {
@@ -239,15 +244,6 @@ public class GemFireStatSampler extends HostStatSampler {
   }
 
   @Override
-  protected long getSpecialStatsId() {
-    long statId = OSProcess.getId();
-    if (statId == 0 || statId == -1) {
-      statId = getStatisticsManager().getId();
-    }
-    return statId;
-  }
-
-  @Override
   protected void initProcessStats(long id) {
     if (PureJavaMode.osStatsAreAvailable()) {
       if (osStatsDisabled()) {
@@ -262,7 +258,7 @@ public class GemFireStatSampler extends HostStatSampler {
         HostStatHelper.newSystem(getOsStatisticsFactory());
         String statName = getStatisticsManager().getName();
         if (statName == null || statName.length() == 0) {
-          statName = "javaApp" + getStatisticsManager().getId();
+          statName = "javaApp" + getSystemId();
         }
         Statistics stats =
             HostStatHelper.newProcess(getOsStatisticsFactory(), id, statName + "-proc");

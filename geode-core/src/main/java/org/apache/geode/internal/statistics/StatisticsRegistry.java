@@ -14,26 +14,14 @@ import org.apache.geode.StatisticsTypeFactory;
 public class StatisticsRegistry implements StatisticsManager {
   private static final StatisticsTypeFactory tf = StatisticsTypeFactoryImpl.singleton();
   private final List<Statistics> statsList = new CopyOnWriteArrayList<>();
-  private final long systemId;
   private final String systemName;
   private final long startTime;
   private final AtomicLong statsListUniqueId = new AtomicLong(1);
   private int statsListModCount = 0;
 
-  public StatisticsRegistry(long systemId, String systemName, long startTime) {
-    this.systemId = systemId;
+  public StatisticsRegistry(String systemName, long startTime) {
     this.systemName = systemName;
     this.startTime = startTime;
-  }
-
-  /**
-   * Returns the id of this connection to the distributed system. This is actually the port of the
-   * distribution manager's distribution channel.
-   *
-   */
-  @Override
-  public long getId() {
-    return systemId;
   }
 
   @Override

@@ -111,7 +111,6 @@ public class ValueMonitorIntegrationTest {
     StatisticsManager mockStatisticsManager =
         mock(StatisticsManager.class, testName.getMethodName() + "$StatisticsManager");
     when(mockStatisticsManager.getName()).thenReturn("mockStatisticsManager");
-    when(mockStatisticsManager.getId()).thenReturn(1L);
     when(mockStatisticsManager.getStartTime()).thenReturn(startTime);
     when(mockStatisticsManager.getStatListModCount()).thenReturn(0);
     when(mockStatisticsManager.getStatsList()).thenReturn(new ArrayList<>());

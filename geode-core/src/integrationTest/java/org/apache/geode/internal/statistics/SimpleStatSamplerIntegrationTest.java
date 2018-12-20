@@ -99,7 +99,6 @@ public class SimpleStatSamplerIntegrationTest extends StatSamplerTestCase {
 
     assertTrue(statsCount > 0);
 
-    Assert.assertEquals(getStatisticsManager().getId(), statSampler.getSystemId());
     assertTrue(statSampler.getSystemStartTime() <= System.currentTimeMillis());
     assertEquals(SocketCreator.getHostName(SocketCreator.getLocalHost()),
         statSampler.getSystemDirectoryPath());
