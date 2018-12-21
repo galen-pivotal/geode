@@ -16,7 +16,7 @@ package org.apache.geode.internal.statistics.micrometer;
 
 import static java.util.Collections.shuffle;
 import static java.util.stream.Collectors.toList;
-import static org.apache.geode.internal.statistics.micrometer.MicrometerRegistrar.meterName;
+import static org.apache.geode.internal.statistics.micrometer.MeterRegistrar.meterName;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -43,7 +43,7 @@ import org.apache.geode.StatisticsType;
 
 public class MicrometerRegistrarTest {
   private Statistics statisticsInstance1;
-  private MicrometerRegistrar registrar;
+  private MeterRegistrar registrar;
   private StatisticsType statisticsType;
   private MeterRegistry registry;
   private List<StatisticDescriptor> counterDescriptors;
@@ -53,7 +53,7 @@ public class MicrometerRegistrarTest {
   @Before
   public void setup() {
     registry = new SimpleMeterRegistry();
-    registrar = new MicrometerRegistrar(registry);
+    registrar = new MeterRegistrar(registry);
 
     counterDescriptors = descriptors(5, true);
     gaugeDescriptors = descriptors(9, false);

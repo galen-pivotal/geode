@@ -31,12 +31,23 @@ import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 
-public class MicrometerToPrometheusServer {
+import org.apache.geode.internal.statistics.MeterServer;
 
+/**
+ * A meter server that, when sampled, delivers measurements in Prometheus format.
+ */
+public class PrometheusMeterServer implements MeterServer {
+  private final PrometheusMeterRegistry registry;
   private HttpsServer httpsServer;
 
-  public void startServer(PrometheusMeterRegistry registry) {
+  public PrometheusMeterServer(PrometheusMeterRegistry registry) {
+    this.registry = registry;
+  }
+
+  @Override
+  public void start() {
     final int port = 8000;
+    System.out.println("Starting PrometheusMeterServer on port " + port);
 
     try {
       // setup the socket address
@@ -102,7 +113,14 @@ public class MicrometerToPrometheusServer {
 
   }
 
-  public void stopServer() {
-    httpsServer.stop(0);
+  @Override
+  public void stop() {
+    System.out.println("Stopping PrometheusMeterServer");
+
+    if (httpsServer != null) {
+      httpsServer.stop(0);
+      httpsServer = null;
+      System.out.println("Stopped PrometheusMeterServer");
+    }
   }
 }

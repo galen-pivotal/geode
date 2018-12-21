@@ -43,6 +43,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.prometheus.PrometheusConfig;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.apache.logging.log4j.Logger;
 
 import org.apache.geode.CancelCriterion;
@@ -108,8 +111,12 @@ import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.internal.security.SecurityServiceFactory;
 import org.apache.geode.internal.statistics.DummyStatisticsRegistry;
 import org.apache.geode.internal.statistics.GemFireStatSampler;
+import org.apache.geode.internal.statistics.MeterServer;
 import org.apache.geode.internal.statistics.StatisticsConfig;
 import org.apache.geode.internal.statistics.StatisticsRegistry;
+import org.apache.geode.internal.statistics.micrometer.MeterRegistrar;
+import org.apache.geode.internal.statistics.micrometer.MeteredStatisticsRegistry;
+import org.apache.geode.internal.statistics.micrometer.PrometheusMeterServer;
 import org.apache.geode.internal.statistics.platform.LinuxProcFsStatistics;
 import org.apache.geode.internal.tcp.ConnectionTable;
 import org.apache.geode.management.ManagementException;
@@ -172,6 +179,8 @@ public class InternalDistributedSystem extends DistributedSystem
   };
 
   private final StatisticsRegistry statisticsRegistry;
+  private final MeterServer meterServer;
+  private final MeterRegistry meterRegistry;
 
   /**
    * The distribution manager that is used to communicate with the distributed system.
@@ -552,8 +561,16 @@ public class InternalDistributedSystem extends DistributedSystem
 
     if (statsDisabled) {
       statisticsRegistry = new DummyStatisticsRegistry(originalConfig.getName(), startTime);
+      meterServer = null;
+      meterRegistry = null;
     } else {
-      statisticsRegistry = new StatisticsRegistry(originalConfig.getName(), startTime);
+      PrometheusMeterRegistry prometheusMeterRegistry =
+          new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+      meterServer = new PrometheusMeterServer(prometheusMeterRegistry);
+      meterRegistry = prometheusMeterRegistry;
+      MeterRegistrar meterRegistrar = new MeterRegistrar(meterRegistry);
+      statisticsRegistry =
+          new MeteredStatisticsRegistry(originalConfig.getName(), startTime, meterRegistrar);
     }
   }
 
@@ -827,14 +844,15 @@ public class InternalDistributedSystem extends DistributedSystem
   }
 
   private void startSampler() {
-    if (!statsDisabled) {
-      Optional<LogFile> logFile = loggingSession.getLogFile();
-      if (logFile.isPresent()) {
-        sampler = new GemFireStatSampler(this, logFile.get());
-      } else {
-        sampler = new GemFireStatSampler(this);
-      }
-      this.sampler.start();
+    if (statsDisabled) {
+      return;
+    }
+    sampler = loggingSession.getLogFile()
+        .map(logFile -> new GemFireStatSampler(this, logFile))
+        .orElseGet(() -> new GemFireStatSampler(this));
+    this.sampler.start();
+    if (meterServer != null) {
+      meterServer.start();
     }
   }
 
@@ -1113,6 +1131,10 @@ public class InternalDistributedSystem extends DistributedSystem
 
   public long getStartTime() {
     return this.startTime;
+  }
+
+  public MeterRegistry getMeterRegistry() {
+    return meterRegistry;
   }
 
   /**
@@ -1618,6 +1640,10 @@ public class InternalDistributedSystem extends DistributedSystem
       if (this.sampler != null) {
         this.sampler.stop();
         this.sampler = null;
+      }
+
+      if (this.meterServer != null) {
+        meterServer.stop();
       }
 
       if (!this.attemptingToReconnect) {

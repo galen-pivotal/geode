@@ -41,8 +41,10 @@ import org.junit.rules.TestName;
 import org.apache.geode.cache.CacheFactory;
 import org.apache.geode.cache.Region;
 import org.apache.geode.internal.cache.InternalCache;
-import org.apache.geode.internal.statistics.micrometer.MicrometerSampleHandler;
 
+/**
+ * This is not a real test. It is a tool for observability developers to try things.
+ */
 public class MicrometerRegionIntegrationTest {
 
   private InternalCache cache;
@@ -108,14 +110,8 @@ public class MicrometerRegionIntegrationTest {
   }
 
   private MeterRegistry findMeterRegistry() {
-    MicrometerSampleHandler handler =
-        cache.getInternalDistributedSystem().getStatSampler().getSampleCollector()
-            .getMicrometerSampleHandler();
-    assertThat(handler).isNotNull();
-
-    MeterRegistry registry = handler.getMeterRegistry();
-    assertThat(registry).isNotNull();
-
-    return registry;
+    MeterRegistry meterRegistry = cache.getInternalDistributedSystem().getMeterRegistry();
+    assertThat(meterRegistry).isNotNull();
+    return meterRegistry;
   }
 }

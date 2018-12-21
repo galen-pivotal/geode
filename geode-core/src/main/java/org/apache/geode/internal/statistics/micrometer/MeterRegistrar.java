@@ -45,7 +45,7 @@ import org.apache.geode.StatisticsType;
  * When sampled, each meter obtains its value extracting the statistics instance's value for the
  * associated descriptor.
  */
-public class MicrometerRegistrar {
+public class MeterRegistrar {
   private final MeterRegistry registry;
 
   /**
@@ -54,7 +54,7 @@ public class MicrometerRegistrar {
    *
    * @param registry the registry in which to maintain meters
    */
-  public MicrometerRegistrar(MeterRegistry registry) {
+  public MeterRegistrar(MeterRegistry registry) {
     this.registry = registry;
   }
 

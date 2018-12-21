@@ -14,22 +14,47 @@
  */
 package org.apache.geode.internal.statistics;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.apache.geode.Statistics;
 import org.apache.geode.StatisticsType;
 
+/**
+ * A statistics registry that creates dummy statistics instances, and does not keep a list of the
+ * instances it has created.
+ */
 public class DummyStatisticsRegistry extends StatisticsRegistry {
+  private final List<Statistics> statisticsInstances = Collections.emptyList();
+
   public DummyStatisticsRegistry(String systemName, long startTime) {
     super(systemName, startTime);
   }
 
   @Override
-  public Statistics createOsStatistics(StatisticsType type, String textId, long numericId,
-      int osStatFlags) {
+  public List<Statistics> getStatsList() {
+    return statisticsInstances;
+  }
+
+  @Override
+  public int getStatListModCount() {
+    return 0;
+  }
+
+  @Override
+  public void destroyStatistics(Statistics statisticsInstance) {
+    // noop
+  }
+
+  @Override
+  protected Statistics newAtomicStatistics(StatisticsType type, long uniqueId, long numericId,
+      String textId) {
     return new DummyStatisticsImpl(type, textId, numericId);
   }
 
   @Override
-  public Statistics createAtomicStatistics(StatisticsType type, String textId, long numericId) {
+  protected Statistics newOsStatistics(StatisticsType type, long uniqueId, long numericId,
+      String textId, int osStatFlags) {
     return new DummyStatisticsImpl(type, textId, numericId);
   }
 }

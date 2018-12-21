@@ -34,7 +34,6 @@ import org.apache.geode.StatisticsType;
 import org.apache.geode.internal.io.RollingFileHandler;
 import org.apache.geode.internal.logging.LogService;
 import org.apache.geode.internal.logging.log4j.LogMarker;
-import org.apache.geode.internal.statistics.micrometer.MicrometerSampleHandler;
 
 /**
  * Captures sample of statistics. The SampleCollector contains maps of StatisticsTypes to
@@ -59,10 +58,14 @@ public class SampleCollector {
    */
   private static SampleCollector instance;
 
-  /** The stat sampler using this collector to capture samples of stats */
+  /**
+   * The stat sampler using this collector to capture samples of stats
+   */
   private final StatisticsSampler sampler;
 
-  /** The handlers that are registered for notification of stat samples */
+  /**
+   * The handlers that are registered for notification of stat samples
+   */
   private final SampleHandlers sampleHandlers = new SampleHandlers();
 
   /**
@@ -77,22 +80,30 @@ public class SampleCollector {
   private final Map<Statistics, ResourceInstance> resourceInstMap =
       new HashMap<Statistics, ResourceInstance>();
 
-  /** Incremented to use as unique identifier to construct new ResourceType */
+  /**
+   * Incremented to use as unique identifier to construct new ResourceType
+   */
   private int resourceTypeId = 0;
 
-  /** Incremented to use as unique identifier to construct new ResourceInstance */
+  /**
+   * Incremented to use as unique identifier to construct new ResourceInstance
+   */
   private int resourceInstId = 0;
 
-  /** The number of statistics resources that existed during the latest sample */
+  /**
+   * The number of statistics resources that existed during the latest sample
+   */
   private int statResourcesModCount;
 
-  /** The StatArchiveHandler which is created during initialization */
+  /**
+   * The StatArchiveHandler which is created during initialization
+   */
   private StatArchiveHandler statArchiveHandler;
 
-  /** The StatArchiveHandler which is created on demand */
+  /**
+   * The StatArchiveHandler which is created on demand
+   */
   private StatMonitorHandler statMonitorHandler;
-
-  private MicrometerSampleHandler micrometerSampleHandler;
 
   /**
    * Constructs a new instance.
@@ -112,7 +123,6 @@ public class SampleCollector {
    * Returns the {@link StatMonitorHandler}. If one does not currently exist it will be created.
    *
    * @return the StatMonitorHandler for adding monitors
-   *
    * @throws IllegalStateException if no SampleCollector has been created and initialized yet
    */
   static StatMonitorHandler getStatMonitorHandler() {
@@ -153,9 +163,6 @@ public class SampleCollector {
         this.statArchiveHandler = newStatArchiveHandler;
         addSampleHandler(newStatArchiveHandler);
         newStatArchiveHandler.initialize(nanosTimeStamp);
-
-        micrometerSampleHandler = new MicrometerSampleHandler();
-        addSampleHandler(micrometerSampleHandler);
       }
     }
   }
@@ -186,7 +193,9 @@ public class SampleCollector {
     this.sampleHandlers.removeSampleHandler(handler);
   }
 
-  /** Returns true if the specified SampleHandler is registered */
+  /**
+   * Returns true if the specified SampleHandler is registered
+   */
   public boolean containsSampleHandler(SampleHandler handler) {
     return this.sampleHandlers.contains(handler);
   }
@@ -321,17 +330,12 @@ public class SampleCollector {
     return sb.toString();
   }
 
-  /** For testing only */
+  /**
+   * For testing only
+   */
   StatArchiveHandler getStatArchiveHandler() {
     synchronized (this.sampleHandlers) {
       return this.statArchiveHandler;
-    }
-  }
-
-  /** For testing only */
-  MicrometerSampleHandler getMicrometerSampleHandler() {
-    synchronized (sampleHandlers) {
-      return micrometerSampleHandler;
     }
   }
 
@@ -594,7 +598,9 @@ public class SampleCollector {
     }
   }
 
-  /** For testing only */
+  /**
+   * For testing only
+   */
   StatMonitorHandler getStatMonitorHandlerSnapshot() {
     synchronized (this.sampleHandlers) {
       return this.statMonitorHandler;
@@ -665,12 +671,15 @@ public class SampleCollector {
 
     @Override
     public boolean equals(Object obj) {
-      if (this == obj)
+      if (this == obj) {
         return true;
-      if (obj == null)
+      }
+      if (obj == null) {
         return false;
-      if (getClass() != obj.getClass())
+      }
+      if (getClass() != obj.getClass()) {
         return false;
+      }
       MarkableSampleHandler other = (MarkableSampleHandler) obj;
       return this.sampleHandler == other.sampleHandler;
     }
@@ -695,7 +704,9 @@ public class SampleCollector {
 
     public SampleHandlers() {}
 
-    /** For test usage only. */
+    /**
+     * For test usage only.
+     */
     public MarkableSampleHandler getMarkableSampleHandler(SampleHandler handler) {
       if (contains(handler)) {
         for (MarkableSampleHandler markableSamplerHandler : currentHandlers()) {

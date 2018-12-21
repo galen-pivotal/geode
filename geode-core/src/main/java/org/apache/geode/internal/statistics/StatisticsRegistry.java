@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -28,19 +27,36 @@ import org.apache.geode.Statistics;
 import org.apache.geode.StatisticsType;
 import org.apache.geode.StatisticsTypeFactory;
 
-public class StatisticsRegistry implements StatisticsManager {
+/**
+ * An abstract implementation of {@link StatisticsManager} that delegates creation, storage, and
+ * deletion of statistics to subclasses.
+ */
+public abstract class StatisticsRegistry implements StatisticsManager {
   private static final StatisticsTypeFactory statisticsTypeFactory =
       StatisticsTypeFactoryImpl.singleton();
-  private final List<Statistics> statisticsInstances = new CopyOnWriteArrayList<>();
   private final AtomicLong statisticsListUniqueId = new AtomicLong(1);
   private final String systemName;
   private final long startTime;
-  private int statisticsListModCount = 0;
 
   public StatisticsRegistry(String systemName, long startTime) {
     this.systemName = systemName;
     this.startTime = startTime;
   }
+
+  @Override
+  public abstract List<Statistics> getStatsList();
+
+  @Override
+  public abstract int getStatListModCount();
+
+  @Override
+  public abstract void destroyStatistics(Statistics statisticsInstance);
+
+  protected abstract Statistics newAtomicStatistics(StatisticsType type, long uniqueId,
+      long numericId, String textId);
+
+  protected abstract Statistics newOsStatistics(StatisticsType type, long uniqueId, long numericId,
+      String textId, int osStatFlags);
 
   @Override
   public String getName() {
@@ -54,22 +70,12 @@ public class StatisticsRegistry implements StatisticsManager {
 
   @Override
   public Statistics[] getStatistics() {
-    return statisticsInstances.toArray(new Statistics[0]);
-  }
-
-  @Override
-  public List<Statistics> getStatsList() {
-    return statisticsInstances;
+    return getStatsList().toArray(new Statistics[0]);
   }
 
   @Override
   public int getStatisticsCount() {
-    return statisticsInstances.size();
-  }
-
-  @Override
-  public int getStatListModCount() {
-    return statisticsListModCount;
+    return getStatsList().size();
   }
 
   @Override
@@ -115,20 +121,14 @@ public class StatisticsRegistry implements StatisticsManager {
   @Override
   public Statistics createAtomicStatistics(StatisticsType type, String textId, long numericId) {
     long uniqueId = statisticsListUniqueId.getAndIncrement();
-    Statistics atomicStatistics =
-        StatisticsImpl.createAtomicNoOS(type, textId, numericId, uniqueId, this);
-    registerStatistics(atomicStatistics);
-    return atomicStatistics;
+    return newAtomicStatistics(type, uniqueId, numericId, textId);
   }
 
   @Override
   public Statistics createOsStatistics(StatisticsType type, String textId, long numericId,
       int osStatFlags) {
     long uniqueId = statisticsListUniqueId.getAndIncrement();
-    Statistics osStatistics =
-        new LocalStatisticsImpl(type, textId, numericId, uniqueId, false, osStatFlags, this);
-    registerStatistics(osStatistics);
-    return osStatistics;
+    return newOsStatistics(type, uniqueId, numericId, textId, osStatFlags);
   }
 
   @Override
@@ -165,11 +165,6 @@ public class StatisticsRegistry implements StatisticsManager {
   public Statistics[] findStatisticsByType(StatisticsType type) {
     return allStatisticsInstances(withStatisticsType(type))
         .toArray(Statistics[]::new);
-  }
-
-  @Override
-  public void destroyStatistics(Statistics stats) {
-    deregisterStatistics(stats);
   }
 
   @Override
@@ -238,23 +233,8 @@ public class StatisticsRegistry implements StatisticsManager {
     return statisticsTypeFactory.createDoubleGauge(name, description, units, largerBetter);
   }
 
-  private void registerStatistics(Statistics instance) {
-    synchronized (statisticsInstances) {
-      statisticsInstances.add(instance);
-      statisticsListModCount++;
-    }
-  }
-
-  private void deregisterStatistics(Statistics instance) {
-    synchronized (statisticsInstances) {
-      if (statisticsInstances.remove(instance)) {
-        statisticsListModCount++;
-      }
-    }
-  }
-
   private Stream<Statistics> allStatisticsInstances(Predicate<? super Statistics> predicate) {
-    return statisticsInstances.stream().filter(predicate);
+    return getStatsList().stream().filter(predicate);
   }
 
   private Optional<Statistics> anyStatisticsInstance(Predicate<? super Statistics> predicate) {
