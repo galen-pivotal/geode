@@ -171,6 +171,22 @@ public class MicrometerRegistrarTest {
     }
   }
 
+  @Test
+  public void deregistersMetersWhenStatisticsAreDestroyed() {
+    List<StatisticDescriptor> descriptors = mixedDescriptors();
+    when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
+
+    registrar.registerStatistics(statistics);
+    registrar.deregisterStatistics(statistics);
+
+    for (StatisticDescriptor descriptor : descriptors) {
+      String name = meterName(type, descriptor);
+      assertThat(registry.find(name).meter())
+          .as("meter named %s", name)
+          .isNull();
+    }
+  }
+
   private Meter registeredMeterFor(StatisticDescriptor descriptor) {
     String name = meterName(type, descriptor);
     Meter meter = registry.find(name).meter();

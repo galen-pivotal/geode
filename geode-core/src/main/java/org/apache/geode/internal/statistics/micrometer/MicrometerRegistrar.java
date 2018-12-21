@@ -14,10 +14,13 @@
  */
 package org.apache.geode.internal.statistics.micrometer;
 
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.function.ToDoubleFunction;
 
 import io.micrometer.core.instrument.FunctionCounter;
 import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 
 import org.apache.geode.StatisticDescriptor;
@@ -36,6 +39,14 @@ public class MicrometerRegistrar {
     for (StatisticDescriptor descriptor : type.getStatistics()) {
       registerMeter(descriptor, statistics, type);
     }
+  }
+
+  public void deregisterStatistics(Statistics statistics) {
+    StatisticsType type = statistics.getType();
+    Arrays.stream(type.getStatistics())
+        .map(descriptor -> findMeter(descriptor, statistics))
+        .filter(Objects::nonNull)
+        .forEach(registry::remove);
   }
 
   private void registerMeter(StatisticDescriptor descriptor, Statistics statistics,
@@ -74,5 +85,12 @@ public class MicrometerRegistrar {
     String typeName = type.getName();
     String statName = descriptor.getName();
     return String.format("%s.%s", typeName, statName);
+  }
+
+  private Meter findMeter(StatisticDescriptor descriptor,
+      Statistics statistics) {
+    return registry.find(meterName(statistics.getType(), descriptor))
+        .tags("name", statistics.getTextId())
+        .meter();
   }
 }
