@@ -17,8 +17,11 @@ package org.apache.geode.internal.statistics;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import org.apache.geode.StatisticDescriptor;
 import org.apache.geode.Statistics;
@@ -26,12 +29,13 @@ import org.apache.geode.StatisticsType;
 import org.apache.geode.StatisticsTypeFactory;
 
 public class StatisticsRegistry implements StatisticsManager {
-  private static final StatisticsTypeFactory tf = StatisticsTypeFactoryImpl.singleton();
-  private final List<Statistics> statsList = new CopyOnWriteArrayList<>();
+  private static final StatisticsTypeFactory statisticsTypeFactory =
+      StatisticsTypeFactoryImpl.singleton();
+  private final List<Statistics> statisticsInstances = new CopyOnWriteArrayList<>();
+  private final AtomicLong statisticsListUniqueId = new AtomicLong(1);
   private final String systemName;
   private final long startTime;
-  private final AtomicLong statsListUniqueId = new AtomicLong(1);
-  private int statsListModCount = 0;
+  private int statisticsListModCount = 0;
 
   public StatisticsRegistry(String systemName, long startTime) {
     this.systemName = systemName;
@@ -43,54 +47,44 @@ public class StatisticsRegistry implements StatisticsManager {
     return systemName;
   }
 
-  public Statistics findStatisticsByUniqueId(final long uniqueId) {
-    for (Statistics s : statsList) {
-      if (uniqueId == s.getUniqueId()) {
-        return s;
-      }
-    }
-    return null;
-  }
-
   @Override
-  public int getStatListModCount() {
-    return statsListModCount;
-  }
-
-  @Override
-  public List<Statistics> getStatsList() {
-    return statsList;
-  }
-
-  @Override
-  public int getStatisticsCount() {
-    return statsList.size();
-  }
-
-  @Override
-  public Statistics findStatistics(long id) {
-    for (Statistics s : statsList) {
-      if (s.getUniqueId() == id) {
-        return s;
-      }
-    }
-    throw new RuntimeException(
-        "Could not find statistics instance with id " + id);
-  }
-
-  @Override
-  public boolean statisticsExists(long id) {
-    for (Statistics s : statsList) {
-      if (s.getUniqueId() == id) {
-        return true;
-      }
-    }
-    return false;
+  public long getStartTime() {
+    return startTime;
   }
 
   @Override
   public Statistics[] getStatistics() {
-    return statsList.toArray(new Statistics[0]);
+    return statisticsInstances.toArray(new Statistics[0]);
+  }
+
+  @Override
+  public List<Statistics> getStatsList() {
+    return statisticsInstances;
+  }
+
+  @Override
+  public int getStatisticsCount() {
+    return statisticsInstances.size();
+  }
+
+  @Override
+  public int getStatListModCount() {
+    return statisticsListModCount;
+  }
+
+  @Override
+  public StatisticsType createType(String name, String description, StatisticDescriptor[] stats) {
+    return statisticsTypeFactory.createType(name, description, stats);
+  }
+
+  @Override
+  public StatisticsType[] createTypesFromXml(Reader reader) throws IOException {
+    return statisticsTypeFactory.createTypesFromXml(reader);
+  }
+
+  @Override
+  public StatisticsType findType(String name) {
+    return statisticsTypeFactory.findType(name);
   }
 
   @Override
@@ -99,61 +93,13 @@ public class StatisticsRegistry implements StatisticsManager {
   }
 
   @Override
-  public Statistics createStatistics(StatisticsType type, String textId) {
-    return createOsStatistics(type, textId, 0, 0);
-  }
-
-  @Override
-  public Statistics createStatistics(StatisticsType type, String textId, long numericId) {
-    return createOsStatistics(type, textId, numericId, 0);
-  }
-
-  @Override
-  public Statistics createOsStatistics(StatisticsType type, String textId, long numericId,
-      int osStatFlags) {
-    long myUniqueId = statsListUniqueId.getAndIncrement();
-    Statistics result =
-        new LocalStatisticsImpl(type, textId, numericId, myUniqueId, false, osStatFlags, this);
-    addStatistics(result);
-    return result;
-  }
-
-  @Override
-  public Statistics[] findStatisticsByType(final StatisticsType type) {
-    return statsList.stream()
-        .filter(s -> type == s.getType())
-        .toArray(Statistics[]::new);
-  }
-
-  @Override
-  public Statistics[] findStatisticsByTextId(final String textId) {
-    return statsList.stream()
-        .filter(s -> textId.equals(s.getTextId()))
-        .toArray(Statistics[]::new);
-  }
-
-  @Override
-  public Statistics[] findStatisticsByNumericId(final long numericId) {
-    return statsList.stream()
-        .filter(s -> numericId == s.getNumericId())
-        .toArray(Statistics[]::new);
-  }
-
-  /**
-   * for internal use only. Its called by {@link LocalStatisticsImpl#close}.
-   */
-  @Override
-  public void destroyStatistics(Statistics stats) {
-    synchronized (statsList) {
-      if (statsList.remove(stats)) {
-        statsListModCount++;
-      }
-    }
-  }
-
-  @Override
   public Statistics createAtomicStatistics(StatisticsType type) {
     return createAtomicStatistics(type, null, 0);
+  }
+
+  @Override
+  public Statistics createStatistics(StatisticsType type, String textId) {
+    return createOsStatistics(type, textId, 0, 0);
   }
 
   @Override
@@ -162,106 +108,172 @@ public class StatisticsRegistry implements StatisticsManager {
   }
 
   @Override
+  public Statistics createStatistics(StatisticsType type, String textId, long numericId) {
+    return createOsStatistics(type, textId, numericId, 0);
+  }
+
+  @Override
   public Statistics createAtomicStatistics(StatisticsType type, String textId, long numericId) {
-    long myUniqueId = statsListUniqueId.getAndIncrement();
-    Statistics result = StatisticsImpl.createAtomicNoOS(type, textId, numericId, myUniqueId, this);
-    addStatistics(result);
-    return result;
-  }
-
-  /**
-   * Creates or finds a StatisticType for the given shared class.
-   */
-  @Override
-  public StatisticsType createType(String name, String description, StatisticDescriptor[] stats) {
-    return tf.createType(name, description, stats);
+    long uniqueId = statisticsListUniqueId.getAndIncrement();
+    Statistics atomicStatistics =
+        StatisticsImpl.createAtomicNoOS(type, textId, numericId, uniqueId, this);
+    registerStatistics(atomicStatistics);
+    return atomicStatistics;
   }
 
   @Override
-  public StatisticsType findType(String name) {
-    return tf.findType(name);
+  public Statistics createOsStatistics(StatisticsType type, String textId, long numericId,
+      int osStatFlags) {
+    long uniqueId = statisticsListUniqueId.getAndIncrement();
+    Statistics osStatistics =
+        new LocalStatisticsImpl(type, textId, numericId, uniqueId, false, osStatFlags, this);
+    registerStatistics(osStatistics);
+    return osStatistics;
   }
 
   @Override
-  public StatisticsType[] createTypesFromXml(Reader reader) throws IOException {
-    return tf.createTypesFromXml(reader);
+  public Statistics findStatistics(long uniqueId) {
+    return anyStatisticsInstance(withUniqueId(uniqueId))
+        .orElseThrow(() -> new RuntimeException(
+            "Could not find statistics instance with unique id " + uniqueId));
+  }
+
+  @Override
+  public boolean statisticsExists(long uniqueId) {
+    return anyStatisticsInstance(withUniqueId(uniqueId))
+        .isPresent();
+  }
+
+  public Statistics findStatisticsByUniqueId(long uniqueId) {
+    return anyStatisticsInstance(withUniqueId(uniqueId))
+        .orElse(null);
+  }
+
+  @Override
+  public Statistics[] findStatisticsByNumericId(long numericId) {
+    return allStatisticsInstances(withNumericId(numericId))
+        .toArray(Statistics[]::new);
+  }
+
+  @Override
+  public Statistics[] findStatisticsByTextId(String textId) {
+    return allStatisticsInstances(withTextId(textId))
+        .toArray(Statistics[]::new);
+  }
+
+  @Override
+  public Statistics[] findStatisticsByType(StatisticsType type) {
+    return allStatisticsInstances(withStatisticsType(type))
+        .toArray(Statistics[]::new);
+  }
+
+  @Override
+  public void destroyStatistics(Statistics stats) {
+    deregisterStatistics(stats);
   }
 
   @Override
   public StatisticDescriptor createIntCounter(String name, String description, String units) {
-    return tf.createIntCounter(name, description, units);
+    return statisticsTypeFactory.createIntCounter(name, description, units);
   }
 
   @Override
   public StatisticDescriptor createLongCounter(String name, String description, String units) {
-    return tf.createLongCounter(name, description, units);
+    return statisticsTypeFactory.createLongCounter(name, description, units);
   }
 
   @Override
   public StatisticDescriptor createDoubleCounter(String name, String description, String units) {
-    return tf.createDoubleCounter(name, description, units);
+    return statisticsTypeFactory.createDoubleCounter(name, description, units);
   }
 
   @Override
   public StatisticDescriptor createIntGauge(String name, String description, String units) {
-    return tf.createIntGauge(name, description, units);
+    return statisticsTypeFactory.createIntGauge(name, description, units);
   }
 
   @Override
   public StatisticDescriptor createLongGauge(String name, String description, String units) {
-    return tf.createLongGauge(name, description, units);
+    return statisticsTypeFactory.createLongGauge(name, description, units);
   }
 
   @Override
   public StatisticDescriptor createDoubleGauge(String name, String description, String units) {
-    return tf.createDoubleGauge(name, description, units);
+    return statisticsTypeFactory.createDoubleGauge(name, description, units);
   }
 
   @Override
   public StatisticDescriptor createIntCounter(String name, String description, String units,
       boolean largerBetter) {
-    return tf.createIntCounter(name, description, units, largerBetter);
+    return statisticsTypeFactory.createIntCounter(name, description, units, largerBetter);
   }
 
   @Override
   public StatisticDescriptor createLongCounter(String name, String description, String units,
       boolean largerBetter) {
-    return tf.createLongCounter(name, description, units, largerBetter);
+    return statisticsTypeFactory.createLongCounter(name, description, units, largerBetter);
   }
 
   @Override
   public StatisticDescriptor createDoubleCounter(String name, String description, String units,
       boolean largerBetter) {
-    return tf.createDoubleCounter(name, description, units, largerBetter);
+    return statisticsTypeFactory.createDoubleCounter(name, description, units, largerBetter);
   }
 
   @Override
   public StatisticDescriptor createIntGauge(String name, String description, String units,
       boolean largerBetter) {
-    return tf.createIntGauge(name, description, units, largerBetter);
+    return statisticsTypeFactory.createIntGauge(name, description, units, largerBetter);
   }
 
   @Override
   public StatisticDescriptor createLongGauge(String name, String description, String units,
       boolean largerBetter) {
-    return tf.createLongGauge(name, description, units, largerBetter);
+    return statisticsTypeFactory.createLongGauge(name, description, units, largerBetter);
   }
 
   @Override
   public StatisticDescriptor createDoubleGauge(String name, String description, String units,
       boolean largerBetter) {
-    return tf.createDoubleGauge(name, description, units, largerBetter);
+    return statisticsTypeFactory.createDoubleGauge(name, description, units, largerBetter);
   }
 
-  @Override
-  public long getStartTime() {
-    return startTime;
-  }
-
-  private void addStatistics(Statistics statistics) {
-    synchronized (statsList) {
-      statsList.add(statistics);
-      statsListModCount++;
+  private void registerStatistics(Statistics instance) {
+    synchronized (statisticsInstances) {
+      statisticsInstances.add(instance);
+      statisticsListModCount++;
     }
+  }
+
+  private void deregisterStatistics(Statistics instance) {
+    synchronized (statisticsInstances) {
+      if (statisticsInstances.remove(instance)) {
+        statisticsListModCount++;
+      }
+    }
+  }
+
+  private Stream<Statistics> allStatisticsInstances(Predicate<? super Statistics> predicate) {
+    return statisticsInstances.stream().filter(predicate);
+  }
+
+  private Optional<Statistics> anyStatisticsInstance(Predicate<? super Statistics> predicate) {
+    return allStatisticsInstances(predicate).findAny();
+  }
+
+  private static Predicate<Statistics> withNumericId(long numericId) {
+    return statistics -> statistics.getNumericId() == numericId;
+  }
+
+  private static Predicate<Statistics> withStatisticsType(StatisticsType type) {
+    return statistics -> statistics.getType() == type;
+  }
+
+  private static Predicate<Statistics> withTextId(String textId) {
+    return statistics -> textId.equals(statistics.getTextId());
+  }
+
+  private static Predicate<Statistics> withUniqueId(long uniqueId) {
+    return statistics -> statistics.getUniqueId() == uniqueId;
   }
 }
