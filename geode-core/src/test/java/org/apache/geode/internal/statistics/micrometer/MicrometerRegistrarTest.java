@@ -22,6 +22,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -41,69 +42,60 @@ import org.apache.geode.Statistics;
 import org.apache.geode.StatisticsType;
 
 public class MicrometerRegistrarTest {
-  private Statistics statistics;
+  private Statistics statisticsInstance1;
   private MicrometerRegistrar registrar;
-  private StatisticsType type;
+  private StatisticsType statisticsType;
   private MeterRegistry registry;
   private List<StatisticDescriptor> counterDescriptors;
   private List<StatisticDescriptor> gaugeDescriptors;
+  private List<StatisticDescriptor> mixedDescriptors;
 
   @Before
   public void setup() {
     registry = new SimpleMeterRegistry();
     registrar = new MicrometerRegistrar(registry);
 
-    type = mock(StatisticsType.class);
-    when(type.getName()).thenReturn("test.statistics.type");
-
-    statistics = mock(Statistics.class);
-    when(statistics.getType()).thenReturn(type);
-    when(statistics.getTextId()).thenReturn("StatisticsTextId");
-
     counterDescriptors = descriptors(5, true);
     gaugeDescriptors = descriptors(9, false);
+    mixedDescriptors = mixOf(counterDescriptors, gaugeDescriptors);
 
-    AtomicInteger statValue = new AtomicInteger();
-    for (StatisticDescriptor descriptor : counterDescriptors) {
-      when(statistics.get(descriptor)).thenReturn(statValue.getAndIncrement());
-    }
-    for (StatisticDescriptor descriptor : gaugeDescriptors) {
-      when(statistics.get(descriptor)).thenReturn(statValue.getAndIncrement());
-    }
+    statisticsType = mock(StatisticsType.class);
+    when(statisticsType.getName()).thenReturn("statisticsType");
+
+    statisticsInstance1 = statisticsInstance(statisticsType, "statisticsInstance1");
   }
 
   @Test
   public void registersCounters() {
-    when(statistics.getType().getStatistics()).thenReturn(arrayOf(counterDescriptors));
+    when(statisticsType.getStatistics()).thenReturn(arrayOf(counterDescriptors));
 
-    registrar.registerStatistics(statistics);
+    registrar.registerStatistics(statisticsInstance1);
 
     for (StatisticDescriptor descriptor : counterDescriptors) {
-      String name = meterName(type, descriptor);
+      String name = meterName(statisticsType, descriptor);
       assertThat(registry.find(name).functionCounter()).isNotNull();
     }
   }
 
   @Test
   public void registersGauges() {
-    when(statistics.getType().getStatistics()).thenReturn(arrayOf(gaugeDescriptors));
+    when(statisticsType.getStatistics()).thenReturn(arrayOf(gaugeDescriptors));
 
-    registrar.registerStatistics(statistics);
+    registrar.registerStatistics(statisticsInstance1);
 
     for (StatisticDescriptor descriptor : gaugeDescriptors) {
-      String name = meterName(type, descriptor);
+      String name = meterName(statisticsType, descriptor);
       assertThat(registry.find(name).gauges()).isNotNull();
     }
   }
 
   @Test
   public void assignsMeterTypeBasedOnWhetherStatisticDescriptorIsCounter() {
-    List<StatisticDescriptor> descriptors = mixedDescriptors();
-    when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
+    when(statisticsType.getStatistics()).thenReturn(arrayOf(mixedDescriptors));
 
-    registrar.registerStatistics(statistics);
+    registrar.registerStatistics(statisticsInstance1);
 
-    for (StatisticDescriptor descriptor : descriptors) {
+    for (StatisticDescriptor descriptor : mixedDescriptors) {
       Meter meter = registeredMeterFor(descriptor);
       if (descriptor.isCounter()) {
         assertThat(meter).as(meter.getId().toString())
@@ -117,53 +109,109 @@ public class MicrometerRegistrarTest {
 
   @Test
   public void connectsCountersToStatisticsValues() {
-    when(statistics.getType().getStatistics()).thenReturn(arrayOf(counterDescriptors));
+    when(statisticsType.getStatistics()).thenReturn(arrayOf(counterDescriptors));
 
-    registrar.registerStatistics(statistics);
+    registrar.registerStatistics(statisticsInstance1);
 
     for (StatisticDescriptor descriptor : counterDescriptors) {
       Meter meter = registeredMeterFor(descriptor);
       assertThat(valueOf(meter)).as("value of %s", meter.getId())
-          .isEqualTo(statistics.get(descriptor).doubleValue());
+          .isEqualTo(statisticsInstance1.get(descriptor).doubleValue());
     }
   }
 
   @Test
   public void connectsGaugesToStatisticsValues() {
-    when(statistics.getType().getStatistics()).thenReturn(arrayOf(gaugeDescriptors));
+    when(statisticsType.getStatistics()).thenReturn(arrayOf(gaugeDescriptors));
 
-    registrar.registerStatistics(statistics);
+    registrar.registerStatistics(statisticsInstance1);
 
     for (StatisticDescriptor descriptor : gaugeDescriptors) {
       Meter meter = registeredMeterFor(descriptor);
       assertThat(valueOf(meter)).as("value of %s", meter.getId())
-          .isEqualTo(statistics.get(descriptor).doubleValue());
+          .isEqualTo(statisticsInstance1.get(descriptor).doubleValue());
     }
   }
 
   @Test
   public void assignsStatisticsTextIDToMeterNameTag() {
-    List<StatisticDescriptor> descriptors = mixedDescriptors();
-    when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
+    when(statisticsType.getStatistics()).thenReturn(arrayOf(mixedDescriptors));
 
-    registrar.registerStatistics(statistics);
+    registrar.registerStatistics(statisticsInstance1);
 
-    for (StatisticDescriptor descriptor : descriptors) {
+    for (StatisticDescriptor descriptor : mixedDescriptors) {
       Meter meter = registeredMeterFor(descriptor);
       assertThat(meter.getId().getTag("name"))
           .as("name tag for %s", meter.getId())
-          .isEqualTo(statistics.getTextId());
+          .isEqualTo(statisticsInstance1.getTextId());
+    }
+  }
+
+  @Test
+  public void registersMetersForMultipleStatisticsInstances() {
+    when(statisticsType.getStatistics()).thenReturn(arrayOf(mixedDescriptors));
+
+    Statistics statisticsInstance1 = statisticsInstance(statisticsType, "statisticsInstance1");
+    Statistics statisticsInstance2 = statisticsInstance(statisticsType, "statisticsInstance2");
+
+    registrar.registerStatistics(statisticsInstance1);
+    registrar.registerStatistics(statisticsInstance2);
+
+    for (StatisticDescriptor descriptor : mixedDescriptors) {
+      String meterName = meterName(statisticsType, descriptor);
+      Collection<Meter> meters = registry
+          .find(meterName)
+          .meters();
+      assertThat(meters)
+          .as("Meters named %s", meterName)
+          .hasSize(2);
+    }
+  }
+
+  @Test
+  public void differentiatesMetersFromMultipleStatisticsByStatisticsTextId() {
+    when(statisticsType.getStatistics()).thenReturn(arrayOf(mixedDescriptors));
+
+    Statistics statisticsInstance1 = statisticsInstance(statisticsType, "statisticsInstance1");
+    Statistics statisticsInstance2 = statisticsInstance(statisticsType, "statisticsInstance2");
+
+    registrar.registerStatistics(statisticsInstance1);
+    registrar.registerStatistics(statisticsInstance2);
+
+    // One meter for each descriptor should be tagged with the textId of statisticsInstance1
+    for (StatisticDescriptor descriptor : mixedDescriptors) {
+      String meterName = meterName(statisticsType, descriptor);
+      String tagForStatisticsInstance1 = statisticsInstance1.getTextId();
+      Collection<Meter> meters = registry
+          .find(meterName)
+          .tags("name", tagForStatisticsInstance1)
+          .meters();
+      assertThat(meters)
+          .as("Meters named %s tagged with textId %s", meterName, tagForStatisticsInstance1)
+          .hasSize(1);
+    }
+
+    // One meter for each descriptor should be tagged with the textId of statisticsInstance2
+    for (StatisticDescriptor descriptor : mixedDescriptors) {
+      String meterName = meterName(statisticsType, descriptor);
+      String tagForStatisticsInstance2 = statisticsInstance2.getTextId();
+      Collection<Meter> meters = registry
+          .find(meterName)
+          .tags("name", tagForStatisticsInstance2)
+          .meters();
+      assertThat(meters)
+          .as("Meters named %s tagged with textId %s", meterName, tagForStatisticsInstance2)
+          .hasSize(1);
     }
   }
 
   @Test
   public void assignsStatisticsUnitToMeterBaseUnit() {
-    List<StatisticDescriptor> descriptors = mixedDescriptors();
-    when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
+    when(statisticsType.getStatistics()).thenReturn(arrayOf(mixedDescriptors));
 
-    registrar.registerStatistics(statistics);
+    registrar.registerStatistics(statisticsInstance1);
 
-    for (StatisticDescriptor descriptor : descriptors) {
+    for (StatisticDescriptor descriptor : mixedDescriptors) {
       Meter meter = registeredMeterFor(descriptor);
       assertThat(meter.getId().getBaseUnit())
           .as("units for %s", meter.getId())
@@ -173,14 +221,13 @@ public class MicrometerRegistrarTest {
 
   @Test
   public void deregistersMetersWhenStatisticsAreDestroyed() {
-    List<StatisticDescriptor> descriptors = mixedDescriptors();
-    when(statistics.getType().getStatistics()).thenReturn(arrayOf(descriptors));
+    when(statisticsType.getStatistics()).thenReturn(arrayOf(mixedDescriptors));
 
-    registrar.registerStatistics(statistics);
-    registrar.deregisterStatistics(statistics);
+    registrar.registerStatistics(statisticsInstance1);
+    registrar.deregisterStatistics(statisticsInstance1);
 
-    for (StatisticDescriptor descriptor : descriptors) {
-      String name = meterName(type, descriptor);
+    for (StatisticDescriptor descriptor : mixedDescriptors) {
+      String name = meterName(statisticsType, descriptor);
       assertThat(registry.find(name).meter())
           .as("meter named %s", name)
           .isNull();
@@ -188,7 +235,7 @@ public class MicrometerRegistrarTest {
   }
 
   private Meter registeredMeterFor(StatisticDescriptor descriptor) {
-    String name = meterName(type, descriptor);
+    String name = meterName(statisticsType, descriptor);
     Meter meter = registry.find(name).meter();
     assertThat(meter).as(name).isNotNull();
     return meter;
@@ -221,11 +268,26 @@ public class MicrometerRegistrarTest {
     return descriptors.toArray(new StatisticDescriptor[0]);
   }
 
-  private List<StatisticDescriptor> mixedDescriptors() {
-    List<StatisticDescriptor> descriptors = new ArrayList<>();
-    descriptors.addAll(gaugeDescriptors);
-    descriptors.addAll(counterDescriptors);
-    shuffle(descriptors);
-    return descriptors;
+  private static List<StatisticDescriptor> mixOf(List<StatisticDescriptor> descriptors1,
+      List<StatisticDescriptor> descriptors2) {
+    List<StatisticDescriptor> mixedDescriptors = new ArrayList<>();
+    mixedDescriptors.addAll(descriptors1);
+    mixedDescriptors.addAll(descriptors2);
+    shuffle(mixedDescriptors);
+    return mixedDescriptors;
+  }
+
+  private Statistics statisticsInstance(StatisticsType statisticsType, String textId) {
+    Statistics statistics = mock(Statistics.class);
+    when(statistics.getTextId()).thenReturn(textId);
+    when(statistics.getType()).thenReturn(statisticsType);
+    AtomicInteger statValue = new AtomicInteger();
+    for (StatisticDescriptor descriptor : counterDescriptors) {
+      when(statistics.get(descriptor)).thenReturn(statValue.getAndIncrement());
+    }
+    for (StatisticDescriptor descriptor : gaugeDescriptors) {
+      when(statistics.get(descriptor)).thenReturn(statValue.getAndIncrement());
+    }
+    return statistics;
   }
 }
