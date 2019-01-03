@@ -89,7 +89,6 @@ public class GIIDeltaDUnitTest extends JUnit4CacheTestCase {
   protected static String REGION_NAME = "_Region";
   final String expectedExceptions = GemFireIOException.class.getName();
   protected IgnoredException expectedEx;
-  static Object giiSyncObject = new Object();
 
   public GIIDeltaDUnitTest() {
     super();
@@ -127,17 +126,6 @@ public class GIIDeltaDUnitTest extends JUnit4CacheTestCase {
       expectedEx.remove();
     }
   }
-
-  // private VersionTag getVersionTag(VM vm, final String key) {
-  // SerializableCallable getVersionTag = new SerializableCallable("verify recovered entry") {
-  // public Object call() {
-  // VersionTag tag = CCRegion.getVersionTag(key);
-  // return tag;
-  //
-  // }
-  // };
-  // return (VersionTag)vm.invoke(getVersionTag);
-  // }
 
   public InternalDistributedMember getDistributedMemberID(VM vm) {
     SerializableCallable getID = new SerializableCallable("get member id") {
@@ -2247,11 +2235,11 @@ public class GIIDeltaDUnitTest extends JUnit4CacheTestCase {
         CachePerfStats stats = lr.getRegionPerfStats();
 
         // we saved GII completed count in RegionPerfStats only
-        int size = stats.getGetInitialImageKeysReceived();
+        long size = stats.getGetInitialImageKeysReceived();
         cache.getLogger().info("Delta contains: " + size + " keys");
         assertEquals(expectedKeyNum, size);
 
-        int num = stats.getDeltaGetInitialImagesCompleted();
+        long num = stats.getDeltaGetInitialImagesCompleted();
         cache.getLogger().info("Delta GII completed: " + num + " times");
         assertEquals(expectedDeltaGIINum, num);
       }
@@ -2709,25 +2697,6 @@ public class GIIDeltaDUnitTest extends JUnit4CacheTestCase {
       observer.cdl.countDown();
     }
   }
-
-  // private void slowGII(VM vm) {
-  // SerializableRunnable slowGII = new SerializableRunnable("Slow down GII") {
-  // @SuppressWarnings("synthetic-access")
-  // public void run() {
-  // slowGII();
-  // }
-  // };
-  // vm.invoke(slowGII);
-  // }
-  //
-  // private void resetSlowGII(VM vm) {
-  // SerializableRunnable resetSlowGII = new SerializableRunnable("Unset the slow GII") {
-  // public void run() {
-  // resetSlowGII();
-  // }
-  // };
-  // vm.invoke(resetSlowGII);
-  // }
 
   private static class BlockMessageObserver extends DistributionMessageObserver {
     private long[] versionsToBlock;

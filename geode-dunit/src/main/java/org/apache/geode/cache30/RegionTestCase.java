@@ -1035,7 +1035,7 @@ public abstract class RegionTestCase extends JUnit4CacheTestCase {
     Region region = createRegion(name);
     region.put(key, value);
 
-    int beforeInvalidates = ((org.apache.geode.internal.cache.GemFireCacheImpl) getCache())
+    long beforeInvalidates = getCache()
         .getCachePerfStats().getInvalidates();
     Region.Entry entry = region.getEntry(key);
     region.invalidate(key);
@@ -1043,7 +1043,7 @@ public abstract class RegionTestCase extends JUnit4CacheTestCase {
       assertNull(entry.getValue());
     }
     assertNull(region.get(key));
-    int afterInvalidates = ((org.apache.geode.internal.cache.GemFireCacheImpl) getCache())
+    long afterInvalidates = getCache()
         .getCachePerfStats().getInvalidates();
     assertEquals("Invalidate CachePerfStats incorrect", beforeInvalidates + 1, afterInvalidates);
   }
@@ -1109,21 +1109,6 @@ public abstract class RegionTestCase extends JUnit4CacheTestCase {
       assertTrue(keys.contains("B"));
       assertTrue(keys.contains("C"));
     }
-
-    /*
-     * not with ConcurrentHashMap { Iterator iter = region.keys().iterator(); iter.next();
-     * region.destroy("B");
-     *
-     * try { iter.next(); fail("Should have thrown a ConcurrentModificationException");
-     *
-     * } catch (ConcurrentModificationException ex) { // pass... } }
-     *
-     * { Iterator iter = region.keys().iterator(); iter.next(); region.put("D", "d");
-     *
-     * try { iter.next(); fail("Should have thrown a ConcurrentModificationException");
-     *
-     * } catch (ConcurrentModificationException ex) { // pass... } }
-     */
   }
 
   /**
