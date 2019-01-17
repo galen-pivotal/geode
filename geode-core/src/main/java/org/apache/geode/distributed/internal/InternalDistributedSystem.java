@@ -44,7 +44,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import org.apache.logging.log4j.Logger;
 
 import org.apache.geode.CancelCriterion;
@@ -103,15 +102,15 @@ import org.apache.geode.internal.logging.LogWriterFactory;
 import org.apache.geode.internal.logging.LoggingSession;
 import org.apache.geode.internal.logging.LoggingThread;
 import org.apache.geode.internal.logging.NullLoggingSession;
+import org.apache.geode.internal.metrics.CompositeMeterManager;
+import org.apache.geode.internal.metrics.MeterManager;
 import org.apache.geode.internal.net.SocketCreatorFactory;
 import org.apache.geode.internal.offheap.MemoryAllocator;
 import org.apache.geode.internal.offheap.OffHeapStorage;
 import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.internal.security.SecurityServiceFactory;
-import org.apache.geode.internal.statistics.CompositeMeterManager;
 import org.apache.geode.internal.statistics.DummyStatisticsRegistry;
 import org.apache.geode.internal.statistics.GemFireStatSampler;
-import org.apache.geode.internal.statistics.MeterManager;
 import org.apache.geode.internal.statistics.StatisticsConfig;
 import org.apache.geode.internal.statistics.StatisticsManager;
 import org.apache.geode.internal.statistics.StatisticsManagerFactory;
@@ -567,6 +566,11 @@ public class InternalDistributedSystem extends DistributedSystem
 
     statisticsManager =
         statisticsManagerFactory.create(originalConfig.getName(), startTime, statsDisabled);
+
+    MeterRegistry primaryRegistry = meterManager.getPrimaryRegistry();
+    primaryRegistry.config().commonTags("cluster-id",
+        String.valueOf(originalConfig.getDistributedSystemId()));
+    primaryRegistry.config().commonTags("member-name", getName());
   }
 
 
@@ -956,6 +960,7 @@ public class InternalDistributedSystem extends DistributedSystem
     return statisticsManager;
   }
 
+  @Override
   public MeterManager getMeterManager() {
     return meterManager;
   }
@@ -1124,7 +1129,7 @@ public class InternalDistributedSystem extends DistributedSystem
   public long getStartTime() {
     return this.startTime;
   }
-  
+
   /**
    * This class defers to the DM. If we don't have a DM, we're dead.
    */

@@ -28,8 +28,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -37,7 +35,7 @@ import org.mockito.Mock;
 import org.apache.geode.StatisticDescriptor;
 import org.apache.geode.Statistics;
 import org.apache.geode.StatisticsType;
-import org.apache.geode.internal.statistics.MeterManager;
+import org.apache.geode.internal.metrics.MeterManager;
 import org.apache.geode.internal.statistics.StatisticsManager;
 import org.apache.geode.internal.statistics.StatisticsManagerFactory;
 
@@ -57,7 +55,7 @@ public class InternalDistributedSystemTest {
 
   @Mock
   public MeterManager meterManager;
-  
+
   private InternalDistributedSystem internalDistributedSystem;
 
   @Before
@@ -72,7 +70,7 @@ public class InternalDistributedSystemTest {
   @Test
   public void remembersItsMeterManager() {
     MeterManager theMeterManager = mock(MeterManager.class);
-    
+
     InternalDistributedSystem internalDistributedSystem =
         InternalDistributedSystem.newInstanceForTesting(statisticsManagerFactory, theMeterManager);
 
@@ -93,7 +91,7 @@ public class InternalDistributedSystemTest {
         InternalDistributedSystem.newInstanceForTesting(statisticsManagerFactory, meterManager);
 
     StatisticsManager result = internalDistributedSystem.getStatisticsManager();
-    
+
     assertThat(result)
         .isSameAs(statisticsManagerCreatedByFactory);
   }

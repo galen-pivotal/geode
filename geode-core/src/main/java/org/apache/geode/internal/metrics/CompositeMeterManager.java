@@ -12,7 +12,7 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.geode.internal.statistics;
+package org.apache.geode.internal.metrics;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
@@ -21,7 +21,24 @@ import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
  * Manages meters using a composite meter registry.
  */
 public class CompositeMeterManager implements MeterManager {
-  private final CompositeMeterRegistry primaryRegistry = new CompositeMeterRegistry();
+  private final CompositeMeterRegistry primaryRegistry;
+
+  /**
+   * Constructs a meter manager that uses a new {@link CompositeMeterRegistry} as its primary
+   * registry.
+   */
+  public CompositeMeterManager() {
+    this(new CompositeMeterRegistry());
+  }
+
+  /**
+   * Constructs a meter manager that uses the given registry as its primary registry.
+   *
+   * @param primaryRegistry the registry to use as the primary registry
+   */
+  public CompositeMeterManager(CompositeMeterRegistry primaryRegistry) {
+    this.primaryRegistry = primaryRegistry;
+  }
 
   @Override
   public MeterRegistry getPrimaryRegistry() {
