@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -35,6 +37,7 @@ import org.mockito.Mock;
 import org.apache.geode.StatisticDescriptor;
 import org.apache.geode.Statistics;
 import org.apache.geode.StatisticsType;
+import org.apache.geode.internal.statistics.MeterManager;
 import org.apache.geode.internal.statistics.StatisticsManager;
 import org.apache.geode.internal.statistics.StatisticsManagerFactory;
 
@@ -52,6 +55,9 @@ public class InternalDistributedSystemTest {
   @Mock
   public StatisticsManager statisticsManager;
 
+  @Mock
+  public MeterManager meterManager;
+  
   private InternalDistributedSystem internalDistributedSystem;
 
   @Before
@@ -60,7 +66,18 @@ public class InternalDistributedSystemTest {
     when(statisticsManagerFactory.create(any(), anyLong(), anyBoolean()))
         .thenReturn(statisticsManager);
     internalDistributedSystem =
-        InternalDistributedSystem.newInstanceForTesting(statisticsManagerFactory);
+        InternalDistributedSystem.newInstanceForTesting(statisticsManagerFactory, meterManager);
+  }
+
+  @Test
+  public void remembersItsMeterManager() {
+    MeterManager theMeterManager = mock(MeterManager.class);
+    
+    InternalDistributedSystem internalDistributedSystem =
+        InternalDistributedSystem.newInstanceForTesting(statisticsManagerFactory, theMeterManager);
+
+    assertThat(internalDistributedSystem.getMeterManager())
+        .isSameAs(theMeterManager);
   }
 
   @Test
@@ -72,10 +89,12 @@ public class InternalDistributedSystemTest {
         .create(eq(defaultMemberName), anyLong(), eq(defaultStatsDisabled)))
             .thenReturn(statisticsManagerCreatedByFactory);
 
-    InternalDistributedSystem result =
-        InternalDistributedSystem.newInstanceForTesting(statisticsManagerFactory);
+    InternalDistributedSystem internalDistributedSystem =
+        InternalDistributedSystem.newInstanceForTesting(statisticsManagerFactory, meterManager);
 
-    assertThat(result.getStatisticsManager())
+    StatisticsManager result = internalDistributedSystem.getStatisticsManager();
+    
+    assertThat(result)
         .isSameAs(statisticsManagerCreatedByFactory);
   }
 

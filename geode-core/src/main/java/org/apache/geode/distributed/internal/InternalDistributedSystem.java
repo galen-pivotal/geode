@@ -43,6 +43,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import org.apache.logging.log4j.Logger;
 
 import org.apache.geode.CancelCriterion;
@@ -106,8 +108,10 @@ import org.apache.geode.internal.offheap.MemoryAllocator;
 import org.apache.geode.internal.offheap.OffHeapStorage;
 import org.apache.geode.internal.security.SecurityService;
 import org.apache.geode.internal.security.SecurityServiceFactory;
+import org.apache.geode.internal.statistics.CompositeMeterManager;
 import org.apache.geode.internal.statistics.DummyStatisticsRegistry;
 import org.apache.geode.internal.statistics.GemFireStatSampler;
+import org.apache.geode.internal.statistics.MeterManager;
 import org.apache.geode.internal.statistics.StatisticsConfig;
 import org.apache.geode.internal.statistics.StatisticsManager;
 import org.apache.geode.internal.statistics.StatisticsManagerFactory;
@@ -174,6 +178,7 @@ public class InternalDistributedSystem extends DistributedSystem
   };
 
   private final StatisticsManager statisticsManager;
+  private final MeterManager meterManager;
 
   /**
    * The distribution manager that is used to communicate with the distributed system.
@@ -390,8 +395,9 @@ public class InternalDistributedSystem extends DistributedSystem
     return sys;
   }
 
-  public static InternalDistributedSystem newInstanceForTesting(StatisticsManagerFactory factory) {
-    return new InternalDistributedSystem(new Properties(), factory);
+  public static InternalDistributedSystem newInstanceForTesting(
+      StatisticsManagerFactory statisticsManagerFactory, MeterManager meterManager) {
+    return new InternalDistributedSystem(new Properties(), statisticsManagerFactory, meterManager);
   }
 
   public static boolean removeSystem(InternalDistributedSystem oldSystem) {
@@ -507,7 +513,7 @@ public class InternalDistributedSystem extends DistributedSystem
   }
 
   private InternalDistributedSystem(Properties properties) {
-    this(properties, defaultStatisticsManagerFactory());
+    this(properties, defaultStatisticsManagerFactory(), new CompositeMeterManager());
   }
 
   /**
@@ -520,7 +526,8 @@ public class InternalDistributedSystem extends DistributedSystem
    * @see DistributedSystem#connect
    */
   private InternalDistributedSystem(Properties nonDefault,
-      StatisticsManagerFactory statisticsManagerFactory) {
+      StatisticsManagerFactory statisticsManagerFactory, MeterManager meterManager) {
+    this.meterManager = meterManager;
     alertingSession = AlertingSession.create();
     alertingService = new AlertingService();
     loggingSession = LoggingSession.create();
@@ -949,6 +956,10 @@ public class InternalDistributedSystem extends DistributedSystem
     return statisticsManager;
   }
 
+  public MeterManager getMeterManager() {
+    return meterManager;
+  }
+
   @Override
   public StatisticDescriptor createIntCounter(String name,
       String description,
@@ -1113,7 +1124,7 @@ public class InternalDistributedSystem extends DistributedSystem
   public long getStartTime() {
     return this.startTime;
   }
-
+  
   /**
    * This class defers to the DM. If we don't have a DM, we're dead.
    */
