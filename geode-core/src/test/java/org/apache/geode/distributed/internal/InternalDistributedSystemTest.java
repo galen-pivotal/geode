@@ -15,7 +15,6 @@
 package org.apache.geode.distributed.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -35,13 +34,14 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mock;
 
 import org.apache.geode.StatisticDescriptor;
 import org.apache.geode.Statistics;
 import org.apache.geode.StatisticsType;
+import org.apache.geode.distributed.ConfigurationProperties;
+import org.apache.geode.distributed.internal.membership.InternalDistributedMember;
 import org.apache.geode.internal.metrics.MeterManager;
 import org.apache.geode.internal.statistics.StatisticsManager;
 import org.apache.geode.internal.statistics.StatisticsManagerFactory;
@@ -104,22 +104,68 @@ public class InternalDistributedSystemTest {
             String.valueOf(internalDistributedSystem.getConfig().getDistributedSystemId())));
   }
 
-  @Ignore("wip")
   @Test
   public void addsMemberNameTag_withNameFromConfiguration_ifPropertiesContainsConfiguration() {
-    fail("unimplemented");
+    Properties properties = new Properties();
+    DistributionConfig distributionConfig = DistributionConfigImpl.createDefaultInstance();
+    String theName = "the-name";
+    distributionConfig.setName(theName);
+    properties.put(DistributionConfig.DS_CONFIG_NAME, distributionConfig);
+    when(meterManager.getPrimaryRegistry())
+        .thenReturn(new SimpleMeterRegistry());
+
+    InternalDistributedSystem
+        .newInstanceForTesting(distributionManager, properties, statisticsManagerFactory,
+            meterManager);
+
+    Meter meter = meterManager.getPrimaryRegistry().counter("the-meter");
+
+    assertThat(meter.getId().getTags())
+        .contains(Tag.of("member-name", theName));
   }
 
-  @Ignore("wip")
   @Test
   public void addsMemberNameTag_withNameFromProperties_ifPropertiesContainsNoConfiguration() {
-    fail("unimplemented");
+    Properties properties = new Properties();
+    String theName = "the-name-from-properties";
+    properties.setProperty(ConfigurationProperties.NAME, theName);
+    properties.remove(DistributionConfig.DS_CONFIG_NAME);
+    when(meterManager.getPrimaryRegistry())
+        .thenReturn(new SimpleMeterRegistry());
+
+    InternalDistributedSystem
+        .newInstanceForTesting(distributionManager, properties, statisticsManagerFactory,
+            meterManager);
+
+    Meter meter = meterManager.getPrimaryRegistry().counter("the-meter");
+
+    assertThat(meter.getId().getTags())
+        .contains(Tag.of("member-name", theName));
   }
 
-  @Ignore("wip")
   @Test
   public void addsMemberNameTag_withMemberId_ifMemberNameIsEmpty() {
-    fail("unimplemented");
+    Properties properties = new Properties();
+    String theName = "the-member-id";
+    properties.remove(DistributionConfig.DS_CONFIG_NAME);
+    properties.remove(ConfigurationProperties.NAME);
+    when(meterManager.getPrimaryRegistry())
+        .thenReturn(new SimpleMeterRegistry());
+
+    InternalDistributedMember distributedMember = mock(InternalDistributedMember.class);
+    when(distributionManager.getId())
+        .thenReturn(distributedMember);
+    when(distributedMember.toString())
+        .thenReturn(theName);
+
+    InternalDistributedSystem
+        .newInstanceForTesting(distributionManager, properties, statisticsManagerFactory,
+            meterManager);
+
+    Meter meter = meterManager.getPrimaryRegistry().counter("the-meter");
+
+    assertThat(meter.getId().getTags())
+        .contains(Tag.of("member-name", theName));
   }
 
   @Test
