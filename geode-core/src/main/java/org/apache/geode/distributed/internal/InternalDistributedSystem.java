@@ -387,16 +387,31 @@ public class InternalDistributedSystem extends DistributedSystem
    */
   public static InternalDistributedSystem newInstanceForTesting(DistributionManager dm,
       Properties nonDefault) {
-    InternalDistributedSystem sys = new InternalDistributedSystem(nonDefault);
-    sys.config = new RuntimeDistributionConfigImpl(sys);
-    sys.dm = dm;
-    sys.isConnected = true;
-    return sys;
+    return newInstanceForTesting(dm, nonDefault, defaultStatisticsManagerFactory(),
+        new CompositeMeterManager());
   }
 
-  public static InternalDistributedSystem newInstanceForTesting(
+  static InternalDistributedSystem newInstanceForTesting(
+      DistributionManager dm, Properties properties,
       StatisticsManagerFactory statisticsManagerFactory, MeterManager meterManager) {
-    return new InternalDistributedSystem(new Properties(), statisticsManagerFactory, meterManager);
+    InternalDistributedSystem internalDistributedSystem =
+        new InternalDistributedSystem(properties, statisticsManagerFactory, meterManager);
+    internalDistributedSystem.config = new RuntimeDistributionConfigImpl(internalDistributedSystem);
+    internalDistributedSystem.dm = dm;
+    internalDistributedSystem.isConnected = true;
+    internalDistributedSystem.configureMeterRegistry();
+    return internalDistributedSystem;
+  }
+
+  private void configureMeterRegistry() {
+    MeterRegistry primaryRegistry = meterManager.getPrimaryRegistry();
+    primaryRegistry.config().commonTags("cluster-id",
+        String.valueOf(originalConfig.getDistributedSystemId()));
+    String name = getName();
+    if (name.isEmpty()) {
+      name = getMemberId();
+    }
+    primaryRegistry.config().commonTags("member-name", name);
   }
 
   public static boolean removeSystem(InternalDistributedSystem oldSystem) {
@@ -566,11 +581,6 @@ public class InternalDistributedSystem extends DistributedSystem
 
     statisticsManager =
         statisticsManagerFactory.create(originalConfig.getName(), startTime, statsDisabled);
-
-    MeterRegistry primaryRegistry = meterManager.getPrimaryRegistry();
-    primaryRegistry.config().commonTags("cluster-id",
-        String.valueOf(originalConfig.getDistributedSystemId()));
-    primaryRegistry.config().commonTags("member-name", getName());
   }
 
 
@@ -820,6 +830,7 @@ public class InternalDistributedSystem extends DistributedSystem
         throw new GemFireIOException("Problem finishing a locator service start", e);
       }
 
+      configureMeterRegistry();
       startSampler();
 
       alertingSession.createSession(new AlertMessaging(this));

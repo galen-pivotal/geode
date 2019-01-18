@@ -15,6 +15,7 @@
 package org.apache.geode.distributed.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -27,8 +28,14 @@ import static org.mockito.MockitoAnnotations.initMocks;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.util.Properties;
 
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mock;
 
@@ -56,6 +63,9 @@ public class InternalDistributedSystemTest {
   @Mock
   public MeterManager meterManager;
 
+  @Mock
+  public DistributionManager distributionManager;
+
   private InternalDistributedSystem internalDistributedSystem;
 
   @Before
@@ -63,19 +73,53 @@ public class InternalDistributedSystemTest {
     initMocks(this);
     when(statisticsManagerFactory.create(any(), anyLong(), anyBoolean()))
         .thenReturn(statisticsManager);
+    when(meterManager.getPrimaryRegistry())
+        .thenReturn(new SimpleMeterRegistry());
     internalDistributedSystem =
-        InternalDistributedSystem.newInstanceForTesting(statisticsManagerFactory, meterManager);
+        InternalDistributedSystem
+            .newInstanceForTesting(distributionManager, new Properties(),
+                statisticsManagerFactory, meterManager);
   }
 
   @Test
   public void remembersItsMeterManager() {
-    MeterManager theMeterManager = mock(MeterManager.class);
-
     InternalDistributedSystem internalDistributedSystem =
-        InternalDistributedSystem.newInstanceForTesting(statisticsManagerFactory, theMeterManager);
+        InternalDistributedSystem
+            .newInstanceForTesting(distributionManager, new Properties(),
+                statisticsManagerFactory, meterManager);
 
     assertThat(internalDistributedSystem.getMeterManager())
-        .isSameAs(theMeterManager);
+        .isSameAs(meterManager);
+  }
+
+  @Test
+  public void addsClusterIdTagToPrimaryMeterRegistry() {
+    MeterRegistry primaryRegistry =
+        internalDistributedSystem.getMeterManager().getPrimaryRegistry();
+
+    Meter meter = primaryRegistry.counter("foo");
+
+    assertThat(meter.getId().getTags())
+        .contains(Tag.of("cluster-id",
+            String.valueOf(internalDistributedSystem.getConfig().getDistributedSystemId())));
+  }
+
+  @Ignore("wip")
+  @Test
+  public void addsMemberNameTag_withNameFromConfiguration_ifPropertiesContainsConfiguration() {
+    fail("unimplemented");
+  }
+
+  @Ignore("wip")
+  @Test
+  public void addsMemberNameTag_withNameFromProperties_ifPropertiesContainsNoConfiguration() {
+    fail("unimplemented");
+  }
+
+  @Ignore("wip")
+  @Test
+  public void addsMemberNameTag_withMemberId_ifMemberNameIsEmpty() {
+    fail("unimplemented");
   }
 
   @Test
@@ -88,7 +132,9 @@ public class InternalDistributedSystemTest {
             .thenReturn(statisticsManagerCreatedByFactory);
 
     InternalDistributedSystem internalDistributedSystem =
-        InternalDistributedSystem.newInstanceForTesting(statisticsManagerFactory, meterManager);
+        InternalDistributedSystem
+            .newInstanceForTesting(distributionManager, new Properties(), statisticsManagerFactory,
+                meterManager);
 
     StatisticsManager result = internalDistributedSystem.getStatisticsManager();
 
