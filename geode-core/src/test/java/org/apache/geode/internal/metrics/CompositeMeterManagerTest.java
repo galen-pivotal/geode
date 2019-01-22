@@ -19,11 +19,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Set;
 
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class CompositeMeterManagerTest {
@@ -75,48 +73,63 @@ public class CompositeMeterManagerTest {
         .isEmpty();
   }
 
-  @Ignore("pending investigation of Micrometer composite meter registry behavior")
   @Test
   public void connectsExistingMetersToNewDownstreamRegistries() {
     MeterRegistry primaryRegistry = meterManager.getPrimaryRegistry();
-    meterManager.addDownstreamRegistry(new SimpleMeterRegistry());
 
-    Counter counter = primaryRegistry.counter("my.counter");
-    counter.increment(1.0);
+    String counterName = "the.counter";
+    Counter primaryCounter = primaryRegistry.counter(counterName);
 
-    System.out.println("counter = " + counter);
-    System.out
-        .println("counter.measure().iterator().next() = " + counter.measure().iterator().next());
+    double amountIncrementedBeforeConnectingDownstreamRegistry = 3.0;
+    primaryCounter.increment(amountIncrementedBeforeConnectingDownstreamRegistry);
 
     MeterRegistry downstreamRegistry = new SimpleMeterRegistry();
     meterManager.addDownstreamRegistry(downstreamRegistry);
-    double theAmountIncrementedAfterConnecting = 42.0;
-    counter.increment(theAmountIncrementedAfterConnecting);
 
-    Counter foundCounter = downstreamRegistry.find("my.counter").counter();
-    assertThat(foundCounter)
+    Counter downstreamCounter = downstreamRegistry.find(counterName).counter();
+    assertThat(downstreamCounter)
+        .as("downstream counter after connecting, before incrementing")
         .isNotNull();
-    Measurement downstreamMeasurement = foundCounter.measure().iterator().next();
-    Measurement primaryMeasurement = counter.measure().iterator().next();
 
-    System.out.println(downstreamMeasurement.getValue());
-    assertThat(downstreamMeasurement.getValue())
-        .isEqualTo(primaryMeasurement.getValue());
-    System.out.println("primaryMeasurement = " + primaryMeasurement);
-    foundCounter.increment(2.0);
-    System.out.println(downstreamMeasurement.getValue());
-    assertThat(downstreamMeasurement.getValue())
-        .isEqualTo(primaryMeasurement.getValue());
+    // Note that the newly-created downstream counter starts at zero, ignoring
+    // any increments that happened before the downstream registry was added.
+    assertThat(downstreamCounter.count())
+        .as("downstream counter value after connecting, before incrementing")
+        .isNotEqualTo(amountIncrementedBeforeConnectingDownstreamRegistry)
+        .isEqualTo(0);
 
-    // ensure that the downstream meter has the right tags
-    // maybe repeat (starting with updating the value)
+    double amountIncrementedAfterConnectingDownstreamRegistry = 42.0;
+    primaryCounter.increment(amountIncrementedAfterConnectingDownstreamRegistry);
+
+    assertThat(downstreamCounter.count())
+        .as("downstream counter value after incrementing")
+        .isEqualTo(amountIncrementedAfterConnectingDownstreamRegistry);
   }
 
-  @Ignore
   @Test
   public void connectsNewMetersToExistingDownstreamRegistries() {
+    MeterRegistry primaryRegistry = meterManager.getPrimaryRegistry();
+    MeterRegistry downstreamRegistry = new SimpleMeterRegistry();
+    meterManager.addDownstreamRegistry(downstreamRegistry);
 
+    String counterName = "the.counter";
+    Counter newCounter = primaryRegistry.counter(counterName);
+
+    Counter downstreamCounter = downstreamRegistry.find(counterName).counter();
+    assertThat(downstreamCounter)
+        .as("downstream counter before incrementing")
+        .isNotNull();
+
+    assertThat(downstreamCounter.count())
+        .as("downstream counter value before incrementing")
+        .isEqualTo(newCounter.count())
+        .isEqualTo(0);
+
+    double amountIncrementedAfterConnectingDownstreamRegistry = 93.0;
+    newCounter.increment(amountIncrementedAfterConnectingDownstreamRegistry);
+
+    assertThat(downstreamCounter.count())
+        .as("downstream counter value after incrementing")
+        .isEqualTo(newCounter.count());
   }
-
-
 }
