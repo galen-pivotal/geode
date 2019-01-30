@@ -24,36 +24,38 @@ import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Test;
 
-public class CompositeMeterManagerTest {
+import org.apache.geode.metrics.MetricsCollector;
+
+public class CompositeMetricsCollectorTest {
   private final CompositeMeterRegistry primaryRegistry = new CompositeMeterRegistry();
-  private final CompositeMeterManager meterManager = new CompositeMeterManager(primaryRegistry);
+  private final MetricsCollector collector = new CompositeMetricsCollector(primaryRegistry);
 
   @Test
   public void remembersItsPrimaryRegistry() {
     CompositeMeterRegistry thePrimaryRegistry = new CompositeMeterRegistry();
 
-    CompositeMeterManager manager = new CompositeMeterManager(thePrimaryRegistry);
+    CompositeMetricsCollector collector = new CompositeMetricsCollector(thePrimaryRegistry);
 
-    assertThat(manager.getPrimaryRegistry())
+    assertThat(collector.primaryRegistry())
         .isSameAs(thePrimaryRegistry);
   }
 
   @Test
-  public void addsDownstreamRegistry() {
+  public void remembersAddedDownstreamRegistries() {
     MeterRegistry downstream = new SimpleMeterRegistry();
 
-    meterManager.addDownstreamRegistry(downstream);
+    collector.addDownstreamRegistry(downstream);
 
     assertThat(primaryRegistry.getRegistries())
         .contains(downstream);
   }
 
   @Test
-  public void removesDownstreamRegistry() {
+  public void forgetsRemovedDownstreamRegistries() {
     MeterRegistry downstream = new SimpleMeterRegistry();
-    meterManager.addDownstreamRegistry(downstream);
+    collector.addDownstreamRegistry(downstream);
 
-    meterManager.removeDownstreamRegistry(downstream);
+    collector.removeDownstreamRegistry(downstream);
 
     assertThat(primaryRegistry.getRegistries())
         .doesNotContain(downstream);
@@ -61,21 +63,22 @@ public class CompositeMeterManagerTest {
 
   @Test
   public void defaultRegistryStartsWithNoDownstreamRegistries() {
-    CompositeMeterManager compositeMeterManager = new CompositeMeterManager();
+    CompositeMetricsCollector collector = new CompositeMetricsCollector();
 
-    MeterRegistry primaryRegistry = compositeMeterManager.getPrimaryRegistry();
+    MeterRegistry primaryRegistry = collector.primaryRegistry();
     assertThat(primaryRegistry)
         .isInstanceOf(CompositeMeterRegistry.class);
 
     Set<MeterRegistry> downstreamRegistries =
         ((CompositeMeterRegistry) primaryRegistry).getRegistries();
+
     assertThat(downstreamRegistries)
         .isEmpty();
   }
 
   @Test
   public void connectsExistingMetersToNewDownstreamRegistries() {
-    MeterRegistry primaryRegistry = meterManager.getPrimaryRegistry();
+    MeterRegistry primaryRegistry = collector.primaryRegistry();
 
     String counterName = "the.counter";
     Counter primaryCounter = primaryRegistry.counter(counterName);
@@ -84,7 +87,7 @@ public class CompositeMeterManagerTest {
     primaryCounter.increment(amountIncrementedBeforeConnectingDownstreamRegistry);
 
     MeterRegistry downstreamRegistry = new SimpleMeterRegistry();
-    meterManager.addDownstreamRegistry(downstreamRegistry);
+    collector.addDownstreamRegistry(downstreamRegistry);
 
     Counter downstreamCounter = downstreamRegistry.find(counterName).counter();
     assertThat(downstreamCounter)
@@ -108,9 +111,9 @@ public class CompositeMeterManagerTest {
 
   @Test
   public void connectsNewMetersToExistingDownstreamRegistries() {
-    MeterRegistry primaryRegistry = meterManager.getPrimaryRegistry();
+    MeterRegistry primaryRegistry = collector.primaryRegistry();
     MeterRegistry downstreamRegistry = new SimpleMeterRegistry();
-    meterManager.addDownstreamRegistry(downstreamRegistry);
+    collector.addDownstreamRegistry(downstreamRegistry);
 
     String counterName = "the.counter";
     Counter newCounter = primaryRegistry.counter(counterName);

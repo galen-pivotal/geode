@@ -102,8 +102,7 @@ import org.apache.geode.internal.logging.LogWriterFactory;
 import org.apache.geode.internal.logging.LoggingSession;
 import org.apache.geode.internal.logging.LoggingThread;
 import org.apache.geode.internal.logging.NullLoggingSession;
-import org.apache.geode.internal.metrics.CompositeMeterManager;
-import org.apache.geode.internal.metrics.MeterManager;
+import org.apache.geode.internal.metrics.CompositeMetricsCollector;
 import org.apache.geode.internal.net.SocketCreatorFactory;
 import org.apache.geode.internal.offheap.MemoryAllocator;
 import org.apache.geode.internal.offheap.OffHeapStorage;
@@ -118,6 +117,7 @@ import org.apache.geode.internal.statistics.StatisticsRegistry;
 import org.apache.geode.internal.statistics.platform.LinuxProcFsStatistics;
 import org.apache.geode.internal.tcp.ConnectionTable;
 import org.apache.geode.management.ManagementException;
+import org.apache.geode.metrics.MetricsCollector;
 import org.apache.geode.security.GemFireSecurityException;
 import org.apache.geode.security.PostProcessor;
 import org.apache.geode.security.SecurityManager;
@@ -177,7 +177,7 @@ public class InternalDistributedSystem extends DistributedSystem
   };
 
   private final StatisticsManager statisticsManager;
-  private final MeterManager meterManager;
+  private final MetricsCollector metricsCollector;
 
   /**
    * The distribution manager that is used to communicate with the distributed system.
@@ -388,12 +388,12 @@ public class InternalDistributedSystem extends DistributedSystem
   public static InternalDistributedSystem newInstanceForTesting(DistributionManager dm,
       Properties nonDefault) {
     return newInstanceForTesting(dm, nonDefault, defaultStatisticsManagerFactory(),
-        new CompositeMeterManager());
+        new CompositeMetricsCollector());
   }
 
   static InternalDistributedSystem newInstanceForTesting(
       DistributionManager dm, Properties properties,
-      StatisticsManagerFactory statisticsManagerFactory, MeterManager meterManager) {
+      StatisticsManagerFactory statisticsManagerFactory, MetricsCollector meterManager) {
     InternalDistributedSystem internalDistributedSystem =
         new InternalDistributedSystem(properties, statisticsManagerFactory, meterManager);
     internalDistributedSystem.config = new RuntimeDistributionConfigImpl(internalDistributedSystem);
@@ -404,7 +404,7 @@ public class InternalDistributedSystem extends DistributedSystem
   }
 
   private void configureMeterRegistry() {
-    MeterRegistry primaryRegistry = meterManager.getPrimaryRegistry();
+    MeterRegistry primaryRegistry = metricsCollector.primaryRegistry();
     primaryRegistry.config().commonTags("cluster-id",
         String.valueOf(originalConfig.getDistributedSystemId()));
     String name = getName();
@@ -527,7 +527,7 @@ public class InternalDistributedSystem extends DistributedSystem
   }
 
   private InternalDistributedSystem(Properties properties) {
-    this(properties, defaultStatisticsManagerFactory(), new CompositeMeterManager());
+    this(properties, defaultStatisticsManagerFactory(), new CompositeMetricsCollector());
   }
 
   /**
@@ -540,8 +540,8 @@ public class InternalDistributedSystem extends DistributedSystem
    * @see DistributedSystem#connect
    */
   private InternalDistributedSystem(Properties nonDefault,
-      StatisticsManagerFactory statisticsManagerFactory, MeterManager meterManager) {
-    this.meterManager = meterManager;
+      StatisticsManagerFactory statisticsManagerFactory, MetricsCollector metricsCollector) {
+    this.metricsCollector = metricsCollector;
     alertingSession = AlertingSession.create();
     alertingService = new AlertingService();
     loggingSession = LoggingSession.create();
@@ -972,8 +972,8 @@ public class InternalDistributedSystem extends DistributedSystem
   }
 
   @Override
-  public MeterManager getMeterManager() {
-    return meterManager;
+  public MetricsCollector getMetricsCollector() {
+    return metricsCollector;
   }
 
   @Override

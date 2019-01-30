@@ -12,32 +12,36 @@
  * or implied. See the License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.geode.internal.metrics;
+package org.apache.geode.metrics;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
 /**
- * Manages Micrometer meters in a primary registry and a set of downstream registries.
+ * Collects Geode meters in a primary registry and forwards changes to a set of downstream
+ * registries.
  * <p>
  * The primary registry maintains the complete set of meters.
  * </p>
  * <p>
- * Adding a meter to the primary registry connects each downstream registry to the new meter.
+ * Adding a meter to the primary registry automatically adds a corresponding meter to each
+ * downstream registry.
  * </p>
  * <p>
- * Adding a downstream registry connects the downstream registry to each of the primary registry's
- * meters.
+ * When a downstream registry is added, the collector creates meters in the downstream registry
+ * corresponding to each meter in the primary registry. The newly-created meter in the downstream
+ * registry may start at an initial state defined by the downstream registry, or it may inherit the
+ * state of the corresponding meter in the primary registry.
  * </p>
  * <p>
  * Removing a downstream registry disconnects the downstream registry from each of the primary
  * registry's meters.
  * </p>
  */
-public interface MeterManager {
+public interface MetricsCollector {
   /**
    * Returns the primary meter registry.
    */
-  MeterRegistry getPrimaryRegistry();
+  MeterRegistry primaryRegistry();
 
   /**
    * Adds the given registry as a "downstream" registry, connecting it to the primary registry's

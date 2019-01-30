@@ -17,34 +17,42 @@ package org.apache.geode.internal.metrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 
+import org.apache.geode.metrics.MetricsCollector;
+
 /**
- * Manages meters using a composite meter registry.
+ * Collects metrics using a {@link CompositeMeterRegistry}.
  */
-public class CompositeMeterManager implements MeterManager {
+public class CompositeMetricsCollector implements MetricsCollector {
   private final CompositeMeterRegistry primaryRegistry;
 
   /**
-   * Constructs a meter manager that uses a new {@link CompositeMeterRegistry} as its primary
+   * Constructs a metrics collector that uses a new {@link CompositeMeterRegistry} as its primary
    * registry.
    */
-  public CompositeMeterManager() {
+  public CompositeMetricsCollector() {
     this(new CompositeMeterRegistry());
   }
 
   /**
-   * Constructs a meter manager that uses the given registry as its primary registry.
+   * Constructs a metrics collector that uses the given registry as its primary registry.
    *
    * @param primaryRegistry the registry to use as the primary registry
    */
-  public CompositeMeterManager(CompositeMeterRegistry primaryRegistry) {
+  public CompositeMetricsCollector(CompositeMeterRegistry primaryRegistry) {
     this.primaryRegistry = primaryRegistry;
   }
 
   @Override
-  public MeterRegistry getPrimaryRegistry() {
+  public MeterRegistry primaryRegistry() {
     return primaryRegistry;
   }
 
+  /**
+   * {@inheritDoc} In this implementation, the newly-created meter in the downstream registry starts
+   * at an initial state defined by the downstream registry.
+   *
+   * @param downstream the downstream registry to add
+   */
   @Override
   public void addDownstreamRegistry(MeterRegistry downstream) {
     primaryRegistry.add(downstream);

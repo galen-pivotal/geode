@@ -42,9 +42,9 @@ import org.apache.geode.Statistics;
 import org.apache.geode.StatisticsType;
 import org.apache.geode.distributed.ConfigurationProperties;
 import org.apache.geode.distributed.internal.membership.InternalDistributedMember;
-import org.apache.geode.internal.metrics.MeterManager;
 import org.apache.geode.internal.statistics.StatisticsManager;
 import org.apache.geode.internal.statistics.StatisticsManagerFactory;
+import org.apache.geode.metrics.MetricsCollector;
 
 public class InternalDistributedSystemTest {
   private static final String STATISTIC_NAME = "statistic-name";
@@ -61,7 +61,7 @@ public class InternalDistributedSystemTest {
   public StatisticsManager statisticsManager;
 
   @Mock
-  public MeterManager meterManager;
+  public MetricsCollector meterManager;
 
   @Mock
   public DistributionManager distributionManager;
@@ -73,7 +73,7 @@ public class InternalDistributedSystemTest {
     initMocks(this);
     when(statisticsManagerFactory.create(any(), anyLong(), anyBoolean()))
         .thenReturn(statisticsManager);
-    when(meterManager.getPrimaryRegistry())
+    when(meterManager.primaryRegistry())
         .thenReturn(new SimpleMeterRegistry());
     internalDistributedSystem =
         InternalDistributedSystem
@@ -88,14 +88,14 @@ public class InternalDistributedSystemTest {
             .newInstanceForTesting(distributionManager, new Properties(),
                 statisticsManagerFactory, meterManager);
 
-    assertThat(internalDistributedSystem.getMeterManager())
+    assertThat(internalDistributedSystem.getMetricsCollector())
         .isSameAs(meterManager);
   }
 
   @Test
   public void addsClusterIdTagToPrimaryMeterRegistry() {
     MeterRegistry primaryRegistry =
-        internalDistributedSystem.getMeterManager().getPrimaryRegistry();
+        internalDistributedSystem.getMetricsCollector().primaryRegistry();
 
     Meter meter = primaryRegistry.counter("foo");
 
@@ -111,14 +111,14 @@ public class InternalDistributedSystemTest {
     String theName = "the-name";
     distributionConfig.setName(theName);
     properties.put(DistributionConfig.DS_CONFIG_NAME, distributionConfig);
-    when(meterManager.getPrimaryRegistry())
+    when(meterManager.primaryRegistry())
         .thenReturn(new SimpleMeterRegistry());
 
     InternalDistributedSystem
         .newInstanceForTesting(distributionManager, properties, statisticsManagerFactory,
             meterManager);
 
-    Meter meter = meterManager.getPrimaryRegistry().counter("the-meter");
+    Meter meter = meterManager.primaryRegistry().counter("the-meter");
 
     assertThat(meter.getId().getTags())
         .contains(Tag.of("member-name", theName));
@@ -130,14 +130,14 @@ public class InternalDistributedSystemTest {
     String theName = "the-name-from-properties";
     properties.setProperty(ConfigurationProperties.NAME, theName);
     properties.remove(DistributionConfig.DS_CONFIG_NAME);
-    when(meterManager.getPrimaryRegistry())
+    when(meterManager.primaryRegistry())
         .thenReturn(new SimpleMeterRegistry());
 
     InternalDistributedSystem
         .newInstanceForTesting(distributionManager, properties, statisticsManagerFactory,
             meterManager);
 
-    Meter meter = meterManager.getPrimaryRegistry().counter("the-meter");
+    Meter meter = meterManager.primaryRegistry().counter("the-meter");
 
     assertThat(meter.getId().getTags())
         .contains(Tag.of("member-name", theName));
@@ -149,7 +149,7 @@ public class InternalDistributedSystemTest {
     String theName = "the-member-id";
     properties.remove(DistributionConfig.DS_CONFIG_NAME);
     properties.remove(ConfigurationProperties.NAME);
-    when(meterManager.getPrimaryRegistry())
+    when(meterManager.primaryRegistry())
         .thenReturn(new SimpleMeterRegistry());
 
     InternalDistributedMember distributedMember = mock(InternalDistributedMember.class);
@@ -162,7 +162,7 @@ public class InternalDistributedSystemTest {
         .newInstanceForTesting(distributionManager, properties, statisticsManagerFactory,
             meterManager);
 
-    Meter meter = meterManager.getPrimaryRegistry().counter("the-meter");
+    Meter meter = meterManager.primaryRegistry().counter("the-meter");
 
     assertThat(meter.getId().getTags())
         .contains(Tag.of("member-name", theName));

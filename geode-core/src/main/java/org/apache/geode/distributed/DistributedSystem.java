@@ -44,9 +44,9 @@ import org.apache.geode.distributed.internal.InternalDistributedSystem;
 import org.apache.geode.internal.Assert;
 import org.apache.geode.internal.ClassPathLoader;
 import org.apache.geode.internal.logging.LogService;
-import org.apache.geode.internal.metrics.MeterManager;
 import org.apache.geode.internal.tcp.ConnectionTable;
 import org.apache.geode.internal.util.IOUtils;
+import org.apache.geode.metrics.MetricsCollector;
 
 /**
  * A "connection" to a GemFire distributed system. A <code>DistributedSystem</code> is created by
@@ -503,11 +503,11 @@ public abstract class DistributedSystem implements StatisticsFactory {
   public abstract DistributedMember findDistributedMember(String name);
 
   /**
-   * Returns the meter manager that collects and publishes metrics for this distributed system.
+   * Returns the this distributed system's metrics collector.
    *
-   * @return the meter manager
+   * @return the metrics collector
    */
-  public abstract MeterManager getMeterManager();
+  public abstract MetricsCollector getMetricsCollector();
 
   /**
    * Returns the <a href="#name">name</a> of this connection to the distributed system.
