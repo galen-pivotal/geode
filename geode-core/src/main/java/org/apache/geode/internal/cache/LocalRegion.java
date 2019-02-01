@@ -53,6 +53,10 @@ import javax.transaction.Status;
 import javax.transaction.SystemException;
 import javax.transaction.Transaction;
 
+import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.Timer.Sample;
 import org.apache.logging.log4j.Logger;
 
 import org.apache.geode.CancelCriterion;
@@ -233,6 +237,7 @@ public class LocalRegion extends AbstractRegion implements LoaderHelperFactory,
 
   // package-private to avoid synthetic accessor
   static final Logger logger = LogService.getLogger();
+  private final MeterRegistry meterRegistry;
 
   @Override
   public boolean isRegionInvalid() {
@@ -456,6 +461,8 @@ public class LocalRegion extends AbstractRegion implements LoaderHelperFactory,
    */
   private final CachePerfStats cachePerfStats;
 
+  private final Timer getsTimer;
+
   private final boolean hasOwnStats;
 
   private final ImageState imageState;
@@ -594,8 +601,10 @@ public class LocalRegion extends AbstractRegion implements LoaderHelperFactory,
    * Creates new region
    */
   protected LocalRegion(String regionName, RegionAttributes attrs, LocalRegion parentRegion,
-      InternalCache cache, InternalRegionArguments internalRegionArgs) throws DiskAccessException {
+                        InternalCache cache, InternalRegionArguments internalRegionArgs,
+                        MeterRegistry meterRegistry) throws DiskAccessException {
     super(cache, attrs, regionName, internalRegionArgs);
+
 
     // Initialized here (and defers to parent) to fix GEODE-128
     this.EXPIRY_UNITS_MS = parentRegion != null ? parentRegion.EXPIRY_UNITS_MS
@@ -693,6 +702,8 @@ public class LocalRegion extends AbstractRegion implements LoaderHelperFactory,
     eventTracker = createEventTracker();
 
     versionVector = createRegionVersionVector();
+    this.meterRegistry = meterRegistry;
+    getsTimer = this.meterRegistry.timer("regionGets","user","region1");
   }
 
   private void addCacheServiceProfiles(InternalRegionArguments internalRegionArgs) {
@@ -964,7 +975,8 @@ public class LocalRegion extends AbstractRegion implements LoaderHelperFactory,
               boolean local = regionAttributes.getScope().isLocal();
               newRegion = local
                   ? new LocalRegion(subregionName, regionAttributes, this, this.cache,
-                      internalRegionArgs)
+                      internalRegionArgs,
+                  this.cache.getDistributedSystem().getMetricsCollector().primaryRegistry())
                   : new DistributedRegion(subregionName, regionAttributes, this, this.cache,
                       internalRegionArgs);
             }
@@ -1333,11 +1345,13 @@ public class LocalRegion extends AbstractRegion implements LoaderHelperFactory,
   @Override
   public Object get(Object key, Object aCallbackArgument, boolean generateCallbacks,
       EntryEventImpl clientEvent) throws TimeoutException, CacheLoaderException {
+    //start
     Object result =
         get(key, aCallbackArgument, generateCallbacks, false, false, null, clientEvent, false);
     if (Token.isInvalid(result)) {
       result = null;
     }
+    //stop
     return result;
   }
 
@@ -1390,6 +1404,7 @@ public class LocalRegion extends AbstractRegion implements LoaderHelperFactory,
       EntryEventImpl clientEvent, boolean returnTombstones, boolean opScopeIsLocal,
       boolean retainResult) throws TimeoutException, CacheLoaderException {
     assert !retainResult || preferCD;
+    Sample timerSample= Timer.start(meterRegistry);
     validateKey(key);
     checkReadiness();
     checkForNoAccess();
@@ -1430,6 +1445,7 @@ public class LocalRegion extends AbstractRegion implements LoaderHelperFactory,
       return value;
     } finally {
       stats.endGet(start, isMiss);
+      timerSample.stop(getsTimer);
     }
   }
 

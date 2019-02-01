@@ -14,12 +14,19 @@
  */
 package org.apache.geode.internal.metrics;
 
+import static java.util.concurrent.TimeUnit.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
+import java.util.Collection;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Test;
@@ -135,4 +142,104 @@ public class CompositeMetricsCollectorTest {
         .as("downstream counter value after incrementing")
         .isEqualTo(newCounter.count());
   }
+
+  @Test
+  public void basicTimerWorks() {
+    final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    meterRegistry.timer("myTimer","region", "users");
+    Timer timerMeter= meterRegistry.get("myTimer").timer();
+    timerMeter.record(10, SECONDS);
+    double totalTime = meterRegistry.get("myTimer").timer().totalTime(SECONDS);
+    assertThat(totalTime).isEqualTo(10);
+
+  }
+
+  @Test
+  public void timerByTagPicksUpValues() {
+    final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    final Timer timer = meterRegistry.timer("myTimer", "region", "users");
+    timer.record(10, SECONDS);
+
+    double totalTime = meterRegistry.get("myTimer")
+        .tag("region","users")
+        .timer()
+        .totalTime(SECONDS);
+
+    assertThat(totalTime).isEqualTo(10);
+  }
+
+  @Test
+  public void timerWithDifferentTagsDoesNotAdd() {
+    final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    final Timer timer = meterRegistry.timer("myTimer", "region", "users");
+    final Timer timer1 = meterRegistry.timer("myTimer", "region", "customers");
+    timer.record(10, SECONDS);
+
+    double totalTime = meterRegistry.get("myTimer")
+        .tag("region","customers")
+        .timer()
+        .totalTime(SECONDS);
+
+    assertThat(totalTime).isEqualTo(0);
+  }
+
+  @Test
+  public void timerTotalsWithDifferentTags() {
+    final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    final Timer userTimer = meterRegistry.timer("myTimer", "region", "users");
+    final Timer customerTimer = meterRegistry.timer("myTimer", "region", "customers");
+    userTimer.record(10, SECONDS);
+    customerTimer.record(20,SECONDS);
+
+    Collection<Timer> timers = meterRegistry.get("myTimer")
+        .timers();
+
+    final Double totalTime = timers.stream()
+        .mapToDouble(timer -> timer.totalTime(SECONDS))
+        .sum();
+    assertThat(totalTime).isEqualTo(30);
+
+    double userTime = meterRegistry.get("myTimer")
+        .tag("region","users")
+        .timer()
+        .totalTime(SECONDS);
+    assertThat(userTime).isEqualTo(10);
+
+    double customerTime = meterRegistry.get("myTimer")
+        .tag("region","customers")
+        .timer()
+        .totalTime(SECONDS);
+    assertThat(customerTime).isEqualTo(20);
+  }
+
+  @Test
+  public void timerCountsWithDifferentTags() {
+    final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    final Timer userTimer = meterRegistry.timer("myTimer", "region", "users");
+    final Timer customerTimer = meterRegistry.timer("myTimer", "region", "customers");
+    userTimer.record(10, SECONDS);
+    customerTimer.record(20,SECONDS);
+    customerTimer.record(30,SECONDS);
+
+    Collection<Timer> timers = meterRegistry.get("myTimer")
+        .timers();
+
+    final Double totalCount = timers.stream()
+        .mapToDouble(Timer::count)
+        .sum();
+    assertThat(totalCount).isEqualTo(3);
+
+    double userCount = meterRegistry.get("myTimer")
+        .tag("region","users")
+        .timer()
+        .count();
+    assertThat(userCount).isEqualTo(1);
+
+    double customerCount = meterRegistry.get("myTimer")
+        .tag("region","customers")
+        .timer()
+        .count();
+    assertThat(customerCount).isEqualTo(2);
+  }
+
 }

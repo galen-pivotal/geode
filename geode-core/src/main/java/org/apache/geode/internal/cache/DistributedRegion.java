@@ -187,7 +187,8 @@ public class DistributedRegion extends LocalRegion implements InternalDistribute
   /** Creates a new instance of DistributedRegion */
   protected DistributedRegion(String regionName, RegionAttributes attrs, LocalRegion parentRegion,
       InternalCache cache, InternalRegionArguments internalRegionArgs) {
-    super(regionName, attrs, parentRegion, cache, internalRegionArgs);
+    super(regionName, attrs, parentRegion, cache, internalRegionArgs,
+        cache.getDistributedSystem().getMetricsCollector().primaryRegistry());
     this.initializationLatchAfterMemberTimeout =
         new StoppableCountDownLatch(getCancelCriterion(), 1);
     this.distAdvisor = createDistributionAdvisor(internalRegionArgs);

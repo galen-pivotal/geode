@@ -3043,7 +3043,8 @@ public class GemFireCacheImpl implements InternalCache, InternalClientCache, Has
                 determineDefaultPool();
               }
               if (attrs.getScope().isLocal()) {
-                region = new LocalRegion(name, attrs, null, this, internalRegionArgs);
+                region = new LocalRegion(name, attrs, null, this, internalRegionArgs,
+                    this.getDistributedSystem().getMetricsCollector().primaryRegistry());
               } else {
                 region = new DistributedRegion(name, attrs, null, this, internalRegionArgs);
               }
