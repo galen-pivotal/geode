@@ -17,7 +17,6 @@
 
 package org.apache.geode.metrics;
 
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
@@ -27,6 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MockClock;
 import io.micrometer.core.instrument.simple.SimpleConfig;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.After;
@@ -47,8 +47,6 @@ public class MemberMetricsIntegrationTest {
   @Before
   public void setup() {
     final CacheFactory cacheFactory = new CacheFactory();
-    DSy
-    cacheFactory.create(mock(InternalDistributedSystem.class))
     this.cache = cacheFactory.create();
 
   }
@@ -59,13 +57,11 @@ public class MemberMetricsIntegrationTest {
   }
 
   @Test
-  public void registersGCMeter() {
+  public void registersGCMeterOnRegionCreate() {
     final MetricsCollector metricsCollector = cache.getDistributedSystem().getMetricsCollector();
     final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     metricsCollector.addDownstreamRegistry(meterRegistry);
     testRegion = cache.createRegionFactory().create("testRegion");
-
-
 
     assertThat(meterRegistry.get("regionGets").timer().count())
         .as("gets before any operations")
@@ -84,9 +80,9 @@ public class MemberMetricsIntegrationTest {
   public void totalTimeIsCorrect() {
     final Cache cache = new CacheFactory().create();
     final MetricsCollector metricsCollector = cache.getDistributedSystem().getMetricsCollector();
+
     Clock testClock = new Clock() {
       final AtomicLong count = new AtomicLong(0);
-
       @Override
       public long wallTime() {
         return count.incrementAndGet();
